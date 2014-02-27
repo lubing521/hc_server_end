@@ -1,6 +1,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#define DEBUG_ZHAOYAO   0
+#define BUFLEN          32
+#define BUFLEN_L        512
+
 typedef struct {
     ngx_http_upstream_conf_t upstream;
 } ngx_http_getfile_conf_t;
@@ -14,6 +18,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r);
 static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r);
 static void *ngx_http_getfile_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+static ngx_int_t getfile_get_host_ip_from_uri(ngx_http_request_t *r, char ipaddr[]);
 
 static ngx_http_module_t ngx_http_getfile_module_ctx = {
     NULL,
@@ -122,23 +127,47 @@ static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void 
     return NGX_CONF_OK;
 }
 
+static ngx_int_t getfile_get_real_uri_from_uri(ngx_http_request_t *r, char ru[])
+{
+    u_char *cp;
+    size_t i, len;
+
+    for (cp = r->args.data, len = 0; *cp != '/' && len < r->args.len; cp++, len++) {
+        ;
+    }
+
+    for (i = 0; len < r->args.len && i < BUFLEN_L; cp++, i++, len++) {
+        ru[i] = *cp;
+    }
+    ru[i] = '\0';
+
+    return 0;
+}
+
 /*
- * http://www.baidu.com/s?wd=lumia
+ * http://192.168.46.89/getfile?192.68.196.38/Videos/CrewEarthObservationsVideos/bangkokpacific_iss_20140130/bangkokpacific_iss_20140130.mov
  */
 static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
 {
     static ngx_str_t backendQueryLine =
-            ngx_string("GET /s?wd=%V HTTP/1.1\r\nHost: www.baidu.com\r\nConnection: close\r\n\r\n");
-    ngx_int_t queryLineLen = backendQueryLine.len + r->args.len - 2;
+            ngx_string("GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36\r\nConnection: close\r\n\r\n");
+    ngx_int_t queryLineLen;
     ngx_buf_t *b;
-    
+    char host_ip[BUFLEN];
+    char real_uri[BUFLEN_L];
+
+    getfile_get_host_ip_from_uri(r, host_ip);
+    getfile_get_real_uri_from_uri(r, real_uri);
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s real_uri %s", __func__, real_uri);
+
+    queryLineLen = backendQueryLine.len + strlen(real_uri) - 2 + strlen(host_ip) - 2;
     b = ngx_create_temp_buf(r->pool, queryLineLen);
     if (b == NULL) {
         return NGX_ERROR;
     }
     b->last = b->pos + queryLineLen;
 
-    ngx_snprintf(b->pos, queryLineLen, (char *)backendQueryLine.data, &r->args);
+    ngx_snprintf(b->pos, queryLineLen, (char *)backendQueryLine.data, real_uri, host_ip);
 
     r->upstream->request_bufs = ngx_alloc_chain_link(r->pool);
     if (r->upstream->request_bufs == NULL) {
@@ -156,6 +185,27 @@ static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
     return NGX_OK;
 }
 
+static void getfile_debug_buffer(ngx_buf_t *b)
+{
+    static u_char str[BUFLEN_L];
+    int i;
+
+    if (b == NULL) {
+        return;
+    }
+
+    ngx_memzero(str, BUFLEN_L);
+
+    for (i = 0; i < (b->last - b->pos) && i < (BUFLEN_L - 1); i++) {
+        str[i] = b->pos[i];
+    }
+
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: \n"
+                           "Buffer size: %p\n"
+                           "Buffer data length: %p\n"
+                           "%s", __func__, (b->end - b->start), (b->last - b->pos), str);
+}
+
 static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
 {
     size_t len;
@@ -169,12 +219,13 @@ static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
 
     u = r->upstream;
 
+    getfile_debug_buffer(&u->buffer);
     rc = ngx_http_parse_status_line(r, &u->buffer, &ctx->status);
     if (rc == NGX_AGAIN) {
         return rc;
     }
     if (rc == NGX_ERROR) {
-        ngx_log_stderr(NGX_OK, "%s upstream sent no valid HTTP/1.0 header");
+        ngx_log_stderr(NGX_OK, "%s upstream sent no valid HTTP/1.0 header", __func__);
 
         r->http_version = NGX_HTTP_VERSION_9;
         u->state->status = NGX_HTTP_OK;
@@ -197,10 +248,45 @@ static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
     }
 
     ngx_memcpy(u->headers_in.status_line.data, ctx->status.start, len);
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s status line: %V", __func__, &u->headers_in.status_line);
 
     u->process_header = getfile_upstream_process_header;
 
     return getfile_upstream_process_header(r);
+}
+
+static void getfile_debug_upstream_headers(ngx_http_request_t *r)
+{
+    ngx_table_elt_t *h;
+
+    h = r->upstream->headers_in.content_type;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
+    h = r->upstream->headers_in.content_length;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
+    h = r->upstream->headers_in.accept_ranges;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
+    h = r->upstream->headers_in.connection;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
+    h = r->upstream->headers_in.location;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
+    h = r->upstream->headers_in.server;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
+    h = r->upstream->headers_in.date;
+    if (h != NULL) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+    }
 }
 
 static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
@@ -278,6 +364,8 @@ static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
                 h->lowcase_key = (u_char *) "date";
             }
 
+            getfile_debug_upstream_headers(r);
+
             return NGX_OK;
         }
 
@@ -291,53 +379,71 @@ static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
     }
 }
 
+static ngx_int_t getfile_upstream_filter_init(void *data)
+{
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s", __func__);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t getfile_upstream_filter(void *data, ssize_t bytes)
+{
+    ngx_http_request_t  *r = data;
+
+    ngx_buf_t            *b;
+    ngx_chain_t          *cl, **ll;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) {
+        ll = &cl->next;
+    }
+
+    cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs);
+    if (cl == NULL) {
+        return NGX_ERROR;
+    }
+
+    *ll = cl;
+
+    cl->buf->flush = 1;
+    cl->buf->memory = 1;
+
+    b = &u->buffer;
+
+    cl->buf->pos = b->last;
+    b->last += bytes;
+    cl->buf->last = b->last;
+    cl->buf->tag = u->output.tag;
+
+    if (u->length == -1) {
+        return NGX_OK;
+    }
+
+    u->length -= bytes;
+
+    return NGX_OK;
+}
+
 static void getfile_upstream_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
-    ngx_log_stderr(NGX_OK, "*INFO* %s", __func__);
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s", __func__);
 }
 
-#if 0
-static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
+static ngx_int_t getfile_get_host_ip_from_uri(ngx_http_request_t *r, char ipaddr[])
 {
-    ngx_int_t rc;
-    ngx_str_t type = ngx_string("text/plain");
-    ngx_str_t response = ngx_string("Hello World!");
-    ngx_buf_t *b;
-    ngx_chain_t out;
-    
-    if (!(r->method & (NGX_HTTP_GET | NGX_HTTP_HEAD))) {
-        return NGX_HTTP_NOT_ALLOWED;
+    u_char *cp;
+    size_t i;
+
+    for (cp = r->args.data, i = 0; *cp != '/' && i < BUFLEN; cp++, i++) {
+        ipaddr[i] = *cp;
     }
+    ipaddr[i] = '\0';
 
-    rc = ngx_http_discard_request_body(r);
-    if (rc != NGX_OK) {
-        return rc;
-    }
-
-    r->headers_out.status = NGX_HTTP_OK;
-    r->headers_out.content_length_n = response.len;
-    r->headers_out.content_type = type;
-
-    rc = ngx_http_send_header(r);
-    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-        return rc;
-    }
-
-    b = ngx_create_temp_buf(r->pool, response.len);
-    if (b == NULL) {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    ngx_memcpy(b->pos, response.data, response.len);
-    b->last = b->pos + response.len;
-    b->last_buf = 1;
-
-    out.buf = b;
-    out.next = NULL;
-
-    return ngx_http_output_filter(r, &out);
+    return 0;
 }
-#endif
 
 static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
 {
@@ -345,8 +451,8 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     ngx_http_getfile_conf_t *mycf;
     ngx_http_upstream_t *u;
     static struct sockaddr_in backendSockAddr;
-    struct hostent *pHost;
-    char *pDmsIP;
+    char pDmsIP[BUFLEN];
+    ngx_str_t str;
 
     myctx = ngx_http_get_module_ctx(r, ngx_http_getfile_module);
     if (myctx == NULL) {
@@ -354,8 +460,26 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         if (myctx == NULL) {
             return NGX_ERROR;
         }
+        ngx_memzero(myctx, sizeof(ngx_http_getfile_ctx_t));
         
         ngx_http_set_ctx(r, myctx, ngx_http_getfile_module);
+    }
+
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s r->uri: %V", __func__, &r->uri);
+
+    if (r->args.len <= 21) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments invalid: %V", __func__, &r->args);
+        return NGX_ERROR;
+    }
+
+    /* 过滤掉非.flv和.mp4文件 */
+    if (strncmp((char *)(r->args.data + r->args.len - 3), "flv", 3) && 
+        strncmp((char *)(r->args.data + r->args.len - 3), "mp4", 3) &&
+        strncmp((char *)(r->args.data + r->args.len - 3), "mov", 3)) {
+        str.data = r->args.data + r->args.len - 3;
+        str.len = 3;
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s not support x.%V", __func__, &str);
+        return NGX_ERROR;
     }
 
     if (ngx_http_upstream_create(r) != NGX_OK) {
@@ -373,19 +497,12 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         ngx_log_stderr(NGX_OK, "%s ngx_pcalloc resolved error: %s.", __func__, strerror(errno));
         return NGX_ERROR;
     }
-
-    pHost = gethostbyname((char *) "www.baidu.com");
-    if (pHost == NULL) {
-        ngx_log_stderr(NGX_OK, "%s gethostbyname failed: %s.", __func__, strerror(errno));
-        return NGX_ERROR;
-    }
-
+    
+    getfile_get_host_ip_from_uri(r, pDmsIP);
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: pDmsIP is %s", __func__, pDmsIP);
     backendSockAddr.sin_family = AF_INET;
     backendSockAddr.sin_port = htons((in_port_t) 80);
-    pDmsIP = inet_ntoa(*(struct in_addr *) (pHost->h_addr_list[0]));
     backendSockAddr.sin_addr.s_addr = inet_addr(pDmsIP);
-//    myctx->backendServer.data = (u_char *)pDmsIP;
-//    myctx->backendServer.len = strlen(pDmsIP);
 
     u->resolved->sockaddr = (struct sockaddr *)&backendSockAddr;
     u->resolved->socklen = sizeof(struct sockaddr_in);
@@ -394,6 +511,10 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     u->create_request = getfile_upstream_create_request;
     u->process_header = getfile_process_status_line;
     u->finalize_request = getfile_upstream_finalize_request;
+
+    u->input_filter_init = getfile_upstream_filter_init;
+    u->input_filter = getfile_upstream_filter;
+    u->input_filter_ctx = r;
 
     r->main->count++;
     ngx_http_upstream_init(r);

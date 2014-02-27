@@ -1705,7 +1705,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
             }
 
             status->code = status->code * 10 + ch - '0';
-
+            
             if (++status->count == 3) {
                 state = sw_space_after_status;
                 status->start = p - 2;
