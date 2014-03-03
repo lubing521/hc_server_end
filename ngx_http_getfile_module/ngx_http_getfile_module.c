@@ -84,7 +84,8 @@ static void *ngx_http_getfile_create_loc_conf(ngx_conf_t *cf)
     mycf->upstream.read_timeout = 60000;
     mycf->upstream.store_access = 0600;
     
-    mycf->upstream.buffering = 0;
+    mycf->upstream.buffering = 1;       /* zhaoyao: using temp file for buffering */
+    mycf->upstream.store = 1;           /* zhaoyao: store temp file at local directory */
     mycf->upstream.bufs.num = 8;
     mycf->upstream.bufs.size = ngx_pagesize;
     mycf->upstream.buffer_size = ngx_pagesize;
@@ -110,6 +111,12 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
     ngx_null_string
 };
 
+#define NGX_HTTP_GETFILE_TEMP_PATH  "getfile_temp"
+
+static ngx_path_init_t  ngx_http_getfile_temp_path = {
+    ngx_string(NGX_HTTP_GETFILE_TEMP_PATH), { 1, 2, 0 }
+};
+
 static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_getfile_conf_t *prev = (ngx_http_getfile_conf_t *)parent;
@@ -121,6 +128,11 @@ static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void 
     hash.name = "proxy_headers_hash";
     if (ngx_http_upstream_hide_headers_hash(cf, &conf->upstream,
             &prev->upstream, ngx_http_proxy_hide_headers, &hash) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_conf_merge_path_value(cf, &conf->upstream.temp_path, NULL, &ngx_http_getfile_temp_path)
+        != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -187,6 +199,7 @@ static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
 
 static void getfile_debug_buffer(ngx_buf_t *b)
 {
+#if 0
     static u_char str[BUFLEN_L];
     int i;
 
@@ -199,11 +212,11 @@ static void getfile_debug_buffer(ngx_buf_t *b)
     for (i = 0; i < (b->last - b->pos) && i < (BUFLEN_L - 1); i++) {
         str[i] = b->pos[i];
     }
-
     ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: \n"
                            "Buffer size: %p\n"
                            "Buffer data length: %p\n"
                            "%s", __func__, (b->end - b->start), (b->last - b->pos), str);
+#endif
 }
 
 static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
@@ -257,8 +270,8 @@ static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
 
 static void getfile_debug_upstream_headers(ngx_http_request_t *r)
 {
+#if 1
     ngx_table_elt_t *h;
-
     h = r->upstream->headers_in.content_type;
     if (h != NULL) {
         ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
@@ -287,6 +300,7 @@ static void getfile_debug_upstream_headers(ngx_http_request_t *r)
     if (h != NULL) {
         ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
     }
+#endif
 }
 
 static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
@@ -379,54 +393,6 @@ static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
     }
 }
 
-static ngx_int_t getfile_upstream_filter_init(void *data)
-{
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s", __func__);
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t getfile_upstream_filter(void *data, ssize_t bytes)
-{
-    ngx_http_request_t  *r = data;
-
-    ngx_buf_t            *b;
-    ngx_chain_t          *cl, **ll;
-    ngx_http_upstream_t  *u;
-
-    u = r->upstream;
-
-    for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) {
-        ll = &cl->next;
-    }
-
-    cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs);
-    if (cl == NULL) {
-        return NGX_ERROR;
-    }
-
-    *ll = cl;
-
-    cl->buf->flush = 1;
-    cl->buf->memory = 1;
-
-    b = &u->buffer;
-
-    cl->buf->pos = b->last;
-    b->last += bytes;
-    cl->buf->last = b->last;
-    cl->buf->tag = u->output.tag;
-
-    if (u->length == -1) {
-        return NGX_OK;
-    }
-
-    u->length -= bytes;
-
-    return NGX_OK;
-}
-
 static void getfile_upstream_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
     ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s", __func__);
@@ -472,9 +438,12 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    /* 过滤掉非.flv和.mp4文件 */
+    /* zhaoyao: take care only flv, mp4, mov, gif, png, jpg */
     if (strncmp((char *)(r->args.data + r->args.len - 3), "flv", 3) && 
         strncmp((char *)(r->args.data + r->args.len - 3), "mp4", 3) &&
+        strncmp((char *)(r->args.data + r->args.len - 3), "gif", 3) &&
+        strncmp((char *)(r->args.data + r->args.len - 3), "png", 3) &&
+        strncmp((char *)(r->args.data + r->args.len - 3), "jpg", 3) &&
         strncmp((char *)(r->args.data + r->args.len - 3), "mov", 3)) {
         str.data = r->args.data + r->args.len - 3;
         str.len = 3;
@@ -491,6 +460,17 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     u = r->upstream;
     u->conf = &mycf->upstream;
     u->buffering = mycf->upstream.buffering;
+    u->store = mycf->upstream.store;
+
+    r->header_only = 1; /* ZHAOYAO XXX: do not send response body to downstream */
+    r->getfile = 1; /* ZHAOYAO XXX TODO: stored file's name is from uri->args */
+    
+    u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
+    if (u->pipe == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    u->pipe->input_filter = ngx_event_pipe_copy_input_filter;
+    u->pipe->input_ctx = r;
 
     u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
     if (u->resolved == NULL) {
@@ -511,10 +491,6 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     u->create_request = getfile_upstream_create_request;
     u->process_header = getfile_process_status_line;
     u->finalize_request = getfile_upstream_finalize_request;
-
-    u->input_filter_init = getfile_upstream_filter_init;
-    u->input_filter = getfile_upstream_filter;
-    u->input_filter_ctx = r;
 
     r->main->count++;
     ngx_http_upstream_init(r);

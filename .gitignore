@@ -1,3 +1,4 @@
 *.o
+*.ini
 nginx-1.5.8/objs/
 ngx_http_sr_module/
