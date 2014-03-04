@@ -1,7 +1,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#define DEBUG_ZHAOYAO   0
+#define DEBUG_GETFILE   0   /* zhaoyao TODO: add debug switch */
 #define BUFLEN          32
 #define BUFLEN_L        512
 
@@ -84,8 +84,8 @@ static void *ngx_http_getfile_create_loc_conf(ngx_conf_t *cf)
     mycf->upstream.read_timeout = 60000;
     mycf->upstream.store_access = 0600;
     
-    mycf->upstream.buffering = 1;       /* zhaoyao: using temp file for buffering */
-    mycf->upstream.store = 1;           /* zhaoyao: store temp file at local directory */
+    mycf->upstream.buffering = 1;       /* zhaoyao XXX: using temp file for buffering */
+    mycf->upstream.store = 1;           /* zhaoyao XXX: store temp file at local directory */
     mycf->upstream.bufs.num = 8;
     mycf->upstream.bufs.size = ngx_pagesize;
     mycf->upstream.buffer_size = ngx_pagesize;
@@ -199,7 +199,7 @@ static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
 
 static void getfile_debug_buffer(ngx_buf_t *b)
 {
-#if 0
+#if DEBUG_GETFILE
     static u_char str[BUFLEN_L];
     int i;
 
@@ -270,7 +270,7 @@ static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
 
 static void getfile_debug_upstream_headers(ngx_http_request_t *r)
 {
-#if 1
+#if DEBUG_GETFILE
     ngx_table_elt_t *h;
     h = r->upstream->headers_in.content_type;
     if (h != NULL) {
@@ -417,7 +417,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     ngx_http_getfile_conf_t *mycf;
     ngx_http_upstream_t *u;
     static struct sockaddr_in backendSockAddr;
-    char pDmsIP[BUFLEN];
+    char svrIP[BUFLEN];
     ngx_str_t str;
 
     myctx = ngx_http_get_module_ctx(r, ngx_http_getfile_module);
@@ -431,14 +431,13 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         ngx_http_set_ctx(r, myctx, ngx_http_getfile_module);
     }
 
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s r->uri: %V", __func__, &r->uri);
-
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments: %V", __func__, &r->args);
     if (r->args.len <= 21) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments invalid: %V", __func__, &r->args);
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments invalid, less than 21", __func__);
         return NGX_ERROR;
     }
 
-    /* zhaoyao: take care only flv, mp4, mov, gif, png, jpg */
+    /* zhaoyao XXX TODO: take care only flv, mp4, mov, gif, png, jpg */
     if (strncmp((char *)(r->args.data + r->args.len - 3), "flv", 3) && 
         strncmp((char *)(r->args.data + r->args.len - 3), "mp4", 3) &&
         strncmp((char *)(r->args.data + r->args.len - 3), "gif", 3) &&
@@ -447,7 +446,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         strncmp((char *)(r->args.data + r->args.len - 3), "mov", 3)) {
         str.data = r->args.data + r->args.len - 3;
         str.len = 3;
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s not support x.%V", __func__, &str);
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s not support xxx.%V", __func__, &str);
         return NGX_ERROR;
     }
 
@@ -462,8 +461,8 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     u->buffering = mycf->upstream.buffering;
     u->store = mycf->upstream.store;
 
-    r->header_only = 1; /* ZHAOYAO XXX: do not send response body to downstream */
-    r->getfile = 1; /* ZHAOYAO XXX TODO: stored file's name is from uri->args */
+    r->header_only = 1; /* zhaoyao XXX: do not send response body to downstream */
+    r->getfile = 1; /* zhaoyao XXX TODO: stored file's name is from uri->args */
     
     u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
     if (u->pipe == NULL) {
@@ -478,11 +477,11 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         return NGX_ERROR;
     }
     
-    getfile_get_host_ip_from_uri(r, pDmsIP);
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: pDmsIP is %s", __func__, pDmsIP);
+    getfile_get_host_ip_from_uri(r, svrIP);
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: svrIP is %s", __func__, svrIP);
     backendSockAddr.sin_family = AF_INET;
     backendSockAddr.sin_port = htons((in_port_t) 80);
-    backendSockAddr.sin_addr.s_addr = inet_addr(pDmsIP);
+    backendSockAddr.sin_addr.s_addr = inet_addr(svrIP);
 
     u->resolved->sockaddr = (struct sockaddr *)&backendSockAddr;
     u->resolved->socklen = sizeof(struct sockaddr_in);

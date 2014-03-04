@@ -2047,12 +2047,11 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     }
 
     if (r->getfile) {
-        /* ZHAOYAO: URI is like this /getfile?222.73.245.205/youku/2180E8ADC6A6.flv */
+        /* zhaoyao: URI is like this /getfile?222.73.245.205/youku/2180E8ADC6A6.flv */
         for (name.data = r->args.data + r->args.len - 1; *(name.data) != '/'; name.data--) {
             ;
         }
         name.len = r->args.data + r->args.len - name.data;
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s r->args is %V", __func__, &r->args);
         ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s file name is %V", __func__, &name);
         last = ngx_cpystrn(last, name.data, name.len + 1);
     } else {
