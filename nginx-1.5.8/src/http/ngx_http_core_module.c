@@ -2052,7 +2052,9 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
             ;
         }
         name.len = r->args.data + r->args.len - name.data;
+#if DEBUG_GETFILE
         ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s file name is %V", __func__, &name);
+#endif
         last = ngx_cpystrn(last, name.data, name.len + 1);
     } else {
         last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);

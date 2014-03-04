@@ -395,7 +395,11 @@ static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
 
 static void getfile_upstream_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s", __func__);
+#if DEBUG_GETFILE
+    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s:\n"
+                           "\targs: %V",
+                           __func__, &r->args);
+#endif
 }
 
 static ngx_int_t getfile_get_host_ip_from_uri(ngx_http_request_t *r, char ipaddr[])
@@ -430,8 +434,9 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         
         ngx_http_set_ctx(r, myctx, ngx_http_getfile_module);
     }
-
+#if DEBUG_GETFILE
     ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments: %V", __func__, &r->args);
+#endif
     if (r->args.len <= 21) {
         ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments invalid, less than 21", __func__);
         return NGX_ERROR;
