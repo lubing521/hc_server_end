@@ -5,6 +5,8 @@
 #define BUFLEN          32
 #define BUFLEN_L        512
 
+#define NGX_HTTP_GETFILE_TEMP_PATH  "getfile_temp"
+
 typedef struct {
     ngx_http_upstream_conf_t upstream;
 } ngx_http_getfile_conf_t;
@@ -12,6 +14,10 @@ typedef struct {
 typedef struct {
     ngx_http_status_t status;
 } ngx_http_getfile_ctx_t;
+
+static ngx_path_init_t  ngx_http_getfile_temp_path = {
+    ngx_string(NGX_HTTP_GETFILE_TEMP_PATH), { 1, 2, 0 }
+};
 
 static char * ngx_http_getfile(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r);
@@ -99,7 +105,7 @@ static void *ngx_http_getfile_create_loc_conf(ngx_conf_t *cf)
     return mycf;
 }
 
-static ngx_str_t  ngx_http_proxy_hide_headers[] = {
+static ngx_str_t  ngx_http_getfile_hide_headers[] = {
     ngx_string("Date"),
     ngx_string("Server"),
     ngx_string("X-Pad"),
@@ -111,12 +117,6 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
     ngx_null_string
 };
 
-#define NGX_HTTP_GETFILE_TEMP_PATH  "getfile_temp"
-
-static ngx_path_init_t  ngx_http_getfile_temp_path = {
-    ngx_string(NGX_HTTP_GETFILE_TEMP_PATH), { 1, 2, 0 }
-};
-
 static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_getfile_conf_t *prev = (ngx_http_getfile_conf_t *)parent;
@@ -125,9 +125,9 @@ static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void 
 
     hash.max_size = 100;
     hash.bucket_size = 1024;
-    hash.name = "proxy_headers_hash";
+    hash.name = "getfile_headers_hash";
     if (ngx_http_upstream_hide_headers_hash(cf, &conf->upstream,
-            &prev->upstream, ngx_http_proxy_hide_headers, &hash) != NGX_OK) {
+            &prev->upstream, ngx_http_getfile_hide_headers, &hash) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
