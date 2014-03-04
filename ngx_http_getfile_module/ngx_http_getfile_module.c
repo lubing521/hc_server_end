@@ -1,8 +1,8 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#define DEBUG_GETFILE   0   /* zhaoyao TODO: add debug switch */
-#define BUFLEN          32
+#define DEBUG_GETFILE   1   /* zhaoyao TODO: add debug switch */
+#define BUFLEN          64
 #define BUFLEN_L        512
 
 #define NGX_HTTP_GETFILE_TEMP_PATH  "getfile_temp"
@@ -24,7 +24,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r);
 static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r);
 static void *ngx_http_getfile_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
-static ngx_int_t getfile_get_host_ip_from_uri(ngx_http_request_t *r, char ipaddr[]);
+static ngx_int_t getfile_get_host_from_uri(ngx_http_request_t *r, char host[]);
 
 static ngx_http_module_t ngx_http_getfile_module_ctx = {
     NULL,
@@ -151,7 +151,13 @@ static ngx_int_t getfile_get_real_uri_from_uri(ngx_http_request_t *r, char ru[])
     for (i = 0; len < r->args.len && i < BUFLEN_L; cp++, i++, len++) {
         ru[i] = *cp;
     }
-    ru[i] = '\0';
+    if (i < BUFLEN_L) {
+        ru[i] = '\0';
+    } else {
+        ru[BUFLEN_L - 1] = '\0';
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* ***ERROR*** %s uri is too large (%d), truncated",
+                                __func__, r->args.len);
+    }
 
     return 0;
 }
@@ -162,24 +168,24 @@ static ngx_int_t getfile_get_real_uri_from_uri(ngx_http_request_t *r, char ru[])
 static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
 {
     static ngx_str_t backendQueryLine =
-            ngx_string("GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36\r\nConnection: close\r\n\r\n");
+            ngx_string("GET %s HTTP/1.1\r\nHost: %V\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36\r\nConnection: close\r\n\r\n");
     ngx_int_t queryLineLen;
     ngx_buf_t *b;
-    char host_ip[BUFLEN];
     char real_uri[BUFLEN_L];
+    ngx_str_t *host;
 
-    getfile_get_host_ip_from_uri(r, host_ip);
+    host = &(r->upstream->resolved->host);
     getfile_get_real_uri_from_uri(r, real_uri);
     ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s real_uri %s", __func__, real_uri);
 
-    queryLineLen = backendQueryLine.len + strlen(real_uri) - 2 + strlen(host_ip) - 2;
+    queryLineLen = backendQueryLine.len + strlen(real_uri) - 2 + host->len - 2;
     b = ngx_create_temp_buf(r->pool, queryLineLen);
     if (b == NULL) {
         return NGX_ERROR;
     }
     b->last = b->pos + queryLineLen;
 
-    ngx_snprintf(b->pos, queryLineLen, (char *)backendQueryLine.data, real_uri, host_ip);
+    ngx_snprintf(b->pos, queryLineLen, (char *)backendQueryLine.data, real_uri, host);
 
     r->upstream->request_bufs = ngx_alloc_chain_link(r->pool);
     if (r->upstream->request_bufs == NULL) {
@@ -212,9 +218,10 @@ static void getfile_debug_buffer(ngx_buf_t *b)
     for (i = 0; i < (b->last - b->pos) && i < (BUFLEN_L - 1); i++) {
         str[i] = b->pos[i];
     }
+    str[i] = '\0';
     ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: \n"
-                           "Buffer size: %p\n"
-                           "Buffer data length: %p\n"
+                           "Buffer size: 0x%p\n"
+                           "Buffer data length: 0x%p\n"
                            "%s", __func__, (b->end - b->start), (b->last - b->pos), str);
 #endif
 }
@@ -402,17 +409,54 @@ static void getfile_upstream_finalize_request(ngx_http_request_t *r, ngx_int_t r
 #endif
 }
 
-static ngx_int_t getfile_get_host_ip_from_uri(ngx_http_request_t *r, char ipaddr[])
+static ngx_int_t getfile_get_host_from_uri(ngx_http_request_t *r, char host[])
 {
     u_char *cp;
     size_t i;
+    ngx_http_upstream_resolved_t *rslv;
 
-    for (cp = r->args.data, i = 0; *cp != '/' && i < BUFLEN; cp++, i++) {
-        ipaddr[i] = *cp;
+    rslv = r->upstream->resolved;
+
+    rslv->host.data = r->args.data;
+    rslv->host.len = 0;
+    for (cp = r->args.data, i = 0; *cp != '/' && i < BUFLEN - 1; cp++, i++) {
+        host[i] = *cp;
+        rslv->host.len++;
     }
-    ipaddr[i] = '\0';
+    host[i] = '\0';
+    if (i == BUFLEN - 1) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* ***ERROR*** %s host is too large, truncated", __func__);
+    }
 
     return 0;
+}
+
+static ngx_int_t getfile_support_type(ngx_http_request_t *r)
+{
+    ngx_str_t str;
+    ngx_int_t res;
+
+    res = strncmp((char *)(r->args.data + r->args.len - 3), "flv", 3) && 
+          strncmp((char *)(r->args.data + r->args.len - 3), "mp4", 3) &&
+          strncmp((char *)(r->args.data + r->args.len - 3), "gif", 3) &&
+          strncmp((char *)(r->args.data + r->args.len - 3), "png", 3) &&
+          strncmp((char *)(r->args.data + r->args.len - 3), "jpg", 3) &&
+          strncmp((char *)(r->args.data + r->args.len - 3), "zip", 3) &&
+          strncmp((char *)(r->args.data + r->args.len - 3), "ico", 3) &&
+          strncmp((char *)(r->args.data + r->args.len - 4), "html", 4) &&
+          strncmp((char *)(r->args.data + r->args.len - 3), "mov", 3);
+    res = !res;
+
+    if (!res) {
+        str.data = r->args.data + r->args.len - 4;
+        str.len = 4;
+#if DEBUG_GETFILE
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s type - %V not support", __func__, &str);
+#endif
+        return res;
+    }
+
+    return res;
 }
 
 static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
@@ -421,8 +465,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     ngx_http_getfile_conf_t *mycf;
     ngx_http_upstream_t *u;
     static struct sockaddr_in backendSockAddr;
-    char svrIP[BUFLEN];
-    ngx_str_t str;
+    char host[BUFLEN];
 
     myctx = ngx_http_get_module_ctx(r, ngx_http_getfile_module);
     if (myctx == NULL) {
@@ -442,16 +485,8 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    /* zhaoyao XXX TODO: take care only flv, mp4, mov, gif, png, jpg */
-    if (strncmp((char *)(r->args.data + r->args.len - 3), "flv", 3) && 
-        strncmp((char *)(r->args.data + r->args.len - 3), "mp4", 3) &&
-        strncmp((char *)(r->args.data + r->args.len - 3), "gif", 3) &&
-        strncmp((char *)(r->args.data + r->args.len - 3), "png", 3) &&
-        strncmp((char *)(r->args.data + r->args.len - 3), "jpg", 3) &&
-        strncmp((char *)(r->args.data + r->args.len - 3), "mov", 3)) {
-        str.data = r->args.data + r->args.len - 3;
-        str.len = 3;
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s not support xxx.%V", __func__, &str);
+    if (!getfile_support_type(r)) {
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s not support file type", __func__);
         return NGX_ERROR;
     }
 
@@ -482,15 +517,21 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         return NGX_ERROR;
     }
     
-    getfile_get_host_ip_from_uri(r, svrIP);
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: svrIP is %s", __func__, svrIP);
-    backendSockAddr.sin_family = AF_INET;
-    backendSockAddr.sin_port = htons((in_port_t) 80);
-    backendSockAddr.sin_addr.s_addr = inet_addr(svrIP);
+    getfile_get_host_from_uri(r, host);     /* zhaoyao: host can be address or domain name */
 
-    u->resolved->sockaddr = (struct sockaddr *)&backendSockAddr;
-    u->resolved->socklen = sizeof(struct sockaddr_in);
-    u->resolved->naddrs = 1;
+    if ((backendSockAddr.sin_addr.s_addr = inet_addr(host)) != INADDR_NONE) {
+        /* zhaoyao: host is defined by IP address, using it directly */
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: host IP address is %s", __func__, host);
+        backendSockAddr.sin_family = AF_INET;
+        backendSockAddr.sin_port = htons((in_port_t) 80);
+        u->resolved->sockaddr = (struct sockaddr *)&backendSockAddr;
+        u->resolved->socklen = sizeof(struct sockaddr_in);
+        u->resolved->naddrs = 1;
+    } else {
+        /* zhaoyao: host is defined by domain name, using upstream resolve. */
+        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: host domain name is %V", __func__, &(u->resolved->host));
+        u->resolved->port = (in_port_t)80;  /* zhaoyao XXX TODO: only support 80 port now */
+    }
 
     u->create_request = getfile_upstream_create_request;
     u->process_header = getfile_process_status_line;
