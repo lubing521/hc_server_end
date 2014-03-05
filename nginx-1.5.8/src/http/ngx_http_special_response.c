@@ -411,11 +411,25 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
         err_page = clcf->error_pages->elts;
 
+#if DEBUG_GETFILE
+        ngx_log_stderr(NGX_OK, "11111111111111111111111111111111111111");
+#endif
         for (i = 0; i < clcf->error_pages->nelts; i++) {
             if (err_page[i].status == error) {
+                if (error == NGX_HTTP_BAD_GATEWAY) {
+                    ngx_log_stderr(NGX_OK, "%s error is %i NGX_HTTP_BAD_GATEWAY, break",
+                                            __func__, error);
+                    break;
+                }
+#if DEBUG_GETFILE
+                ngx_log_stderr(NGX_OK, "333333333333333333333333333333333333333");
+#endif
                 return ngx_http_send_error_page(r, &err_page[i]);
             }
         }
+#if DEBUG_GETFILE
+        ngx_log_stderr(NGX_OK, "22222222222222222222222222222222222222");
+#endif
     }
 
     r->expect_tested = 1;
@@ -618,6 +632,10 @@ ngx_http_send_special_response(ngx_http_request_t *r,
     ngx_buf_t    *b;
     ngx_uint_t    msie_padding;
     ngx_chain_t   out[3];
+
+#if DEBUG_GETFILE
+    ngx_log_stderr(NGX_OK, "***ZHAOYAO*** %s err is %i", __func__, err);
+#endif
 
     if (clcf->server_tokens) {
         len = sizeof(ngx_http_error_full_tail) - 1;

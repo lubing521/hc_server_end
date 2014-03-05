@@ -885,6 +885,14 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
     while (ph[r->phase_handler].checker) {
 
+#if DEBUG_GETFILE
+        if (r->phase_handler == 11) {
+            ngx_log_stderr(NGX_OK, "**ZHAOYAO** %s FATAL ERROR phase %i is overflow ...",
+                                    __func__, r->phase_handler);
+            return;
+        }
+#endif
+        
         rc = ph[r->phase_handler].checker(r, &ph[r->phase_handler]);
 
         if (rc == NGX_OK) {

@@ -1,7 +1,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#define DEBUG_GETFILE   1   /* zhaoyao TODO: add debug switch */
+#define DEBUG_GETFILE   0   /* zhaoyao TODO: add debug switch */
 #define BUFLEN          64
 #define BUFLEN_L        512
 
@@ -433,7 +433,6 @@ static ngx_int_t getfile_get_host_from_uri(ngx_http_request_t *r, char host[])
 
 static ngx_int_t getfile_support_type(ngx_http_request_t *r)
 {
-    ngx_str_t str;
     ngx_int_t res;
 
     res = strncmp((char *)(r->args.data + r->args.len - 3), "flv", 3) && 
@@ -448,12 +447,13 @@ static ngx_int_t getfile_support_type(ngx_http_request_t *r)
     res = !res;
 
     if (!res) {
+#if DEBUG_GETFILE
+        ngx_str_t str;
+
         str.data = r->args.data + r->args.len - 4;
         str.len = 4;
-#if DEBUG_GETFILE
         ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s type - %V not support", __func__, &str);
 #endif
-        return res;
     }
 
     return res;
