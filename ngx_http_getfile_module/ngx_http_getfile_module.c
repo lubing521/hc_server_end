@@ -459,6 +459,56 @@ static ngx_int_t getfile_support_type(ngx_http_request_t *r)
     return res;
 }
 
+static ngx_int_t getfile_host_is_ip_addr(const char *host)
+{
+    ngx_int_t len = 0, dot_cnt = 0, digits = 0, i, num;
+    char asc[4] = {0};
+
+    len = ngx_strlen(host);
+    if (len > 15 || len < 7) {
+        return 0;
+    }
+
+    for (i = 0; i < len; i++) {
+        if (host[i] == '.') {
+            if (digits > 3 || digits < 1) {
+                return 0;
+            }
+            asc[digits] = '\0';
+            num = atoi(asc);
+            if (num < 0 || num > 255) {
+                return 0;
+            }
+            digits = 0;
+            ngx_memset(asc, 0, sizeof(asc));
+            dot_cnt++;
+            if (dot_cnt > 3) {
+                return 0;
+            }
+            continue;
+        }
+        if (!isdigit(host[i])) {
+            return 0;
+        }
+        asc[digits++] = host[i];
+    }
+    
+    if (dot_cnt != 3) {
+        return 0;
+    }
+    if (digits > 3 || digits < 1) {
+        return 0;
+    }
+    asc[digits] = '\0';
+    num = atoi(asc);
+    if (num < 0 || num > 255) {
+        return 0;
+    }
+
+    return 1;
+}
+
+
 static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
 {
     ngx_http_getfile_ctx_t *myctx;
@@ -519,8 +569,9 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     
     getfile_get_host_from_uri(r, host);     /* zhaoyao: host can be address or domain name */
 
-    if ((backendSockAddr.sin_addr.s_addr = inet_addr(host)) != INADDR_NONE) {
+    if (getfile_host_is_ip_addr(host)) {
         /* zhaoyao: host is defined by IP address, using it directly */
+        backendSockAddr.sin_addr.s_addr = inet_addr(host);
         ngx_log_stderr(NGX_OK, "****** %s: host IP address is %s", __func__, host);
         backendSockAddr.sin_family = AF_INET;
         backendSockAddr.sin_port = htons((in_port_t) 80);
