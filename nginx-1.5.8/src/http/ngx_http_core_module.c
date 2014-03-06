@@ -887,7 +887,7 @@ ngx_http_core_run_phases(ngx_http_request_t *r)
 
 #if DEBUG_GETFILE
         if (r->phase_handler == 11) {
-            ngx_log_stderr(NGX_OK, "**ZHAOYAO** %s FATAL ERROR phase %i is overflow ...",
+            ngx_log_stderr(NGX_OK, "****** %s FATAL ERROR phase %i is overflow ...",
                                     __func__, r->phase_handler);
             return;
         }
@@ -2061,7 +2061,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         }
         name.len = r->args.data + r->args.len - name.data;
 #if DEBUG_GETFILE
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s file name is %V", __func__, &name);
+        ngx_log_stderr(NGX_OK, "****** %s file name is %V", __func__, &name);
 #endif
         last = ngx_cpystrn(last, name.data, name.len + 1);
     } else {

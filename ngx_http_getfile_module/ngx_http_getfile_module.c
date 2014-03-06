@@ -155,7 +155,7 @@ static ngx_int_t getfile_get_real_uri_from_uri(ngx_http_request_t *r, char ru[])
         ru[i] = '\0';
     } else {
         ru[BUFLEN_L - 1] = '\0';
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* ***ERROR*** %s uri is too large (%d), truncated",
+        ngx_log_stderr(NGX_OK, "****** ***ERROR*** %s uri is too large (%d), truncated",
                                 __func__, r->args.len);
     }
 
@@ -176,7 +176,7 @@ static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
 
     host = &(r->upstream->resolved->host);
     getfile_get_real_uri_from_uri(r, real_uri);
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s real_uri %s", __func__, real_uri);
+    ngx_log_stderr(NGX_OK, "****** %s real_uri %s", __func__, real_uri);
 
     queryLineLen = backendQueryLine.len + strlen(real_uri) - 2 + host->len - 2;
     b = ngx_create_temp_buf(r->pool, queryLineLen);
@@ -219,7 +219,7 @@ static void getfile_debug_buffer(ngx_buf_t *b)
         str[i] = b->pos[i];
     }
     str[i] = '\0';
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: \n"
+    ngx_log_stderr(NGX_OK, "****** %s: \n"
                            "Buffer size: 0x%p\n"
                            "Buffer data length: 0x%p\n"
                            "%s", __func__, (b->end - b->start), (b->last - b->pos), str);
@@ -268,7 +268,7 @@ static ngx_int_t getfile_process_status_line(ngx_http_request_t *r)
     }
 
     ngx_memcpy(u->headers_in.status_line.data, ctx->status.start, len);
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s status line: %V", __func__, &u->headers_in.status_line);
+    ngx_log_stderr(NGX_OK, "****** %s status line: %V", __func__, &u->headers_in.status_line);
 
     u->process_header = getfile_upstream_process_header;
 
@@ -281,31 +281,31 @@ static void getfile_debug_upstream_headers(ngx_http_request_t *r)
     ngx_table_elt_t *h;
     h = r->upstream->headers_in.content_type;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
     h = r->upstream->headers_in.content_length;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
     h = r->upstream->headers_in.accept_ranges;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
     h = r->upstream->headers_in.connection;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
     h = r->upstream->headers_in.location;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
     h = r->upstream->headers_in.server;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
     h = r->upstream->headers_in.date;
     if (h != NULL) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: %V[%V]", __func__, &h->key, &h->value);
+        ngx_log_stderr(NGX_OK, "****** %s: %V[%V]", __func__, &h->key, &h->value);
     }
 #endif
 }
@@ -403,7 +403,7 @@ static ngx_int_t getfile_upstream_process_header(ngx_http_request_t *r)
 static void getfile_upstream_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
 #if DEBUG_GETFILE
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s:\n"
+    ngx_log_stderr(NGX_OK, "****** %s:\n"
                            "\targs: %V",
                            __func__, &r->args);
 #endif
@@ -425,7 +425,7 @@ static ngx_int_t getfile_get_host_from_uri(ngx_http_request_t *r, char host[])
     }
     host[i] = '\0';
     if (i == BUFLEN - 1) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* ***ERROR*** %s host is too large, truncated", __func__);
+        ngx_log_stderr(NGX_OK, "****** ***ERROR*** %s host is too large, truncated", __func__);
     }
 
     return 0;
@@ -452,7 +452,7 @@ static ngx_int_t getfile_support_type(ngx_http_request_t *r)
 
         str.data = r->args.data + r->args.len - 4;
         str.len = 4;
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s type - %V not support", __func__, &str);
+        ngx_log_stderr(NGX_OK, "****** %s type - %V not support", __func__, &str);
 #endif
     }
 
@@ -478,15 +478,15 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         ngx_http_set_ctx(r, myctx, ngx_http_getfile_module);
     }
 #if DEBUG_GETFILE
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments: %V", __func__, &r->args);
+    ngx_log_stderr(NGX_OK, "****** %s arguments: %V", __func__, &r->args);
 #endif
     if (r->args.len <= 21) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s arguments invalid, less than 21", __func__);
+        ngx_log_stderr(NGX_OK, "****** %s arguments invalid, less than 21", __func__);
         return NGX_ERROR;
     }
 
     if (!getfile_support_type(r)) {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s not support file type", __func__);
+        ngx_log_stderr(NGX_OK, "****** %s not support file type", __func__);
         return NGX_ERROR;
     }
 
@@ -521,7 +521,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
 
     if ((backendSockAddr.sin_addr.s_addr = inet_addr(host)) != INADDR_NONE) {
         /* zhaoyao: host is defined by IP address, using it directly */
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: host IP address is %s", __func__, host);
+        ngx_log_stderr(NGX_OK, "****** %s: host IP address is %s", __func__, host);
         backendSockAddr.sin_family = AF_INET;
         backendSockAddr.sin_port = htons((in_port_t) 80);
         u->resolved->sockaddr = (struct sockaddr *)&backendSockAddr;
@@ -529,7 +529,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         u->resolved->naddrs = 1;
     } else {
         /* zhaoyao: host is defined by domain name, using upstream resolve. */
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s: host domain name is %V", __func__, &(u->resolved->host));
+        ngx_log_stderr(NGX_OK, "****** %s: host domain name is %V", __func__, &(u->resolved->host));
         u->resolved->port = (in_port_t)80;  /* zhaoyao XXX TODO: only support 80 port now */
     }
 

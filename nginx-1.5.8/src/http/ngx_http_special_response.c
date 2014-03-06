@@ -638,7 +638,7 @@ ngx_http_send_special_response(ngx_http_request_t *r,
     ngx_chain_t   out[3];
 
 #if DEBUG_GETFILE
-    ngx_log_stderr(NGX_OK, "***ZHAOYAO*** %s err is %i", __func__, err);
+    ngx_log_stderr(NGX_OK, "****** %s err is %i", __func__, err);
 #endif
 
     if (clcf->server_tokens) {

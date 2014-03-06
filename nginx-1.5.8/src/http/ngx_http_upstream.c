@@ -3117,7 +3117,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                         || u->headers_in.content_length_n == tf->offset))
                 {
                     ngx_http_upstream_store(r, u);
-                    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s store upstream *** data *** success", __func__);
+                    ngx_log_stderr(NGX_OK, "****** %s store upstream *** data *** success", __func__);
                     u->store = 0;
                 }
             }
@@ -3256,7 +3256,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "upstream stores \"%s\" to \"%s\"",
                    tf->file.name.data, path.data);
-    ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s \"%s\" to \"%s\"", __func__, tf->file.name.data, path.data);
+    ngx_log_stderr(NGX_OK, "****** %s \"%s\" to \"%s\"", __func__, tf->file.name.data, path.data);
 
     (void) ngx_ext_rename_file(&tf->file.name, &path, &ext);
 }
@@ -3487,7 +3487,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     if (u->store && u->pipe && u->pipe->temp_file
         && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
     {
-        ngx_log_stderr(NGX_OK, "*ZHAOYAO* %s prematurely deleted temp_file, getfile *** failed ***", __func__);
+        ngx_log_stderr(NGX_OK, "****** %s prematurely deleted temp_file, getfile *** failed ***", __func__);
         if (ngx_delete_file(u->pipe->temp_file->file.name.data)
             == NGX_FILE_ERROR)
         {
