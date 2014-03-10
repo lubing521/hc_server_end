@@ -4,6 +4,10 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
 {
     int nsec;
 
+    if (addr == NULL) {
+        return -1;
+    }
+
     for (nsec = 1; nsec <= MAX_SLEEP; nsec <<= 1) {
         if (connect(sockfd, addr, alen) == 0) {
             /* Connect success */

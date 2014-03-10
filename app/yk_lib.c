@@ -288,7 +288,7 @@ bool request_playlist(rootdata_t *rootdata, url_var_t *url_var,
 
 /* 入参: 视频首页的url */
 /* 返回生成的request playlist的url */
-bool yk_id_to_playlist(char *input_url, char *playlist_url)
+bool yk_url_to_playlist(char *url, char *playlist)
 {
 	bool video_url;
 	char video_name[MAX_NAME_LEN];
@@ -308,11 +308,11 @@ bool yk_id_to_playlist(char *input_url, char *playlist_url)
 	char pt[] = "0";
 	char ctype[] = "10";   
 
-    if (input_url == NULL || playlist_url == NULL) {
+    if (url == NULL || playlist == NULL) {
         return false;
     }
 
-	video_url = identify_yk_video_url(input_url);
+	video_url = identify_yk_video_url(url);
 	if (video_url== true) {
 		memset(video_name, 0, sizeof(video_name));
 		memset(folderId, 0, sizeof(folderId));
@@ -321,7 +321,7 @@ bool yk_id_to_playlist(char *input_url, char *playlist_url)
         memset(&player_cfg, 0, sizeof(player_cfg));
         memset(&player_cons, 0, sizeof(player_cons));
         
-		ret_get_vname = get_yk_video_name(input_url, video_name, folderId);
+		ret_get_vname = get_yk_video_name(url, video_name, folderId);
         if (ret_get_vname) {
             memcpy(rootdata.video_id, video_name, strlen(video_name));                
             /* 构造rootdata */
@@ -344,7 +344,7 @@ bool yk_id_to_playlist(char *input_url, char *playlist_url)
         	url_variables.n = 3;
         	srand((int)time(NULL));
         	url_variables.ran = rand() % 10000;	
-            return request_playlist(&rootdata, &url_variables, &player_cfg, &player_cons, playlist_url);
+            return request_playlist(&rootdata, &url_variables, &player_cfg, &player_cons, playlist);
         	
         } else {
             return false;

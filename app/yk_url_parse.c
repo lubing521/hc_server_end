@@ -3,11 +3,12 @@
 #define RESP_BUF_LEN        (0x1 << 14)         /* 16KB */
 #define HTTP_URL_PRE_LEN    7                   /* strlen("http://") */
 
-static unsigned char request_pattern[] = 
+static unsigned char yk_request_pattern[] = 
     "GET %s HTTP/1.1\r\n"
     "Host: %s\r\n"
     "Connection: close\r\n"
-    "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36\r\n"
+    "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/33.0.1750.117 Safari/537.36\r\n"
     "Accept: */*\r\n"
     "Referer: %s\r\n"
     "Accept-Encoding: gzip,deflate,sdch\r\n"
@@ -15,7 +16,7 @@ static unsigned char request_pattern[] =
 
 static int yk_build_request(const char *host,
                             const unsigned char *uri,
-                            const unsigned char *url,
+                            const unsigned char *referer,
                             unsigned char *buf)
 {
     if (buf == NULL) {
@@ -24,14 +25,21 @@ static int yk_build_request(const char *host,
     
     /* zhaoyao TODO: checking request line ,header and length */
 
-    sprintf((char *)buf, (char *)request_pattern, uri, host, url);
+    sprintf((char *)buf, (char *)yk_request_pattern, uri, host, referer);
 
     return 0;
 }
 
 static void yk_print_usage(char *cmd)
 {
-    printf("%s video_url\n\n", cmd);
+    printf("%s youku_video_url\n", cmd);
+    printf("\tURL's format is http://v.youku.com/v_show/id_XNjgzMjc0MjY4.html\n\n");
+}
+
+/* zhaoyao TODO: url's validity */
+static int yk_is_valid_url(const unsigned char *url)
+{
+    return 1;
 }
 
 int main(int argc, char *argv[])
@@ -53,23 +61,30 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    memset(uri, 0, BUFFER_LEN);
-    if (yk_id_to_playlist((char *)url, (char *)uri) != true) {
-        fprintf(stderr, "yk_id_to_playlist failed, url is:\n%s\n", url);
+    if (!yk_is_valid_url(url)) {
+        fprintf(stderr, "Invalid URL of Youku video: %s\n", url);
         exit(-1);
     }
-    printf("uri:\n%s\n", uri);
+
+    memset(uri, 0, BUFFER_LEN);
+    /* zhaoyao FIXME TODO: yk_url_to_playlist has no string length control, overflow may occur */
+    if (yk_url_to_playlist((char *)url, (char *)uri) != true) {
+        fprintf(stderr, "yk_url_to_playlist failed, url is:\n%s\n", url);
+        exit(-1);
+    }
 
     memset(host, 0, MAX_NAME_LEN);
     for (i = 0; (*(uri + HTTP_URL_PRE_LEN + i) != '/') && (*(uri + HTTP_URL_PRE_LEN + i) != '\0'); i++) {
         host[i] = *(uri + HTTP_URL_PRE_LEN + i);
     }
     if (*(uri + HTTP_URL_PRE_LEN + i) == '\0') {
-        fprintf(stderr, "yk_id_to_playlist uri is invalid: %s\n", uri);
+        fprintf(stderr, "yk_url_to_playlist uri is invalid: %s\n", uri);
         exit(-1);
     }
     host[i] = '\0';
     real_start = uri + HTTP_URL_PRE_LEN + i;
+    
+    printf("getPlaylist's\nHost:%s\nURI:%s\n", host, real_start);
 
     memset(&hint, 0, sizeof(struct addrinfo));
     hint.ai_socktype = SOCK_STREAM;
@@ -103,7 +118,7 @@ int main(int argc, char *argv[])
 
     len = strlen((char *)buffer);
     if (len > BUFFER_LEN) {
-        fprintf(stderr, "Request is too long\n");
+        fprintf(stderr, "Request is too long, error!!!\n");
         err = -1;
         goto out;
     }

@@ -26,5 +26,5 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen);
 
 int http_parse_status_line(unsigned char *buf, int *status);
 
-bool yk_id_to_playlist(char *input_url, char *playlist_url);
+bool yk_url_to_playlist(char *url, char *playlist);
 
