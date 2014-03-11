@@ -1,4 +1,6 @@
+
 #include "header.h"
+#include "yk_lib.h"
 
 #define RESP_BUF_LEN        (0x1 << 14)         /* 16KB */
 #define HTTP_URL_PRE_LEN    7                   /* strlen("http://") */
@@ -53,6 +55,8 @@ int main(int argc, char *argv[])
     unsigned char *response = NULL;
     int nsend, nrecv, len, i;
     int err = 0, status;
+    yk_stream_info_t *streams[STREAM_TYPE_TOTAL];
+    char seed[SEED_STRING_LEN];
 
     if (argc == 2) {
         url = (unsigned char *)argv[1];
@@ -156,9 +160,19 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Response status code %d:%s", status, response);
     }
 
+    memset(streams, 0, sizeof(streams));
+    memset(seed, 0, SEED_STRING_LEN);
+    if (yk_parse_playlist((char *)response, streams, seed) != 0) {
+        fprintf(stderr, "Parse getPlaylist response failed\n");
+    } else {
+        printf("Parse getPlaylist response success, seed is %s\n", seed);
+        yk_debug_streams_all(streams);
+    }
+
 out:
     free(response);
     close(sockfd);
+    yk_destroy_streams_all(streams);
 
     return err;
 }
