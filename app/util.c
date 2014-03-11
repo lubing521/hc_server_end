@@ -1,3 +1,18 @@
+/*
+ * Copyright(C) 2014 Ruijie Network. All rights reserved.
+ */
+/*
+ * util.c
+ * Original Author: zhaoyao@ruijie.com.cn, 2014-03-11
+ *
+ * Hot cache application's common utilities codes file.
+ *
+ * ATTENTION:
+ *     1. xxx
+ *
+ * History
+ */
+
 #include "header.h"
 
 int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
@@ -23,10 +38,46 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
     return -1;
 }
 
-int http_parse_status_line(unsigned char *buf, int *status)
+int host_connect(const char *hostname)
 {
-    unsigned char ch;
-    unsigned char *p;
+    int sockfd;
+    struct addrinfo *ailist, *aip;
+    struct addrinfo hint;
+
+    if (hostname == NULL) {
+        return -1;
+    }
+
+    memset(&hint, 0, sizeof(struct addrinfo));
+    hint.ai_socktype = SOCK_STREAM;
+    if (getaddrinfo(hostname, "http", &hint, &ailist) != 0) {
+        perror("Getaddrinfo failed");
+        return -1;
+    }
+    for (aip = ailist; aip != NULL; aip = aip->ai_next) {
+        if ((sockfd = socket(aip->ai_family, SOCK_STREAM, 0)) < 0) {
+            perror("Socket failed, try again...");
+            continue;
+        }
+        if (sock_conn_retry(sockfd, aip->ai_addr, aip->ai_addrlen) < 0) {
+            close(sockfd);
+            fprintf(stderr, "Sock_conn_retry failed, try again...\n");
+            continue;
+        }
+        break;
+    }
+    if (aip == NULL) {
+        fprintf(stderr, "Can not connect to %s: http\n", hostname);
+        return -1;
+    }
+
+    return sockfd;
+}
+
+int http_parse_status_line(char *buf, int *status)
+{
+    char ch;
+    char *p;
     int status_digits = 0;
     enum {
         sw_start = 0,

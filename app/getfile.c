@@ -1,3 +1,19 @@
+/*
+ * Copyright(C) 2014 Ruijie Network. All rights reserved.
+ */
+/*
+ * getfile.c
+ * Original Author: zhaoyao@ruijie.com.cn, 2014-03-11
+ *
+ * Send hot cache file URI to Nginx, and inform Nginx /getfile module to download corresponding
+ * file from third party (e.g. Youku) with upstream method.
+ *
+ * ATTENTION:
+ *     1. xxx
+ *
+ * History
+ */
+
 #include "header.h"
 
 static char default_hostip[] = "192.168.46.89";
