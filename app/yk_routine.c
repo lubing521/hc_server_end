@@ -277,7 +277,8 @@ static char *yk_parse_pl_segs_do(char *cur, yk_stream_info_t *stream)
         seg->stream = stream;
         stream->segs[seg_cnt] = seg;
         seg_cnt++;
-        if (seg_cnt > STREAM_SEGS_MAX) {
+        if (seg_cnt >= STREAM_SEGS_MAX) {
+            fprintf(stderr, "%s WARNING: segment count exceed limit %d\n", __func__, STREAM_SEGS_MAX);
             return NULL;
         }
         ret = ret + 2;
