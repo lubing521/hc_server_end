@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
                     goto out;
                 }
                 printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
-                if (gf_inform_ngx_download("192.168.46.89", real_url) < 0) {
+                if (gf_inform_ngx_download(NGINX_SERVER_IP_ADDR, real_url) < 0) {
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {

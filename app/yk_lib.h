@@ -16,6 +16,8 @@
 
 #include "header.h"
 
+#define NGINX_SERVER_IP_ADDR    "192.168.46.89"
+
 #define YK_FILEID_LEN           66   /* 视频文件名解析后的长度 */
 #define YK_MAX_NAME_LEN         32
 
