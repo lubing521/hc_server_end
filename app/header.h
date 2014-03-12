@@ -42,4 +42,5 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen);
 int host_connect(const char *hostname);
 
 int http_parse_status_line(char *buf, int *status);
+int gf_inform_ngx_download(char *ngx_ip, char *url);
 

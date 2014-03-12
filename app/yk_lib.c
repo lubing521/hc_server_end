@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
     }
 
     /* zhaoyao XXX: now we only care about the first type stream */
-    for (i = 0; i < STREAM_TYPE_TOTAL && streams[i] != NULL; i++) {
+    for (i = 0; i < 1 && streams[i] != NULL; i++) {
         strm = streams[i];
 
         if (strm->segs == NULL) {   /* Has no segments info, innormal situation */
@@ -269,6 +269,9 @@ int main(int argc, char *argv[])
                     goto out;
                 }
                 printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
+                if (gf_inform_ngx_download("192.168.46.89", real_url) < 0) {
+                    fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
+                }
             } else {
                 fprintf(stderr, "getFlvpath failed, status code %d:\n%s\n", status, response);
                 err = -1;

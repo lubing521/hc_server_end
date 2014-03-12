@@ -393,23 +393,38 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[])
 
 int yk_parse_flvpath(char *data, char *real_url)
 {
-    char *tag = "Location: ";
+    char *tag1 = "Location: ";
+    char *tag2 = "server\":\"";
     char *p, *q;
 
     if (data == NULL || real_url == NULL) {
         return -1;
     }
 
-    p = strstr(data, tag);
-    if (p == NULL) {
-        return -1;
-    }
-    
     memset(real_url, 0, BUFFER_LEN);
-    for (p = p + strlen(tag), q = real_url; *p != '\r' && *p != '\n' && *p != '\0'; p++, q++) {
-        *q = *p;
+
+    p = strstr(data, tag1);
+    if (p != NULL) {
+        for (p = p + strlen(tag1), q = real_url; *p != '\r' && *p != '\n' && *p != '\0'; p++, q++) {
+            *q = *p;
+        }
+        goto end;
     }
 
+    p = strstr(data, tag2);
+    if (p != NULL) {
+        for (p = p + strlen(tag2), q = real_url; *p != '"' && *p != ',' && *p != '\0'; p++, q++) {
+            *q = *p;
+        }
+        goto end;
+    }
+
+    if (p == NULL) {
+        fprintf(stderr, "%s error, do not find %s or %s\n", __func__, tag1, tag2);
+        return -1;
+    }
+
+end:
     if (q >= real_url + BUFFER_LEN) {
         fprintf(stderr, "WARNING: real_url is exceeding buffer length %d\n", BUFFER_LEN);
         return -1;
