@@ -28,8 +28,8 @@
 
 #define MAX_HOST_NAME_LEN   32
 
-#define MAX_SLEEP           32     /* TCP connect maximum retry time (sec) */
-#define HTTP_URL_PRE_LEN    7                   /* strlen("http://") */
+#define MAX_SLEEP           32      /* TCP connect maximum retry time (sec) */
+#define HTTP_URL_PRE_LEN    7       /* strlen("http://") */
 
 #define LF     ((unsigned char) 10)
 #define CR     ((unsigned char) 13)

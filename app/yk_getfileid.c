@@ -117,6 +117,7 @@ static bool cg_fun(char *streamfileids, char *processed_str, char *output_str)
     int _loc4_;
     char *delim = "*";
     char *pstr;
+    char sfileid[STREAM_FILE_IDS_LEN];
     int i;
 
     if (streamfileids == NULL || 
@@ -124,8 +125,12 @@ static bool cg_fun(char *streamfileids, char *processed_str, char *output_str)
         output_str == NULL) {
         return false;
     }
+
+    memset(_loc2_, 0, sizeof(_loc2_));
+	memset(sfileid, 0, sizeof(sfileid));
+	memcpy(sfileid, streamfileids, strlen(streamfileids));
     
-    pstr = strtok(streamfileids, delim);
+    pstr = strtok(sfileid, delim);
     i = 0;
     /* 将下标转换成数字 */
     _loc2_[i++] = atoi(pstr);

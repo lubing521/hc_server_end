@@ -18,19 +18,19 @@
 
 static char default_hostip[] = "192.168.46.89";
 
-static unsigned char request_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
+static char request_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
                                          "Host: %s\r\n"
                                          "Connection: close\r\n\r\n";
 
-static int gf_build_request(const char *ip, const unsigned char *uri, unsigned char *buf)
+static int gf_build_request(const char *ip, const char *uri, char *buf)
 {
     if (buf == NULL) {
         return -1;
     }
-    
+
     /* zhaoyao TODO: checking request line ,header and length */
 
-    sprintf((char *)buf, (char *)request_pattern, uri, ip);
+    sprintf(buf, request_pattern, uri, ip);
 
     return 0;
 }
@@ -48,17 +48,17 @@ int main(int argc, char *argv[])
     struct sockaddr_in sa;
     socklen_t salen;
     char *hostip;
-    unsigned char *uri;
-    unsigned char buffer[BUFFER_LEN];
+    char *uri;
+    char buffer[BUFFER_LEN];
     int nsend, nrecv;
     int err = 0, status;
 
     if (argc == 2) {
         hostip = default_hostip;
-        uri = (unsigned char *)argv[1];
+        uri = argv[1];
     } else if (argc == 3) {
         hostip = argv[1];
-        uri = (unsigned char *)argv[2];
+        uri = argv[2];
     } else {
         gf_print_usage(argv[0]);
         exit(-1);
