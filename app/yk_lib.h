@@ -21,14 +21,14 @@
 #define YK_FILEID_LEN           66   /* 视频文件名解析后的长度 */
 #define YK_MAX_NAME_LEN         32
 
-#define RESP_BUF_LEN            (0x1 << 14)         /* 16KB */
+#define RESP_BUF_LEN            (0x1 << 15)         /* 32KB */
 
 #define SEED_STRING_LEN         8
 
 #define STREAM_TYPE_TOTAL       4   /* flv, mp4, hd2, hd3 */
 #define STREAM_TYPE_LEN         4
 #define STREAM_FILE_IDS_LEN     256
-#define STREAM_SEGS_MAX         32
+#define STREAM_SEGS_MAX         64
 
 #define SEG_INFO_LEN            256
 #define SEGMENT_K_LEN           32

@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
     }
 
     if (status == 200) {
-//        fprintf(stdout, "getPlaylist success!!! Response status code %d\n", status);
+//        fprintf(stdout, "getPlaylist success!!! Response status code %d\n%s\n", status, response);
     } else {
         fprintf(stderr, "getPlaylist status code %d:%s", status, response);
         err = -1;

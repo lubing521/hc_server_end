@@ -38,6 +38,8 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
     return -1;
 }
 
+#if 1
+
 int host_connect(const char *hostname)
 {
     int sockfd;
@@ -73,6 +75,60 @@ int host_connect(const char *hostname)
 
     return sockfd;
 }
+
+#else
+
+int host_connect(const char *hostname)
+{
+    int sockfd;
+    struct sockaddr_in sa;
+    socklen_t salen;
+
+    if (hostname == NULL) {
+        return -1;
+    }
+
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons((uint16_t)80);
+    if (strcmp(hostname, "v.youku.com") == 0) {
+        /*
+         * Address: 183.61.116.217
+         * Address: 183.61.116.215
+         * Address: 183.61.116.218
+         * Address: 183.61.116.216
+         */
+        sa.sin_addr.s_addr = inet_addr("183.61.116.218");
+    } else if (strcmp(hostname, "f.youku.com") == 0) {
+        /*
+         * Address: 183.61.116.54
+         * Address: 183.61.116.52
+         * Address: 183.61.116.55
+         * Address: 183.61.116.53
+         * Address: 183.61.116.56
+         */
+        sa.sin_addr.s_addr = inet_addr("183.61.116.52");
+    } else {
+        fprintf(stderr, "%s unknown host %s\n", __func__, hostname);
+        return -1;
+    }
+
+    salen = sizeof(struct sockaddr_in);
+
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("Socket failed");
+        return -1;
+    }
+
+    if (sock_conn_retry(sockfd, (struct sockaddr *)&sa, salen) < 0) {
+        close(sockfd);
+        return -1;
+    }
+
+    return sockfd;
+}
+
+#endif
+
 
 int http_parse_status_line(char *buf, int *status)
 {
