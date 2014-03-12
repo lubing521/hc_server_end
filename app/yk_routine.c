@@ -165,6 +165,7 @@ void yk_debug_streams_all(yk_stream_info_t *streams[])
         p = streams[i];
         printf("Stream type: %s\n", p->type);
         printf("       streamfileids: %s\n", p->streamfileids);
+        printf("       seed: %d\n", p->seed);
         printf("       streamsizes: %d\n", p->streamsizes);
         if (p->segs != NULL) {
             for (j = 0; p->segs[j] != NULL && j < STREAM_SEGS_MAX; j++) {
@@ -348,13 +349,13 @@ error:
     return NULL;
 }
 
-int yk_parse_playlist(char *data, yk_stream_info_t *streams[], int *s)
+int yk_parse_playlist(char *data, yk_stream_info_t *streams[])
 {
-    int i;
+    int i, seed;
     char *cur = data;
-    char seed[SEED_STRING_LEN];
+    char ss[SEED_STRING_LEN];
 
-    if (data == NULL || streams == NULL || s == NULL) {
+    if (data == NULL || streams == NULL) {
         return -1;
     }
     for (i = 0; i < STREAM_TYPE_TOTAL; i++) {
@@ -364,8 +365,8 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[], int *s)
     }
 
     /* Get seed */
-    cur = yk_parse_pl_seed(cur, seed);
-    *s = atoi(seed);
+    cur = yk_parse_pl_seed(cur, ss);
+    seed = atoi(ss);
     if (cur == NULL) {
         return -1;
     }
@@ -374,6 +375,9 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[], int *s)
     cur = yk_parse_pl_streamfileids(cur, streams);   /* zhaoyao XXX: it will allocate stream_info */
     if (cur == NULL) {
         return -1;
+    }
+    for (i = 0; streams[i] != NULL && i < STREAM_TYPE_TOTAL; i++) {
+        streams[i]->seed = seed;                     /* zhaoyao XXX: set seed for convenience */
     }
 
     /* Get segs */
@@ -386,3 +390,31 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[], int *s)
 
     return 0;
 }
+
+int yk_parse_flvpath(char *data, char *real_url)
+{
+    char *tag = "Location: ";
+    char *p, *q;
+
+    if (data == NULL || real_url == NULL) {
+        return -1;
+    }
+
+    p = strstr(data, tag);
+    if (p == NULL) {
+        return -1;
+    }
+    
+    memset(real_url, 0, BUFFER_LEN);
+    for (p = p + strlen(tag), q = real_url; *p != '\r' && *p != '\n' && *p != '\0'; p++, q++) {
+        *q = *p;
+    }
+
+    if (q >= real_url + BUFFER_LEN) {
+        fprintf(stderr, "WARNING: real_url is exceeding buffer length %d\n", BUFFER_LEN);
+        return -1;
+    }
+
+    return 0;
+}
+

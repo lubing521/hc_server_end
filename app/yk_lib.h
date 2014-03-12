@@ -91,9 +91,9 @@ typedef struct yk_stream_info_s yk_stream_info_t;
 
 typedef struct yk_segment_info_s {
     yk_stream_info_t *stream;       /* Where I am belonging to. */
-    int no;                         /* number */
-    int size;
-    int seconds;
+    int  no;                         /* number */
+    int  size;
+    int  seconds;
     char k[SEGMENT_K_LEN];
     char k2[SEGMENT_K2_LEN];
 } yk_segment_info_t;
@@ -102,6 +102,7 @@ struct yk_stream_info_s {
     char type[STREAM_TYPE_LEN];     /* flv, mp4, hd2, hd3 */
     char streamfileids[STREAM_FILE_IDS_LEN];
     int  streamsizes;
+    int  seed;
     yk_segment_info_t *segs[STREAM_SEGS_MAX];
 };
 
@@ -110,7 +111,8 @@ bool yk_get_fileid(char *streamfileids, int video_num, int seed, char *fileids);
 bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_data, 
                     bool use_jumptime, int jump_time, char *out_url);
 
-int yk_parse_playlist(char *data, yk_stream_info_t *stream[], int *seed);
-void yk_destroy_streams_all(yk_stream_info_t *stream[]);
+int yk_parse_playlist(char *data, yk_stream_info_t *streams[]);
+int yk_parse_flvpath(char *data, char *real_url);
+void yk_destroy_streams_all(yk_stream_info_t *streams[]);
 void yk_debug_streams_all(yk_stream_info_t *streams[]);
 

@@ -58,22 +58,117 @@ static int yk_is_valid_url(const char *yk_url)
     return 1;
 }
 
-int main(int argc, char *argv[])
+static int yk_http_session(char *url, const char *referer, char *response)
 {
-    int sockfd;
-    char host[MAX_HOST_NAME_LEN];
-    char *yk_url;                           /* Youku video public URL */
-    char pl_url[BUFFER_LEN], *pl_uri_start; /* getplaylist URL */
-    char fp_url[BUFFER_LEN], *fp_uri_start; /* getflvpath URL */
+    int sockfd = -1, err = 0;
+    char host[MAX_HOST_NAME_LEN], *uri_start;
     char buffer[BUFFER_LEN];
-    char *response = NULL;
-    int nsend, nrecv, len, i, j;
-    int err = 0, status;
-    yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
+    int nsend, nrecv, len, i;
+
+    if (url == NULL || referer == NULL || response == NULL) {
+        fprintf(stderr, "Input is invalid\n");
+        return -1;
+    }
+
+    memset(host, 0, MAX_HOST_NAME_LEN);
+    for (i = 0; (*(url + HTTP_URL_PRE_LEN + i) != '/') && (*(url + HTTP_URL_PRE_LEN + i) != '\0'); i++) {
+        host[i] = *(url + HTTP_URL_PRE_LEN + i);
+    }
+    if (*(url + HTTP_URL_PRE_LEN + i) == '\0') {
+        fprintf(stderr, "URL is invalid: %s\n", url);
+        return -1;
+    }
+    host[i] = '\0';
+    uri_start = url + HTTP_URL_PRE_LEN + i;
+
+    sockfd = host_connect(host);
+    if (sockfd < 0) {
+        fprintf(stderr, "Can not connect to %s: http\n", host);
+        return -1;
+    }
+
+    memset(buffer, 0, BUFFER_LEN);
+    if (yk_build_request(host, uri_start, referer, buffer) < 0) {
+        fprintf(stderr, "yk_build_request failed\n");
+        err = -1;
+        goto out;
+    }
+
+    len = strlen(buffer);
+    if (len > BUFFER_LEN) {
+        fprintf(stderr, "Request is too long, error!!!\n");
+        err = -1;
+        goto out;
+    }
+    nsend = send(sockfd, buffer, len, 0);
+    if (nsend != len) {
+        perror("Send failed");
+        err = -1;
+        goto out;
+    }
+
+    memset(response, 0, RESP_BUF_LEN);
+    nrecv = recv(sockfd, response, RESP_BUF_LEN, MSG_WAITALL);
+    if (nrecv <= 0) {
+        perror("Recv failed or meet EOF");
+        err = -1;
+        goto out;
+    }
+
+out:
+    close(sockfd);
+
+    return err;
+}
+
+static int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
+{
     char fileids[YK_FILEID_LEN + 1];
-    int seed;
     playlistdata_t play_list;
     video_seg_data_t seg_data;
+    yk_stream_info_t *strm;
+    
+    if (seg == NULL || fp_url == NULL || seg->stream == NULL) {
+        return -1;
+    }
+
+    strm = seg->stream;
+
+    memset(fileids, 0, sizeof(fileids));
+    if (yk_get_fileid(strm->streamfileids, seg->no, strm->seed, fileids) == false) {
+        fprintf(stderr, "yk_get_fileid failed\n");
+        return -1;
+    }
+
+    memset(&play_list, 0, sizeof(play_list));
+	memcpy(play_list.fileType, strm->type, 3);
+	play_list.drm = false;
+	play_list.sid[0] = '0';
+	play_list.sid[1] = '0';
+
+	memset(&seg_data, 0, sizeof(seg_data));
+	memcpy(seg_data.fileId, fileids, strlen(fileids));
+	memcpy(seg_data.key, seg->k, strlen(seg->k));
+
+    memset(fp_url, 0, BUFFER_LEN);
+    if (yk_get_fileurl(0, &play_list, &seg_data, false, 0, fp_url) != true) {
+        fprintf(stderr, "yk_get_fileurl failed\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    char *yk_url;                           /* Youku video public URL */
+    char pl_url[BUFFER_LEN];                /* getplaylist URL */
+    char fp_url[BUFFER_LEN];                /* getflvpath URL */
+    char real_url[BUFFER_LEN];              /* Youku video file's real URL */
+    char *response = NULL;
+    int i, j;
+    int err = 0, status;
+    yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
 
     if (argc == 2) {
         yk_url = argv[1];
@@ -87,71 +182,29 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    /*
-     * Step 1 - getPlaylist.
-     */
-    memset(pl_url, 0, BUFFER_LEN);
-    /* zhaoyao FIXME TODO: yk_url_to_playlist has no string length control, overflow may occur */
-    if (yk_url_to_playlist((char *)yk_url, (char *)pl_url) != true) {
-        fprintf(stderr, "yk_url_to_playlist failed, url is:\n%s\n", yk_url);
-        exit(-1);
-    }
-
-    memset(host, 0, MAX_HOST_NAME_LEN);
-    for (i = 0; (*(pl_url + HTTP_URL_PRE_LEN + i) != '/') && (*(pl_url + HTTP_URL_PRE_LEN + i) != '\0'); i++) {
-        host[i] = *(pl_url + HTTP_URL_PRE_LEN + i);
-    }
-    if (*(pl_url + HTTP_URL_PRE_LEN + i) == '\0') {
-        fprintf(stderr, "yk_url_to_playlist uri is invalid: %s\n", pl_url);
-        exit(-1);
-    }
-    host[i] = '\0';
-    pl_uri_start = pl_url + HTTP_URL_PRE_LEN + i;
-    
-    printf("getPlaylist's\n\tHost:%s\n\tURI:%s\n", host, pl_uri_start);
-
-    sockfd = host_connect(host);
-    if (sockfd < 0) {
-        fprintf(stderr, "Can not connect to %s: http\n", host);
-        err = -1;
-        goto out;
-    }
-
-    memset(buffer, 0, BUFFER_LEN);
-    if (yk_build_request(host, pl_uri_start, yk_url, buffer) < 0) {
-        fprintf(stderr, "yk_build_request failed\n");
-        err = -1;
-        goto out;
-    }
-
-    len = strlen((char *)buffer);
-    if (len > BUFFER_LEN) {
-        fprintf(stderr, "Request is too long, error!!!\n");
-        err = -1;
-        goto out;
-    }
-    nsend = send(sockfd, buffer, len, 0);
-    if (nsend != len) {
-        perror("Send failed");
-        err = -1;
-        goto out;
-    }
-
     response = malloc(RESP_BUF_LEN);
     if (response == NULL) {
         perror("Malloc failed");
         err = -1;
         goto out;
     }
-    memset(response, 0, RESP_BUF_LEN);
-    nrecv = recv(sockfd, response, RESP_BUF_LEN, MSG_WAITALL);
-    if (nrecv <= 0) {
-        perror("Recv failed or meet EOF");
+
+    /*
+     * Step 1 - getPlaylist and get flvpath URL.
+     */
+    memset(pl_url, 0, BUFFER_LEN);
+    /* zhaoyao FIXME TODO: yk_url_to_playlist has no string length control, overflow may occur */
+    if (yk_url_to_playlist(yk_url, pl_url) != true) {
+        fprintf(stderr, "yk_url_to_playlist failed, url is:\n%s\n", yk_url);
         err = -1;
         goto out;
     }
-    close(sockfd);
-    sockfd = -1;
+
+    if (yk_http_session(pl_url, yk_url, response) < 0) {
+        fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
+        err = -1;
+        goto out;
+    }
 
     if (http_parse_status_line(response, &status) < 0) {
         fprintf(stderr, "Parse status line failed:\n%s", response);
@@ -160,7 +213,7 @@ int main(int argc, char *argv[])
     }
 
     if (status == 200) {
-        fprintf(stdout, "getPlaylist success!!! Response status code %d\n", status);
+//        fprintf(stdout, "getPlaylist success!!! Response status code %d\n", status);
     } else {
         fprintf(stderr, "getPlaylist status code %d:%s", status, response);
         err = -1;
@@ -168,119 +221,64 @@ int main(int argc, char *argv[])
     }
 
     memset(streams, 0, sizeof(streams));
-    if (yk_parse_playlist((char *)response, streams, &seed) != 0) {
+    if (yk_parse_playlist(response, streams) != 0) {
         fprintf(stderr, "Parse getPlaylist response failed:\n%s\n", response);
         err = -1;
         goto out;
     } else {
-        //printf("Parse getPlaylist response success, seed is %d\n", seed);
+        //printf("Parse getPlaylist response success\n");
         //yk_debug_streams_all(streams);
     }
 
-    for (i = 0; i < 1 && streams[i] != NULL; i++) {
+    /* zhaoyao XXX: now we only care about the first type stream */
+    for (i = 0; i < STREAM_TYPE_TOTAL && streams[i] != NULL; i++) {
         strm = streams[i];
+
         if (strm->segs == NULL) {   /* Has no segments info, innormal situation */
             fprintf(stderr, "WARNING: stream %s has no segs\n", strm->type);
             continue;
         }
 
-        for (j = 0; j < 1 && strm->segs[j] != NULL; j++) {
-            memset(fileids, 0, sizeof(fileids));
-            if (yk_get_fileid(strm->streamfileids, strm->segs[j]->no, seed, fileids) == false) {
-                fprintf(stderr, "yk_get_fileid failed\n");
+        printf("Stream type: %s\n", strm->type);
+
+        for (j = 0; j < STREAM_SEGS_MAX && strm->segs[j] != NULL; j++) {
+            if (yk_seg_to_flvpath(strm->segs[j], fp_url) < 0) {
+                fprintf(stderr, "WARNING: yk_seg_to_flvpath failed\n");
+                continue;
+            }
+
+            /*
+             * Step 2 - getFlvpath and get real URL.
+             */
+            if (yk_http_session(fp_url, yk_url, response) < 0) {
+                fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
                 err = -1;
                 goto out;
             }
 
-            memset(&play_list, 0, sizeof(play_list));
-        	memcpy(play_list.fileType, strm->type, 3);
-        	play_list.drm = false;
-        	play_list.sid[0] = '0';
-        	play_list.sid[1] = '0';
-
-        	memset(&seg_data, 0, sizeof(seg_data));
-        	memcpy(seg_data.fileId, fileids, strlen(fileids));
-        	memcpy(seg_data.key, strm->segs[j]->k, strlen(strm->segs[j]->k));
-
-            memset(fp_url, 0, BUFFER_LEN);
-            if (yk_get_fileurl(0, &play_list, &seg_data, false, 0, fp_url) != true) {
-                fprintf(stderr, "yk_get_fileurl failed\n");
+            if (http_parse_status_line(response, &status) < 0) {
+                fprintf(stderr, "Parse status line failed:\n%s", response);
                 err = -1;
                 goto out;
             }
-            printf("getFlvpath_url: %s\n", fp_url);
+
+            if (status == 200 || status == 302) {
+                if (yk_parse_flvpath(response, real_url) < 0) {
+                    fprintf(stderr, "Parse getFlvpath response and get real URL failed\n");
+                    err = -1;
+                    goto out;
+                }
+                printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
+            } else {
+                fprintf(stderr, "getFlvpath failed, status code %d:\n%s\n", status, response);
+                err = -1;
+                goto out;
+            }
         }
-    }
-
-    /*
-     * Step 2 - getFlvpath.
-     */
-    memset(host, 0, MAX_HOST_NAME_LEN);
-    for (i = 0; (*(fp_url + HTTP_URL_PRE_LEN + i) != '/') && (*(fp_url + HTTP_URL_PRE_LEN + i) != '\0'); i++) {
-        host[i] = *(fp_url + HTTP_URL_PRE_LEN + i);
-    }
-    if (*(fp_url + HTTP_URL_PRE_LEN + i) == '\0') {
-        fprintf(stderr, "yk_get_fileurl Flvpath is invalid: %s\n", fp_url);
-        exit(-1);
-    }
-    host[i] = '\0';
-    fp_uri_start = fp_url + HTTP_URL_PRE_LEN + i;
-    printf("getFlvpath's\n\tHost:%s\n\tURI:%s\n", host, fp_uri_start);
-
-    sockfd = host_connect(host);
-    if (sockfd < 0) {
-        fprintf(stderr, "Can not connect to %s: http\n", host);
-        err = -1;
-        goto out;
-    }
-
-    memset(buffer, 0, BUFFER_LEN);
-    if (yk_build_request(host, fp_uri_start, yk_url, buffer) < 0) {
-        fprintf(stderr, "yk_build_request failed\n");
-        err = -1;
-        goto out;
-    }
-
-    len = strlen((char *)buffer);
-    if (len > BUFFER_LEN) {
-        fprintf(stderr, "Request is too long, error!!!\n");
-        err = -1;
-        goto out;
-    }
-    nsend = send(sockfd, buffer, len, 0);
-    if (nsend != len) {
-        perror("Send failed");
-        err = -1;
-        goto out;
-    }
-
-    memset(response, 0, RESP_BUF_LEN);
-    nrecv = recv(sockfd, response, RESP_BUF_LEN, MSG_WAITALL);
-    if (nrecv <= 0) {
-        perror("Recv failed or meet EOF");
-        err = -1;
-        goto out;
-    }
-    close(sockfd);
-    sockfd = -1;
-
-    if (http_parse_status_line(response, &status) < 0) {
-        fprintf(stderr, "Parse status line failed:\n%s", response);
-        err = -1;
-        goto out;
-    }
-
-    if (status == 200) {
-        fprintf(stdout, "getFlvpath success!!! Response status code %d:\n%s\n", status,response);
-    } else {
-        fprintf(stderr, "getFlvpath status code %d:\n%s\n", status, response);
-        err = -1;
-        goto out;
     }
 
 out:
     free(response);
-    close(sockfd);
     yk_destroy_streams_all(streams);
 
     return err;

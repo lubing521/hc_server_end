@@ -248,7 +248,7 @@ bool yk_get_fileid(char *streamfileids, int video_num, int seed, char *fileids)
 		return false;
 	} else {
 		/* 将分段号转换为16进制 */
-		sprintf(vnum_str, "%x", video_num);
+		sprintf(vnum_str, "%X", video_num);     /* MUST be upper case */
 		if (strlen(vnum_str) == 1) {
 			vnum_str[1] = vnum_str[0];
 			vnum_str[0] = '0';
