@@ -1988,6 +1988,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     size_t                     alias;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_str_t name;
+    unsigned int len;
+    char *p;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -2063,7 +2065,17 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 #if DEBUG_GETFILE
         ngx_log_stderr(NGX_OK, "****** %s file name is %V", __func__, &name);
 #endif
-        last = ngx_cpystrn(last, name.data, name.len + 1);
+
+        p = ngx_strchr(r->args.data, '/');
+        p = ngx_strchr(p + 1, '/');
+        len = (unsigned int)p - (unsigned int)r->args.data + 1;
+
+        *last = '/';
+        last++;
+        last = ngx_cpystrn(last, r->args.data, len);
+        *last = '_';
+        last++;
+        last = ngx_cpystrn(last, name.data + 1, name.len);
     } else {
         last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
     }
