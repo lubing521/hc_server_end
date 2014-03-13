@@ -16,7 +16,7 @@
 #include "header.h"
 #include "yk_lib.h"
 
-static unsigned char yk_request_pattern[] = 
+static char yk_request_pattern[] = 
     "GET %s HTTP/1.1\r\n"
     "Host: %s\r\n"
     "Connection: close\r\n"
@@ -27,16 +27,20 @@ static unsigned char yk_request_pattern[] =
     "Accept-Encoding: gzip,deflate,sdch\r\n"
     "Accept-Language: en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4\r\n\r\n";
 
-static int yk_build_request(const char *host,
-                            const char *uri,
-                            const char *referer,
-                            char *buf)
+static int yk_build_request(char *host, char *uri, char *referer, char *buf)
 {
+    int len;
+
     if (buf == NULL) {
         return -1;
     }
     
     /* zhaoyao TODO: checking request line ,header and length */
+    len = strlen(host) + strlen(uri) + strlen(referer) + strlen(yk_request_pattern) - 3;
+    if (len >= BUFFER_LEN) {
+        fprintf(stderr, "%s request length (%d) exceed limit %d\n", __func__, len, BUFFER_LEN);
+        return -1;
+    }
 
     sprintf((char *)buf, (char *)yk_request_pattern, uri, host, referer);
 
@@ -53,12 +57,36 @@ static void yk_print_usage(char *cmd)
  * zhaoyao TODO: url's validity
  * http://v.youku.com/v_show/id_XNjgzMjc0MjY4.html
  */
-static int yk_is_valid_url(const char *yk_url)
+static int yk_is_valid_url(char *yk_url)
 {
+    static char *tag1 = "youku.com";
+    static char *tag2 = "/id_";
+    char *cur;
+
+    if (yk_url == NULL) {
+        return 0;
+    }
+
+    cur = yk_url;
+    cur = strstr(cur, tag1);
+    if (cur == NULL) {
+        return 0;
+    }
+
+    cur = strstr(cur, tag2);
+    if (cur == NULL) {
+        return 0;
+    }
+
+    cur = strchr(cur, '?');
+    if (cur != NULL) {
+        *cur = '\0';    /* Truncate parameters */
+    }
+
     return 1;
 }
 
-static int yk_http_session(char *url, const char *referer, char *response)
+static int yk_http_session(char *url, char *referer, char *response)
 {
     int sockfd = -1, err = 0;
     char host[MAX_HOST_NAME_LEN], *uri_start;
