@@ -45,7 +45,7 @@ static int yk_build_request(const char *host,
 
 static void yk_print_usage(char *cmd)
 {
-    printf("%s youku_url\n", cmd);
+    printf("%s youku_url [no]\n", cmd);
     printf("\tURL's format is http://v.youku.com/v_show/id_XNjgzMjc0MjY4.html\n\n");
 }
 
@@ -167,11 +167,19 @@ int main(int argc, char *argv[])
     char real_url[BUFFER_LEN];              /* Youku video file's real URL */
     char *response = NULL;
     int i, j;
+    int no_download;
     int err = 0, status;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
 
     if (argc == 2) {
         yk_url = argv[1];
+    } else if (argc == 3) {
+        yk_url = argv[1];
+        if (strcmp(argv[2], "no") == 0) {
+            no_download = 1;
+        } else {
+            no_download = 0;
+        }
     } else {
         yk_print_usage(argv[0]);
         exit(-1);
@@ -269,7 +277,7 @@ int main(int argc, char *argv[])
                     goto out;
                 }
                 printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
-                if (gf_inform_ngx_download(NGINX_SERVER_IP_ADDR, real_url) < 0) {
+                if (!no_download && gf_inform_ngx_download(NGINX_SERVER_IP_ADDR, real_url) < 0) {
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {
