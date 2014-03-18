@@ -42,10 +42,17 @@ static ngx_http_module_t ngx_http_getfile_module_ctx = {
 
 static ngx_command_t ngx_http_getfile_commands[] = {
     { ngx_string("getfile"),
-      NGX_HTTP_MAIN_CONF | NGX_HTTP_SRV_CONF | NGX_HTTP_LOC_CONF | NGX_HTTP_LMT_CONF | NGX_CONF_NOARGS,
+      NGX_HTTP_LOC_CONF | NGX_CONF_NOARGS,
       ngx_http_getfile,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("getfile_store_access"),
+      NGX_HTTP_LOC_CONF | NGX_CONF_TAKE123,
+      ngx_conf_set_access_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_getfile_conf_t, upstream) + offsetof(ngx_http_upstream_conf_t, store_access),
       NULL },
 
     ngx_null_command,
@@ -66,7 +73,7 @@ ngx_module_t ngx_http_getfile_module = {
     NGX_MODULE_V1_PADDING,
 };
 
-static char * ngx_http_getfile(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+static char *ngx_http_getfile(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_core_loc_conf_t *clcf;
 
@@ -88,7 +95,7 @@ static void *ngx_http_getfile_create_loc_conf(ngx_conf_t *cf)
     mycf->upstream.connect_timeout = 60000;
     mycf->upstream.send_timeout = 60000;
     mycf->upstream.read_timeout = 60000;
-    mycf->upstream.store_access = 0600;
+    mycf->upstream.store_access = NGX_CONF_UNSET_UINT;
     
     mycf->upstream.buffering = 1;       /* zhaoyao XXX: using temp file for buffering */
     mycf->upstream.store = 1;           /* zhaoyao XXX: store temp file at local directory */
@@ -135,6 +142,8 @@ static char *ngx_http_getfile_merge_loc_conf(ngx_conf_t *cf, void *parent, void 
         != NGX_OK) {
         return NGX_CONF_ERROR;
     }
+
+    ngx_conf_merge_uint_value(conf->upstream.store_access, prev->upstream.store_access, 0600);
 
     return NGX_CONF_OK;
 }
