@@ -394,8 +394,8 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[])
 
 int yk_parse_flvpath(char *data, char *real_url)
 {
-    char *tag1 = "Location: ";
-    char *tag2 = "server\":\"";
+    char *tag1 = "Location: http://";
+    char *tag2 = "server\":\"http://";
     char *p, *q;
 
     if (data == NULL || real_url == NULL) {

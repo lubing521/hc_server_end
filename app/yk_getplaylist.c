@@ -107,7 +107,7 @@ int url_decode(const char* str, const int strSize, char* result, const int resul
 /* 入参:url */
 bool identify_yk_video_url(char *purl)
 {
-    char *obj_url="http://v.youku.com/v_show";
+    char *obj_url="v.youku.com/v_show";
     char *presult = NULL;
     if (purl == NULL) {
         return false;
@@ -122,13 +122,13 @@ bool identify_yk_video_url(char *purl)
 }
 
 /* 从优酷视频首页的html中获取视频的name和folderId, url一共有如下三种形式 */
-/* http://v.youku.com/v_show/id_XNjY2OTkyNjk2.html */
-/* http://v.youku.com/v_show/id_XNjcxNTUzNjIw.html?f=21894121&ev=4 */
-/* http://v.youku.com/v_show/id_XNjcxNTUzNjIw.html?f=21894122 */
+/* v.youku.com/v_show/id_XNjY2OTkyNjk2.html */
+/* v.youku.com/v_show/id_XNjcxNTUzNjIw.html?f=21894121&ev=4 */
+/* v.youku.com/v_show/id_XNjcxNTUzNjIw.html?f=21894122 */
 int get_yk_video_name(char *purl, char name[], char folderId[])
 {
 
-    char *purl_pre = "http://v.youku.com/v_show/id_";
+    char *purl_pre = "v.youku.com/v_show/id_";
     char *name_idx;
 	char *folder_idx;
     int i,url_pre_len;
@@ -180,7 +180,6 @@ bool request_playlist(rootdata_t *rootdata, url_var_t *url_var,
 		return false;
 	}	
 
-	strcat(url, "http://");
 	strcat(url, server_domain);//拼接字符串
 	strcat(url, "/player/getPlayList");
 	strcat(url, "/VideoIDS/");

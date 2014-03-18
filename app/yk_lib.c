@@ -16,6 +16,8 @@
 #include "header.h"
 #include "yk_lib.h"
 
+volatile int download = 0;
+
 static char yk_request_pattern[] = 
     "GET %s HTTP/1.1\r\n"
     "Host: %s\r\n"
@@ -23,7 +25,7 @@ static char yk_request_pattern[] =
     "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/33.0.1750.117 Safari/537.36\r\n"
     "Accept: */*\r\n"
-    "Referer: %s\r\n"
+    "Referer: http://%s\r\n"
     "Accept-Encoding: gzip,deflate,sdch\r\n"
     "Accept-Language: en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4\r\n\r\n";
 
@@ -49,13 +51,13 @@ static int yk_build_request(char *host, char *uri, char *referer, char *buf)
 
 static void yk_print_usage(char *cmd)
 {
-    printf("%s youku_url [no]\n", cmd);
+    printf("%s youku_url [dl]\n", cmd);
     printf("\tURL's format is http://v.youku.com/v_show/id_XNjgzMjc0MjY4.html\n\n");
 }
 
 /*
  * zhaoyao TODO: url's validity
- * http://v.youku.com/v_show/id_XNjgzMjc0MjY4.html
+ * v.youku.com/v_show/id_XNjgzMjc0MjY4.html
  */
 static int yk_is_valid_url(char *yk_url)
 {
@@ -80,7 +82,7 @@ static int yk_is_valid_url(char *yk_url)
 
     cur = strchr(cur, '?');
     if (cur != NULL) {
-        *cur = '\0';    /* Truncate parameters */
+         *cur = '\0';    /* zhaoyao XXX TODO: Truncate parameters, side-effect */
     }
 
     return 1;
@@ -91,23 +93,27 @@ static int yk_http_session(char *url, char *referer, char *response)
     int sockfd = -1, err = 0;
     char host[MAX_HOST_NAME_LEN], *uri_start;
     char buffer[BUFFER_LEN];
-    int nsend, nrecv, len, i;
+    int nsend, nrecv, len, i, pre_len = 0;
 
     if (url == NULL || referer == NULL || response == NULL) {
         fprintf(stderr, "Input is invalid\n");
         return -1;
     }
 
-    memset(host, 0, MAX_HOST_NAME_LEN);
-    for (i = 0; (*(url + HTTP_URL_PRE_LEN + i) != '/') && (*(url + HTTP_URL_PRE_LEN + i) != '\0'); i++) {
-        host[i] = *(url + HTTP_URL_PRE_LEN + i);
+    if (memcmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
+        pre_len = HTTP_URL_PRE_LEN;
     }
-    if (*(url + HTTP_URL_PRE_LEN + i) == '\0') {
+
+    memset(host, 0, MAX_HOST_NAME_LEN);
+    for (i = 0; (*(url + pre_len + i) != '/') && (*(url + pre_len + i) != '\0'); i++) {
+        host[i] = *(url + pre_len + i);
+    }
+    if (*(url + pre_len + i) == '\0') {
         fprintf(stderr, "URL is invalid: %s\n", url);
         return -1;
     }
     host[i] = '\0';
-    uri_start = url + HTTP_URL_PRE_LEN + i;
+    uri_start = url + pre_len + i;
 
     sockfd = host_connect(host);
     if (sockfd < 0) {
@@ -121,7 +127,7 @@ static int yk_http_session(char *url, char *referer, char *response)
         err = -1;
         goto out;
     }
-
+    
     len = strlen(buffer);
     if (len > BUFFER_LEN) {
         fprintf(stderr, "Request is too long, error!!!\n");
@@ -151,7 +157,7 @@ out:
 
 static int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
 {
-    char fileids[YK_FILEID_LEN + 1];
+    char fileids[YK_FILEID_LEN + 1];    /* plus terminator '\0' */
     playlistdata_t play_list;
     video_seg_data_t seg_data;
     yk_stream_info_t *strm;
@@ -187,30 +193,38 @@ static int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
     return 0;
 }
 
-int main(int argc, char *argv[])
+/**
+ * NAME: yk_get_video
+ *
+ * DESCRIPTION:
+ *      调用接口；
+ *      根据youku网视频的URL，解析得到视频资源真实的URL，并告知Nginx使用upstream方式下载视频资源。
+ *
+ * @url: -IN 视频的URL，注意是去掉"http://"的，例如v.youku.com/v_show/id_XNjg2MjA1NzQw.html
+ *
+ * RETURN: -1表示失败，0表示成功。
+ */
+int yk_get_video(char *url)
 {
-    char *yk_url;                           /* Youku video public URL */
+    char yk_url[BUFFER_LEN];                /* Youku video public URL */
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
     char fp_url[BUFFER_LEN];                /* getflvpath URL */
     char real_url[BUFFER_LEN];              /* Youku video file's real URL */
     char *response = NULL;
     int i, j;
-    int no_download;
     int err = 0, status;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
 
-    if (argc == 2) {
-        yk_url = argv[1];
-    } else if (argc == 3) {
-        yk_url = argv[1];
-        if (strcmp(argv[2], "no") == 0) {
-            no_download = 1;
-        } else {
-            no_download = 0;
-        }
+    if (url == NULL || strlen(url) <= HTTP_URL_PRE_LEN) {
+        fprintf(stderr, "%s invalid input url\n", __func__);
+        return -1;
+    }
+    memset(yk_url, 0, BUFFER_LEN);
+    if (memcmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
+        fprintf(stderr, "%s WARNING url cannot have \"http://\" prefix\n", __func__);
+        memcpy(yk_url, url + HTTP_URL_PRE_LEN, strlen(url) - HTTP_URL_PRE_LEN);
     } else {
-        yk_print_usage(argv[0]);
-        exit(-1);
+        memcpy(yk_url, url, strlen(url));
     }
 
     if (!yk_is_valid_url(yk_url)) {
@@ -251,7 +265,7 @@ int main(int argc, char *argv[])
     if (status == 200) {
 //        fprintf(stdout, "getPlaylist success!!! Response status code %d\n%s\n", status, response);
     } else {
-        fprintf(stderr, "getPlaylist status code %d:%s", status, response);
+        fprintf(stderr, "getPlaylist's response status code %d:%s", status, response);
         err = -1;
         goto out;
     }
@@ -278,14 +292,14 @@ int main(int argc, char *argv[])
         printf("Stream type: %s\n", strm->type);
 
         for (j = 0; j < STREAM_SEGS_MAX && strm->segs[j] != NULL; j++) {
+            /*
+             * Step 2 - getFlvpath and get real URL.
+             */
             if (yk_seg_to_flvpath(strm->segs[j], fp_url) < 0) {
                 fprintf(stderr, "WARNING: yk_seg_to_flvpath failed\n");
                 continue;
             }
 
-            /*
-             * Step 2 - getFlvpath and get real URL.
-             */
             if (yk_http_session(fp_url, yk_url, response) < 0) {
                 fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
                 err = -1;
@@ -305,7 +319,7 @@ int main(int argc, char *argv[])
                     goto out;
                 }
                 printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
-                if (!no_download && gf_inform_ngx_download(NGINX_SERVER_IP_ADDR, real_url) < 0) {
+                if (download && gf_inform_ngx_download(NGINX_SERVER_IP_ADDR, real_url) < 0) {
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {
@@ -321,5 +335,18 @@ out:
     yk_destroy_streams_all(streams);
 
     return err;
+}
+
+int main(int argc, char *argv[])
+{
+    if ((argc == 3) && (memcmp(argv[2], "dl", 2) == 0)) {
+        download = 1;
+    }
+    if (argc == 2 || argc == 3) {
+        return yk_get_video(argv[1]);
+    } else {
+        yk_print_usage(argv[0]);
+        return -1;
+    }
 }
 

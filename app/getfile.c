@@ -16,7 +16,8 @@
 
 #include "header.h"
 
-static char default_hostip[] = "192.168.46.89";
+static char default_ngx_ip[] = "127.0.0.1";
+static uint16_t default_ngx_port = 8089;
 
 static char request_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
                                 "Host: %s\r\n"
@@ -35,119 +36,46 @@ static int gf_build_request(const char *ip, const char *uri, char *buf)
     return 0;
 }
 
-static void gf_print_usage(char *cmd)
-{
-    printf("%s [hostip] URI\n\n", cmd);
-    printf("NOTE: Default host IP address is %s\n", default_hostip);
-    printf("      URI should like this - 222.73.245.205/youku/6A6.flv\n");
-}
-
-#if 0
-int main(int argc, char *argv[])
-{
-    int sockfd;
-    struct sockaddr_in sa;
-    socklen_t salen;
-    char *hostip;
-    char *uri;
-    char buffer[BUFFER_LEN];
-    int nsend, nrecv;
-    int err = 0, status;
-
-    if (argc == 2) {
-        hostip = default_hostip;
-        uri = argv[1];
-    } else if (argc == 3) {
-        hostip = argv[1];
-        uri = argv[2];
-    } else {
-        gf_print_usage(argv[0]);
-        exit(-1);
-    }
-
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons((uint16_t)80);
-    sa.sin_addr.s_addr = inet_addr(hostip);
-    salen = sizeof(struct sockaddr_in);
-
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Socket failed");
-        exit(-1);
-    }
-
-    if (sock_conn_retry(sockfd, (struct sockaddr *)&sa, salen) < 0) {
-        err = -1;
-        goto out;
-    }
-
-    memset(buffer, 0, BUFFER_LEN);
-    if (gf_build_request(hostip, uri, buffer) < 0) {
-        fprintf(stderr, "gf_build_request failed\n");
-        err = -1;
-        goto out;
-    }
-
-    nsend = send(sockfd, buffer, BUFFER_LEN, 0);
-    if (nsend != BUFFER_LEN) {
-        perror("Send failed");
-        err = -1;
-        goto out;
-    }
-
-    memset(buffer, 0, BUFFER_LEN);
-    nrecv = recv(sockfd, buffer, BUFFER_LEN, MSG_WAITALL);
-    if (nrecv <= 0) {
-        perror("Recv failed or meet EOF");
-        err = -1;
-        goto out;
-    }
-
-    if (http_parse_status_line(buffer, &status) < 0) {
-        fprintf(stderr, "Parse status line failed:\n%s", buffer);
-        err = -1;
-        goto out;
-    }
-
-    if (status == 200) {
-        fprintf(stdout, "Getfile success!!! Response status code %d\n", status);
-    } else {
-        fprintf(stderr, "Response status code %d:%s", status, buffer);
-    }
-
-out:
-    close(sockfd);
-
-    return err;
-}
-#endif
-
+/**
+ * NAME: gf_inform_ngx_download
+ *
+ * DESCRIPTION:
+ *      调用接口；
+ *      输入资源真实的URL，告知Nginx使用upstream方式下载资源。
+ *
+ * @ngx_ip: -IN Nginx用于响应下载请求的IP地址
+ * @url:    -IN 资源真实的URL，注意是去掉"http://"的，例如58.211.22.175/youku/x/xxx.flv
+ *
+ * RETURN: -1表示失败，0表示成功。
+ */
 int gf_inform_ngx_download(char *ngx_ip, char *url)
 {
     int sockfd;
     struct sockaddr_in sa;
     socklen_t salen;
-    char *hostip;
+    char *ip_addr;
     char buffer[BUFFER_LEN];
-    int nsend, nrecv;
+    int nsend, nrecv, len;
     int err = 0, status;
 
     if (ngx_ip == NULL) {
-        hostip = default_hostip;
+        ip_addr = default_ngx_ip;
     } else {
-        hostip = ngx_ip;
+        ip_addr = ngx_ip;
     }
     if (url == NULL) {
         fprintf(stderr, "%s invalid argument\n", __func__);
         return -1;
     }
 
-    if (strncmp(url, "http://", HTTP_URL_PRE_LEN) == 0) {
+    if (memcmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
+        fprintf(stderr, "%s WARNING: input url should not begin with \"http://\"\n", __func__);
         url = url + HTTP_URL_PRE_LEN;
     }
 
     sa.sin_family = AF_INET;
-    sa.sin_port = htons((uint16_t)80);
-    sa.sin_addr.s_addr = inet_addr(hostip);
+    sa.sin_port = htons((uint16_t)default_ngx_port);
+    sa.sin_addr.s_addr = inet_addr(ip_addr);
     salen = sizeof(struct sockaddr_in);
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -161,14 +89,21 @@ int gf_inform_ngx_download(char *ngx_ip, char *url)
     }
 
     memset(buffer, 0, BUFFER_LEN);
-    if (gf_build_request(hostip, url, buffer) < 0) {
+    if (gf_build_request(ip_addr, url, buffer) < 0) {
         fprintf(stderr, "gf_build_request failed\n");
         err = -1;
         goto out;
     }
+    len = strlen(buffer);
+    if (len >= BUFFER_LEN) {
+        fprintf(stderr, "%s WARNING: gf_build_request length %d too long\n", __func__, len);
+        err = -1;
+        goto out;
+    }
+	len = len + 1; /* zhaoyao: plus terminator '\0' */
 
-    nsend = send(sockfd, buffer, BUFFER_LEN, 0);
-    if (nsend != BUFFER_LEN) {
+    nsend = send(sockfd, buffer, len, 0);
+    if (nsend != len) {
         perror("Send failed");
         err = -1;
         goto out;

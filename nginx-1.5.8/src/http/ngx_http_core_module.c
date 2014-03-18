@@ -1987,9 +1987,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     u_char                    *last;
     size_t                     alias;
     ngx_http_core_loc_conf_t  *clcf;
-    ngx_str_t name;
-    unsigned int len;
-    char *p;
+    unsigned int len, i, first_slash = 1;
+    u_char *p, temp[256];
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -2058,24 +2057,31 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     if (r->getfile) {
         /* zhaoyao: URI is like this /getfile?222.73.245.205/youku/2180E8ADC6A6.flv */
-        for (name.data = r->args.data + r->args.len - 1; *(name.data) != '/'; name.data--) {
-            ;
+        if (r->args.len >= sizeof(temp)) {
+            ngx_log_stderr(NGX_OK, "%s-%d: WARNING URL too long(%d)\n", __func__, __LINE__, r->args.len);
         }
-        name.len = r->args.data + r->args.len - name.data;
-#if DEBUG_GETFILE
-        ngx_log_stderr(NGX_OK, "****** %s file name is %V", __func__, &name);
-#endif
+        ngx_memzero(temp, sizeof(temp));
 
-        p = ngx_strchr(r->args.data, '/');
-        p = ngx_strchr(p + 1, '/');
-        len = (unsigned int)p - (unsigned int)r->args.data + 1;
+        for (p = r->args.data, i = 0; p < r->args.len + r->args.data && *p != '?'; p++, i++) {
+            if (first_slash && *p == '.') {
+                temp[i] = '_';
+                continue;
+            }
+            if (*p == '/') {
+                if (first_slash) {
+                    temp[i] = *p;
+                    first_slash = 0;
+                } else {
+                    temp[i] = '_';
+                }
+            } else {
+                temp[i] = *p;
+            }
+        }
+        len = i;
 
-        *last = '/';
-        last++;
-        last = ngx_cpystrn(last, r->args.data, len);
-        *last = '_';
-        last++;
-        last = ngx_cpystrn(last, name.data + 1, name.len);
+        *last++ = '/';
+        last = ngx_cpystrn(last, temp, len + 1);
     } else {
         last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
     }

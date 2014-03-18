@@ -16,7 +16,7 @@
 
 #include "header.h"
 
-#define NGINX_SERVER_IP_ADDR    "192.168.46.89"
+#define NGINX_SERVER_IP_ADDR    "127.0.0.1"
 
 #define YK_FILEID_LEN           66   /* 视频文件名解析后的长度 */
 #define YK_MAX_NAME_LEN         32
@@ -107,6 +107,8 @@ struct yk_stream_info_s {
     int  seed;
     yk_segment_info_t *segs[STREAM_SEGS_MAX];
 };
+
+int yk_get_video(char *url);
 
 bool yk_url_to_playlist(char *url, char *playlist);
 bool yk_get_fileid(char *streamfileids, int video_num, int seed, char *fileids);

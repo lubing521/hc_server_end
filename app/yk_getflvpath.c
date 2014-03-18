@@ -34,7 +34,6 @@ bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_da
         _loc7_[0] = '0';
     }
 
-    strcat(out_url, "http://");
     if (isFDL) {
         strcat(out_url, host1);
     } else {
