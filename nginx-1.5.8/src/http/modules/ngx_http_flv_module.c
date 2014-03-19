@@ -72,6 +72,8 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_chain_t                out[2];
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
+    off_t                      ns_offset, ns_len;
+    ngx_uint_t                 ns_i = 0;
 
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -185,8 +187,30 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                 len = sizeof(ngx_flv_header) - 1 + len - start;
                 i = 0;
             }
+        } else if (ngx_http_arg(r, (u_char *) "ns", 2, &value) == NGX_OK) {
+            ngx_log_stderr(NGX_OK, "*** %s *** ns = %V", __func__, &value);
+            for (ns_i = 0; ns_i < value.len; ns_i++) {
+                if (value.data[ns_i] == '_') {
+                    if (value.data[ns_i + 1] == '2') {
+                        break;
+                    } else {
+                        ngx_log_stderr(NGX_OK, "*** %s *** ns is not valid range", __func__);
+                        ns_i = 0;
+                        goto proceed;   /* zhaoyao XXX: fall through normal procedure */
+                    }
+                }
+            }
+
+            ns_offset = ngx_atoof(value.data, ns_i);
+            ns_len = ngx_atoof(value.data + ns_i + 2, value.len - ns_i - 2);
+            ngx_log_stderr(NGX_OK, "*** %s *** ns_offset = %O, ns_len = %O", __func__, ns_offset, ns_len);
+            start = ns_offset;
+            len = ns_len;
         }
     }
+
+proceed:
+    ngx_log_stderr(NGX_OK, "*** %s *** start = %O, len = %O", __func__, start, len);
 
     log->action = "sending flv to client";
 
@@ -227,7 +251,11 @@ ngx_http_flv_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    r->allow_ranges = 1;
+    if (!ns_i) {
+        r->allow_ranges = 1;    /* zhaoyao XXX: Accept-Ranges: bytes */
+    } else {
+        r->allow_ranges = 0;
+    }
 
     rc = ngx_http_send_header(r);
 
@@ -236,7 +264,11 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     }
 
     b->file_pos = start;
-    b->file_last = of.size;
+    if (!ns_i) {    /* zhaoyao: Normal process */
+        b->file_last = of.size;
+    } else {        /* zhaoyao: youku ns */
+        b->file_last = start + len;
+    }
 
     b->in_file = b->file_last ? 1: 0;
     b->last_buf = (r == r->main) ? 1 : 0;
