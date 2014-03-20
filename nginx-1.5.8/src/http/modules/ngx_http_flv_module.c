@@ -74,6 +74,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *clcf;
     off_t                      ns_offset, ns_len;
     ngx_uint_t                 ns_i = 0;
+    ngx_table_elt_t            *h;
 
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -218,6 +219,23 @@ proceed:
     r->headers_out.content_length_n = len;
     r->headers_out.last_modified_time = of.mtime;
 
+    /* zhaoyao XXX: Server: YOUKU.NJ */
+    if (ns_i) {
+        if (r->headers_out.server == NULL) {
+            h = ngx_list_push(&r->headers_out.headers);
+            if (h == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            h->hash = 1;
+            ngx_str_set(&h->key, "Server");
+
+            ngx_str_set(&h->value, "YOUKU.NJ");
+        
+            r->headers_out.server = h;
+        }
+    }
+
     if (ngx_http_set_etag(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -255,6 +273,7 @@ proceed:
         r->allow_ranges = 1;    /* zhaoyao XXX: Accept-Ranges: bytes */
     } else {
         r->allow_ranges = 0;
+        r->keepalive = 0;       /* zhaoyao XXX: Connection: close */
     }
 
     rc = ngx_http_send_header(r);
