@@ -14,7 +14,9 @@
  * History
  */
 
-#include "header.h"
+#include "common.h"
+#include "sc_header.h"
+#include "net_util.h"
 
 static char default_ngx_ip[] = "127.0.0.1";
 static uint16_t default_ngx_port = 8089;

@@ -15,7 +15,6 @@
 
 #include <ctype.h>
 
-#include "header.h"
 #include "yk_lib.h"
 
 static yk_stream_info_t *yk_create_stream_info(const char *type)

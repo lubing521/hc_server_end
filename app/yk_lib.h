@@ -14,7 +14,7 @@
  * History
  */
 
-#include "header.h"
+#include "common.h"
 
 #define NGINX_SERVER_IP_ADDR    "127.0.0.1"
 

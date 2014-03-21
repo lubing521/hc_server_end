@@ -13,8 +13,10 @@
  * History
  */
 
-#include "header.h"
+#include "common.h"
 #include "yk_lib.h"
+#include "net_util.h"
+#include "sc_header.h"
 
 volatile int download = 0;
 

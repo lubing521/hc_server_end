@@ -13,7 +13,8 @@
  * History
  */
 
-#include "header.h"
+#include "common.h"
+#include "net_util.h"
 
 int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
 {
