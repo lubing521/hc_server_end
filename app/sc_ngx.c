@@ -18,14 +18,14 @@
 #include "sc_header.h"
 #include "net_util.h"
 
-static char default_ngx_ip[] = "127.0.0.1";
-static uint16_t default_ngx_port = 8089;
+static char sc_ngx_default_ip_addr[] = SC_NGX_DEFAULT_IP_ADDR;
+static uint16_t sc_ngx_default_port = SC_NGX_DEFAULT_PORT;
 
-static char request_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
-                                "Host: %s\r\n"
-                                "Connection: close\r\n\r\n";
+static char sc_ngx_get_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
+                                   "Host: %s\r\n"
+                                   "Connection: close\r\n\r\n";
 
-static int gf_build_request(const char *ip, const char *uri, char *buf)
+static int sc_ngx_build_get(const char *ip, const char *uri, char *buf)
 {
     if (buf == NULL) {
         return -1;
@@ -33,13 +33,13 @@ static int gf_build_request(const char *ip, const char *uri, char *buf)
 
     /* zhaoyao TODO: checking request line ,header and length */
 
-    sprintf(buf, request_pattern, uri, ip);
+    sprintf(buf, sc_ngx_get_pattern, uri, ip);
 
     return 0;
 }
 
 /**
- * NAME: gf_inform_ngx_download
+ * NAME: sc_ngx_download
  *
  * DESCRIPTION:
  *      调用接口；
@@ -50,7 +50,7 @@ static int gf_build_request(const char *ip, const char *uri, char *buf)
  *
  * RETURN: -1表示失败，0表示成功。
  */
-int gf_inform_ngx_download(char *ngx_ip, char *url)
+int sc_ngx_download(char *ngx_ip, char *url)
 {
     int sockfd;
     struct sockaddr_in sa;
@@ -61,7 +61,7 @@ int gf_inform_ngx_download(char *ngx_ip, char *url)
     int err = 0, status;
 
     if (ngx_ip == NULL) {
-        ip_addr = default_ngx_ip;
+        ip_addr = sc_ngx_default_ip_addr;
     } else {
         ip_addr = ngx_ip;
     }
@@ -76,7 +76,7 @@ int gf_inform_ngx_download(char *ngx_ip, char *url)
     }
 
     sa.sin_family = AF_INET;
-    sa.sin_port = htons((uint16_t)default_ngx_port);
+    sa.sin_port = htons((uint16_t)sc_ngx_default_port);
     sa.sin_addr.s_addr = inet_addr(ip_addr);
     salen = sizeof(struct sockaddr_in);
 
@@ -91,14 +91,14 @@ int gf_inform_ngx_download(char *ngx_ip, char *url)
     }
 
     memset(buffer, 0, BUFFER_LEN);
-    if (gf_build_request(ip_addr, url, buffer) < 0) {
-        fprintf(stderr, "gf_build_request failed\n");
+    if (sc_ngx_build_get(ip_addr, url, buffer) < 0) {
+        fprintf(stderr, "sc_ngx_build_get failed\n");
         err = -1;
         goto out;
     }
     len = strlen(buffer);
     if (len >= BUFFER_LEN) {
-        fprintf(stderr, "%s WARNING: gf_build_request length %d too long\n", __func__, len);
+        fprintf(stderr, "%s WARNING: sc_ngx_build_get length %d too long\n", __func__, len);
         err = -1;
         goto out;
     }

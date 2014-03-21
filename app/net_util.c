@@ -24,13 +24,13 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
         return -1;
     }
 
-    for (nsec = 1; nsec <= MAX_SLEEP; nsec <<= 1) {
+    for (nsec = 1; nsec <= TCP_CONN_MAX_RETRY_TIME; nsec <<= 1) {
         if (connect(sockfd, addr, alen) == 0) {
             /* Connect success */
             return 0;
         }
         perror("Connect failed");
-        if (nsec <= MAX_SLEEP/2) {
+        if (nsec <= TCP_CONN_MAX_RETRY_TIME / 2) {
             sleep(nsec);
         }
     }
@@ -41,19 +41,19 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
 
 #if 1
 
-int host_connect(const char *hostname)
+int http_host_connect(const char *host)
 {
     int sockfd;
     struct addrinfo *ailist, *aip;
     struct addrinfo hint;
 
-    if (hostname == NULL) {
+    if (host == NULL) {
         return -1;
     }
 
     memset(&hint, 0, sizeof(struct addrinfo));
     hint.ai_socktype = SOCK_STREAM;
-    if (getaddrinfo(hostname, "http", &hint, &ailist) != 0) {
+    if (getaddrinfo(host, "http", &hint, &ailist) != 0) {
         perror("Getaddrinfo failed");
         return -1;
     }
@@ -70,7 +70,7 @@ int host_connect(const char *hostname)
         break;
     }
     if (aip == NULL) {
-        fprintf(stderr, "Can not connect to %s: http\n", hostname);
+        fprintf(stderr, "Can not connect to %s: http\n", host);
         return -1;
     }
 
@@ -79,19 +79,19 @@ int host_connect(const char *hostname)
 
 #else
 
-int host_connect(const char *hostname)
+int http_host_connect(const char *host)
 {
     int sockfd;
     struct sockaddr_in sa;
     socklen_t salen;
 
-    if (hostname == NULL) {
+    if (host == NULL) {
         return -1;
     }
 
     sa.sin_family = AF_INET;
     sa.sin_port = htons((uint16_t)80);
-    if (strcmp(hostname, "v.youku.com") == 0) {
+    if (strcmp(host, "v.youku.com") == 0) {
         /*
          * Address: 183.61.116.217
          * Address: 183.61.116.215
@@ -99,7 +99,7 @@ int host_connect(const char *hostname)
          * Address: 183.61.116.216
          */
         sa.sin_addr.s_addr = inet_addr("183.61.116.218");
-    } else if (strcmp(hostname, "f.youku.com") == 0) {
+    } else if (strcmp(host, "f.youku.com") == 0) {
         /*
          * Address: 183.61.116.54
          * Address: 183.61.116.52
@@ -109,7 +109,7 @@ int host_connect(const char *hostname)
          */
         sa.sin_addr.s_addr = inet_addr("183.61.116.52");
     } else {
-        fprintf(stderr, "%s unknown host %s\n", __func__, hostname);
+        fprintf(stderr, "%s unknown host %s\n", __func__, host);
         return -1;
     }
 
@@ -129,7 +129,6 @@ int host_connect(const char *hostname)
 }
 
 #endif
-
 
 int http_parse_status_line(char *buf, int *status)
 {

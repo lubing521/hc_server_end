@@ -16,8 +16,6 @@
 
 #include "common.h"
 
-#define NGINX_SERVER_IP_ADDR    "127.0.0.1"
-
 #define YK_FILEID_LEN           66   /* 视频文件名解析后的长度 */
 #define YK_MAX_NAME_LEN         32
 
@@ -108,15 +106,18 @@ struct yk_stream_info_s {
     yk_segment_info_t *segs[STREAM_SEGS_MAX];
 };
 
-int yk_get_video(char *url);
-
 bool yk_url_to_playlist(char *url, char *playlist);
 bool yk_get_fileid(char *streamfileids, int video_num, int seed, char *fileids);
 bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_data, 
                     bool use_jumptime, int jump_time, char *out_url);
 
+int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url);
+int yk_is_valid_url(char *yk_url);
+void yk_print_usage(char *cmd);
+int yk_build_request(char *host, char *uri, char *referer, char *buf);
 int yk_parse_playlist(char *data, yk_stream_info_t *streams[]);
 int yk_parse_flvpath(char *data, char *real_url);
 void yk_destroy_streams_all(yk_stream_info_t *streams[]);
 void yk_debug_streams_all(yk_stream_info_t *streams[]);
+int yk_http_session(char *url, char *referer, char *response);
 

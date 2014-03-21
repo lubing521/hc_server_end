@@ -13,8 +13,6 @@
  * History
  */
 
-#include <ctype.h>
-
 #include "yk_lib.h"
 
 static yk_stream_info_t *yk_create_stream_info(const char *type)
@@ -142,10 +140,12 @@ void yk_destroy_streams_all(yk_stream_info_t *streams[])
                 for (j = 0; j < STREAM_SEGS_MAX; j++) {
                     if (streams[i]->segs[j] != NULL) {
                         free(streams[i]->segs[j]);
+                        streams[i]->segs[j] = NULL;
                     }
                 }
             }
             free(streams[i]);
+            streams[i] = NULL;
         }
     }
 }
