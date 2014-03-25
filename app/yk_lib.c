@@ -81,7 +81,9 @@ int yk_is_valid_url(char *yk_url)
 
     cur = strchr(cur, '?');
     if (cur != NULL) {
+#if DEBUG
         fprintf(stderr, "%s WARNING truncating parameters\n", __func__);
+#endif
         *cur = '\0';    /* zhaoyao XXX TODO: Truncate parameters, side-effect */
     }
 

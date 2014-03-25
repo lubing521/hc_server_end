@@ -126,7 +126,7 @@ int sc_ngx_download(char *ngx_ip, char *url)
     }
 
     if (status == 200) {
-        fprintf(stdout, "Getfile success!!! Response status code %d\n", status);
+        //fprintf(stdout, "Getfile success!!! Response status code %d\n", status);
     } else {
         fprintf(stderr, "Getfile failed, response status code %d:%s", status, buffer);
         err = -1;

@@ -98,6 +98,7 @@ int sc_res_info_add_parsed(sc_resource_list_t *rl,
                            sc_resource_info_t *origin_ri,
                            const char *url,
                            sc_resource_info_t **parsed);
+sc_resource_info_t *sc_res_info_find(sc_resource_list_t *rl, const char *url);
 
 
 

@@ -21,8 +21,10 @@ static int sc_snooping_resp_to_sp(int sockfd,
     resp = (http_sp2c_res_pkt_t *)req;
     old = req->sp2c_action; /* zhaoyao XXX FIXME: change req's value directly maybe dangerous */
     resp->status = status;
+    resp->url_len = htons(resp->url_len);
     nsend = sendto(sockfd, (void *)resp, sizeof(http_sp2c_res_pkt_t), 0, sa, salen);
 
+    req->url_len = ntohs(req->url_len);
     req->sp2c_action = old; /* zhaoyao XXX: keep it untouched */
 
     if (nsend < 0) {
@@ -53,6 +55,18 @@ static void sc_snooping_do_parse(int sockfd,
     bzero(url, BUFFER_LEN);
     strcpy(url, (char *)req->url_data);
 
+    origin = sc_res_info_find(sc_resource_info_list, url);
+    if (origin != NULL) {
+        if (!sc_res_is_origin(origin)) {
+            fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, url);
+        }
+#if DEBUG
+        fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, url);
+#endif
+        status = HTTP_SP_STATUS_OK;
+        goto reply;
+    }
+
     ret = sc_res_info_add_origin(sc_resource_info_list, url, &origin);
     if (ret != 0) {
         fprintf(stderr, "%s: add url in resources list failed\n", __func__);
@@ -70,6 +84,7 @@ static void sc_snooping_do_parse(int sockfd,
             goto reply;
         } else {
             status = HTTP_SP_STATUS_OK;
+            fprintf(stdout, "%s url: %s success\n", __func__, url);
         }
     } else {
         fprintf(stderr, "%s: unknown URL: %s\n", __func__, url);
@@ -129,6 +144,10 @@ void sc_snooping_serve(int sockfd)
     socklen_t salen;
     char buf[BUFFER_LEN];
     http_sp2c_req_pkt_t *sp2c_req;
+#if DEBUG
+    struct sockaddr_in *in_sa;
+    char ip_addr[MAX_HOST_NAME_LEN];
+#endif
 
     if (sockfd < 0) {
         fprintf(stderr, "%s: invalid sockfd %d\n", __func__, sockfd);
@@ -148,8 +167,13 @@ void sc_snooping_serve(int sockfd)
             fprintf(stderr, "%s: recvfrom %d bytes, not is http_sp2c_req_pkt_t\n", __func__, nrecv);
             continue;
         }
-
+#if DEBUG
+        in_sa = (struct sockaddr_in *)&sa;
+        fprintf(stderr, "%s client: port %u, ip %s\n", __func__, ntohs(in_sa->sin_port),
+                                inet_ntop(AF_INET, &in_sa->sin_addr, ip_addr, MAX_HOST_NAME_LEN));
+#endif
         sp2c_req = (http_sp2c_req_pkt_t *)buf;
+        sp2c_req->url_len = ntohs(sp2c_req->url_len);
         switch (sp2c_req->sp2c_action) {
         case HTTP_SP2C_ACTION_PARSE:
             sc_snooping_do_parse(sockfd, &sa, salen, sp2c_req);
@@ -205,7 +229,7 @@ int sc_snooping_do_add(sc_resource_info_t *ri)
     req = (http_c2sp_req_pkt_t *)buf;
     req->session_id = ri->id;
     req->c2sp_action = HTTP_C2SP_ACTION_ADD;
-    req->url_len = strlen(ri->url);
+    req->url_len = htons(strlen(ri->url));
     strcpy((char *)req->usr_data, ri->url);
 
     if ((nsend = sendto(sockfd, req, sizeof(http_c2sp_req_pkt_t), 0, (struct sockaddr *)&sa, salen)) < 0) {

@@ -27,6 +27,8 @@
 
 #include <pthread.h>
 
+#define DEBUG               0
+
 #define BUFFER_LEN          512
 
 #define MAX_HOST_NAME_LEN   32

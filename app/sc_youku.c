@@ -102,8 +102,9 @@ int sc_get_yk_video(char *url, sc_resource_info_t *origin)
             fprintf(stderr, "WARNING: stream %s has no segs\n", strm->type);
             continue;
         }
-
+#if DEBUG
         printf("Stream type: %s\n", strm->type);
+#endif
 
         for (j = 0; j < STREAM_SEGS_MAX && strm->segs[j] != NULL; j++) {
             /*
@@ -132,7 +133,9 @@ int sc_get_yk_video(char *url, sc_resource_info_t *origin)
                     err = -1;
                     goto out;
                 }
+#if DEBUG
                 printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
+#endif
                 /*
                  * Step 3 - using real URL to download.
                  */

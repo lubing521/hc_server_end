@@ -301,6 +301,7 @@ int sc_res_list_process_func(sc_resource_list_t *rl)
 #endif
 
         if (sc_res_is_stored(curr) && !sc_res_is_notify(curr)) {
+            fprintf(stderr, "%s use sc_snooping_do_add %s\n", __func__, curr->url);
             ret = sc_snooping_do_add(curr);
             if (ret != 0) {
                 fprintf(stderr, "%s inform Snooping Module add URL failed\n", __func__);
