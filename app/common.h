@@ -23,6 +23,9 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <sys/shm.h>
+
+#include <pthread.h>
 
 #define BUFFER_LEN          512
 
@@ -37,4 +40,9 @@
 #define true                1
 #define false               0
 typedef int bool;
+
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
 

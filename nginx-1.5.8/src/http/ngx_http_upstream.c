@@ -3117,7 +3117,28 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                         || u->headers_in.content_length_n == tf->offset))
                 {
                     ngx_http_upstream_store(r, u);
+                    /* zhaoyao XXX: download and store data success */
                     ngx_log_stderr(NGX_OK, "****** %s store upstream *** data *** success", __func__);
+                    if (r->getfile && sc_resource_info_list != NULL) {
+                        sc_resource_info_t *curr;
+                        int i;
+                        for (i = 0; i < sc_resource_info_list->total; i++) {
+                            curr = &sc_resource_info_list->res[i];
+                            if (ngx_strncmp(curr->url, r->args.data, r->args.len) == 0) {
+                                if (sc_res_is_stored(curr)) {
+                                    ngx_log_stderr(NGX_OK, "***** %s WARNING re-store URL:\n\t%V",
+                                                        __func__, &r->args);
+                                } else {
+                                    sc_res_set_stored(curr);
+                                }
+                                break;
+                            }
+                        }
+                        if (i == sc_resource_info_list->total) {
+                            ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
+                                                __func__, &r->args);
+                        }
+                    }
                     u->store = 0;
                 }
             }
@@ -3487,6 +3508,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     if (u->store && u->pipe && u->pipe->temp_file
         && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
     {
+        /* zhaoyao XXX TODO: */
         ngx_log_stderr(NGX_OK, "****** %s prematurely deleted temp_file, getfile *** failed ***", __func__);
         if (ngx_delete_file(u->pipe->temp_file->file.name.data)
             == NGX_FILE_ERROR)

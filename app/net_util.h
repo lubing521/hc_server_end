@@ -18,6 +18,7 @@
 #define TCP_CONN_MAX_RETRY_TIME     16      /* TCP connect maximum retry time (sec) */
 
 int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen);
+int sock_init_server(int type, const struct sockaddr *addr, socklen_t alen, int qlen);
 
 int http_host_connect(const char *host);    /* Connect http 80 port */
 int http_parse_status_line(char *buf, int *status);

@@ -31,7 +31,7 @@ static int sc_ngx_build_get(const char *ip, const char *uri, char *buf)
         return -1;
     }
 
-    /* zhaoyao TODO: checking request line ,header and length */
+    /* zhaoyao XXX TODO: checking request line ,header and length */
 
     sprintf(buf, sc_ngx_get_pattern, uri, ip);
 

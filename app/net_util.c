@@ -39,6 +39,38 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
     return -1;
 }
 
+int sock_init_server(int type, const struct sockaddr *addr, socklen_t alen, int qlen)
+{
+    int fd;
+    int err = 0;
+
+    if ((fd = socket(addr->sa_family, type, 0)) < 0) {
+        perror("Socket");
+        return -1;
+    }
+
+    if (bind(fd, addr, alen) < 0) {
+        err = errno;
+        perror("Bind");
+        goto errout;
+    }
+
+    if (type == SOCK_STREAM || type == SOCK_SEQPACKET) {
+        if (listen(fd, qlen) < 0) {
+            err = errno;
+            perror("Listen");
+            goto errout;
+        }
+    }
+
+    return fd;
+
+errout:
+    close(fd);
+    errno = err;
+    return -1;
+}
+
 #if 1
 
 int http_host_connect(const char *host)

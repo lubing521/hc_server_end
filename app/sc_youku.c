@@ -12,7 +12,7 @@ int sc_url_is_yk(char *url)
     }
 }
 
-int sc_get_yk_video(char *url)
+int sc_get_yk_video(char *url, sc_resource_info_t *origin)
 {
     char yk_url[BUFFER_LEN];                /* Youku video public URL */
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
@@ -20,8 +20,14 @@ int sc_get_yk_video(char *url)
     char real_url[BUFFER_LEN];              /* Youku video file's real URL */
     char *response = NULL;
     int i, j;
-    int err = 0, status;
+    int err = 0, status, ret;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
+    sc_resource_info_t *parsed;
+
+    if (origin == NULL) {
+        fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
+        return -1;
+    }
 
     if (url == NULL || strlen(url) <= HTTP_URL_PRE_LEN) {
         fprintf(stderr, "%s invalid input url\n", __func__);
@@ -36,8 +42,8 @@ int sc_get_yk_video(char *url)
     }
 
     if (!yk_is_valid_url(yk_url)) {
-        fprintf(stderr, "Invalid URL of Youku video: %s\n", yk_url);
-        exit(-1);
+        fprintf(stderr, "%s ERROR: invalid URL of Youku video: %s\n", __func__, yk_url);
+        return -1;
     }
 
     response = malloc(RESP_BUF_LEN);
@@ -88,7 +94,7 @@ int sc_get_yk_video(char *url)
         //yk_debug_streams_all(streams);
     }
 
-    /* zhaoyao XXX: now we only care about the first type stream */
+    /* zhaoyao XXX TODO: now we only care about the first type stream */
     for (i = 0; i < 1 && streams[i] != NULL; i++) {
         strm = streams[i];
 
@@ -127,7 +133,22 @@ int sc_get_yk_video(char *url)
                     goto out;
                 }
                 printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
-                if (0 && sc_ngx_download(NULL, real_url) < 0) {
+                /*
+                 * Step 3 - using real URL to download.
+                 */
+                /* zhaoyao XXX TODO: need remembering segments count in origin */
+                ret = sc_res_info_add_parsed(sc_resource_info_list, origin, real_url, &parsed);
+                if (ret != 0) {
+                    fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
+                                        __func__, real_url);
+                    /*
+                     * zhaoyao XXX: we can not using Nginx to download, without ri we can not track
+                     *              downloaded resources.
+                     */
+                    continue;
+                }
+                ret = sc_ngx_download(NULL, real_url);
+                if (ret < 0) {
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {
