@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdint.h>
+#include <endian.h>
 
 #include <unistd.h>
 #include <netdb.h>
@@ -40,6 +42,8 @@
 
 #define LF                  ((unsigned char) 10)
 #define CR                  ((unsigned char) 13)
+
+#define INVALID_PTR         ((void *) -1)
 
 #define true                1
 #define false               0

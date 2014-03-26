@@ -16,7 +16,9 @@
 #ifndef __SC_RESOURCE_H__
 #define __SC_RESOURCE_H__
 
-#define SC_RES_SHARE_MEM_ID        65509
+#include "sc_header.h"
+
+#define SC_RES_SHARE_MEM_ID        65507
 #define SC_RES_SHARE_MEM_SIZE      (sizeof(sc_res_list_t) + (sizeof(sc_res_info_t) << SC_RES_NUM_MAX_SHIFT))
 #define SC_RES_SHARE_MEM_MODE      0666
 
@@ -33,8 +35,12 @@ typedef struct sc_res_info_s {
     unsigned long flag;
     char url[SC_RES_URL_MAX_LEN];
 
+    /* Keyframe information */
+    sc_kf_flv_info_t kf_info[SC_KF_FLV_MAX_NUM];
+    unsigned long kf_num;
+
     /* origin URL has */
-    unsigned long cnt;                      /* Derivative's quantity */
+    unsigned long cnt;                 /* Derivative's quantity */
     struct sc_res_info_s *parsed;      /* Derivative of origin URL*/
 
     /* parsed type URL has */
@@ -93,13 +99,15 @@ extern sc_res_list_t *sc_res_info_list;
 sc_res_list_t *sc_res_list_alloc_and_init();
 int sc_res_list_destroy_and_uninit();
 void *sc_res_list_process_thread(void *arg);
-int sc_res_info_add_normal(sc_res_list_t *rl, const char *url, sc_res_info_t **normal);
-int sc_res_info_add_origin(sc_res_list_t *rl, const char *url, sc_res_info_t **origin);
+int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal);
+int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin);
 int sc_res_info_add_parsed(sc_res_list_t *rl,
                            sc_res_info_t *origin_ri,
-                           const char *url,
+                           char *url,
                            sc_res_info_t **parsed);
 sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url);
+void sc_res_copy_url(char *url, char *o_url, char with_para);
+int sc_res_map_url_to_file_path(char *url, char *fpath);
 
 #endif /* __SC_RESOURCE_H__ */
 

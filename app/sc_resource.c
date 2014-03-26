@@ -2,9 +2,73 @@
 #include "sc_header.h"
 #include "sc_resource.h"
 
-volatile unsigned long sc_res_info_session_id_curr = 0;
 sc_res_list_t *sc_res_info_list = NULL;
 int sc_res_share_mem_shmid = -1;
+
+/* zhaoyao XXX: not copy "http://", and omit parameter in o_url is depending on with_para */
+void sc_res_copy_url(char *url, char *o_url, char with_para)
+{
+    char *start = o_url, *p, *q;
+
+    if (url == NULL || o_url == NULL) {
+        fprintf(stderr, "%s: invalid input\n", __func__);
+        return;
+    }
+
+    if (strncmp(start, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
+        start = start + HTTP_URL_PRE_LEN;
+    }
+
+    if (with_para) {
+        for (p = url, q = start; *q != '\0'; p++, q++) {
+            *p = *q;
+        }
+    } else {
+        for (p = url, q = start; *q != '?' && *q != '\0'; p++, q++) {
+            *p = *q;
+        }
+    }
+}
+
+int sc_res_map_url_to_file_path(char *url, char *fpath)
+{
+    char temp[SC_RES_URL_MAX_LEN], *p;
+    int i, first_slash = 1;
+
+    /* zhaoyao XXX TODO: length check */
+    if (url == NULL || fpath == NULL) {
+        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
+        return -1;
+    }
+
+    if (strncmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
+        fprintf(stderr, "%s WARNING: %s has \"http://\"\n", __func__, url);
+        url = url + HTTP_URL_PRE_LEN;
+    }
+
+    bzero(temp, SC_RES_URL_MAX_LEN);
+    for (p = url, i = 0; *p != '?' && *p != '\0'; p++, i++) {
+        if (first_slash && *p == '.') {
+            temp[i] = '_';
+            continue;
+        }
+        if (*p == '/') {
+            if (first_slash) {
+                temp[i] = *p;
+                first_slash = 0;
+            } else {
+                temp[i] = '_';
+            }
+        } else {
+            temp[i] = *p;
+        }
+    }
+
+    fpath = strcat(fpath, SC_NGX_ROOT_PATH);
+    fpath = strcat(fpath, temp);
+
+    return 0;
+}
 
 sc_res_list_t *sc_res_list_alloc_and_init()
 {
@@ -29,7 +93,7 @@ sc_res_list_t *sc_res_list_alloc_and_init()
 
     rl = (sc_res_list_t *)shmptr;
     rl->total = 0x1 << SC_RES_NUM_MAX_SHIFT;
-    rl->res[0].id = 0;
+    rl->res[0].id = (unsigned long)INVALID_PTR;
     for (i = 1; i < rl->total; i++) {
         rl->res[i].id = (unsigned long)(&(rl->res[i - 1]));
     }
@@ -60,7 +124,7 @@ static sc_res_info_t *sc_res_info_get(sc_res_list_t *rl)
         return NULL;
     }
 
-    if (rl->free == NULL) {
+    if (rl->free == INVALID_PTR) {
         fprintf(stderr, "%s ERROR: %d resource info totally ran out\n", __func__, rl->total);
         return NULL;
     }
@@ -69,7 +133,7 @@ static sc_res_info_t *sc_res_info_get(sc_res_list_t *rl)
     rl->free = (sc_res_info_t *)(ri->id);
 
     memset(ri, 0, sizeof(sc_res_info_t));
-    ri->id = sc_res_info_session_id_curr++;    /* Mark a global context id */
+    ri->id = ((unsigned long)ri - (unsigned long)(rl->res)) / sizeof(sc_res_info_t);
 
     return ri;
 }
@@ -86,7 +150,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
     rl->free = ri;
 }
 
-int sc_res_info_add_normal(sc_res_list_t *rl, const char *url, sc_res_info_t **normal)
+int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal)
 {
     int len;
     sc_res_info_t *ri;
@@ -108,7 +172,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, const char *url, sc_res_info_t **n
     }
 
     sc_res_set_normal(ri);
-    strcpy(ri->url, url);
+    sc_res_copy_url(ri->url, url, 1);
 
     if (normal != NULL) {
         *normal = ri;
@@ -136,7 +200,7 @@ void sc_res_info_del_normal(sc_res_list_t *rl, sc_res_info_t *ri)
     sc_res_info_put(rl, ri);
 }
 
-int sc_res_info_add_origin(sc_res_list_t *rl, const char *url, sc_res_info_t **origin)
+int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin)
 {
     int len;
     sc_res_info_t *ri;
@@ -158,7 +222,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, const char *url, sc_res_info_t **o
     }
 
     sc_res_set_origin(ri);
-    strcpy(ri->url, url);
+    sc_res_copy_url(ri->url, url, 0);
 
     if (origin != NULL) {
         *origin = ri;
@@ -190,7 +254,7 @@ void sc_res_info_del_origin(sc_res_list_t *rl, sc_res_info_t *ri)
 
 int sc_res_info_add_parsed(sc_res_list_t *rl,
                            sc_res_info_t *origin_ri,
-                           const char *url,
+                           char *url,
                            sc_res_info_t **parsed)
 {
     int len;
@@ -212,7 +276,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
         return -1;
     }
 
-    strcpy(ri->url, url);
+    sc_res_copy_url(ri->url, url, 1);
 
     if (origin_ri->cnt == 0) {  /* First derivative is come */
         origin_ri->parsed = ri;
@@ -295,26 +359,27 @@ int sc_res_list_process_func(sc_res_list_t *rl)
             continue;
         }
 
-#if 0
         if (!sc_res_is_stored(curr)) {
             /* zhaoyao XXX TODO: timeout, and re-download */
+            continue;
         }
-#endif
 
-        if (sc_res_is_stored(curr) && !sc_res_is_notify(curr)) {
+        if (!sc_res_is_notify(curr)) {
             fprintf(stderr, "%s use sc_snooping_do_add %s\n", __func__, curr->url);
             ret = sc_snooping_do_add(curr);
             if (ret != 0) {
                 fprintf(stderr, "%s inform Snooping Module add URL failed\n", __func__);
                 err++;
             }
-            continue;
         }
 
-        if (!sc_res_is_stored(curr) && sc_res_is_notify(curr)) {
-            fprintf(stderr, "%s INTERNAL ERROR, not stored but notified...\n", __func__);
-            err++;
-            continue;
+        if (!sc_res_is_kf_crt(curr)) {
+            fprintf(stderr, "%s use sc_kf_flv_create_info %s\n", __func__, curr->url);
+            ret = sc_kf_flv_create_info(curr);
+            if (ret != 0) {
+                fprintf(stderr, "%s create FLV key frame information failed\n", __func__);
+                err++;
+            }
         }
     }
 

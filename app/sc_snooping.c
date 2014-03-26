@@ -42,18 +42,11 @@ static void sc_snooping_do_parse(int sockfd,
 {
     int ret;
     u8 status;
-    char url[BUFFER_LEN];
+    char url[SC_RES_URL_MAX_LEN];
     sc_res_info_t *origin;
 
-    if (req->url_len >= BUFFER_LEN) {
-        fprintf(stderr, "%s: invalid URL, it length(%u) should less than BUFFER_LEN(%d)\n",
-                         __func__, req->url_len, BUFFER_LEN);
-        status = HTTP_SP_STATUS_DEFAULT_ERROR;
-        goto reply;
-    }
-
-    bzero(url, BUFFER_LEN);
-    strcpy(url, (char *)req->url_data);
+    bzero(url, SC_RES_URL_MAX_LEN);
+    sc_res_copy_url(url, (char *)req->url_data, 0);     /* zhaoyao: do not care about parameter */
 
     origin = sc_res_info_find(sc_res_info_list, url);
     if (origin != NULL) {
@@ -110,22 +103,34 @@ static void sc_snooping_do_down(int sockfd,
     u8 status;
     sc_res_info_t *normal;
 
-    ret = sc_res_info_add_normal(sc_res_info_list, (const char *)req->url_data, &normal);
+    normal = sc_res_info_find(sc_res_info_list, (const char *)req->url_data);
+    if (normal != NULL) {
+        if (!sc_res_is_normal(normal)) {
+            fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, req->url_data);
+        }
+#if DEBUG
+        fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, req->url_data);
+#endif
+        status = HTTP_SP_STATUS_OK;
+        goto reply;        
+    }
+
+    ret = sc_res_info_add_normal(sc_res_info_list, (char *)req->url_data, &normal);
     if (ret != 0) {
         fprintf(stderr, "%s: add url in resources list failed\n", __func__);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
 
-    ret = sc_ngx_download(NULL, (char *)req->url_data);
+    ret = sc_ngx_download(NULL, normal->url);
     if (ret != 0) {
-        fprintf(stderr, "%s: download %s failed\n", __func__, req->url_data);
+        fprintf(stderr, "%s: download %s failed\n", __func__, normal->url);
         /* zhaoyao XXX TODO FIXME: do we need sc_res_info_del_normal() now ??? */
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
 
-    fprintf(stdout, "%s: inform Nginx to download %s success\n", __func__, req->url_data);
+    fprintf(stdout, "%s: inform Nginx to download %s success\n", __func__, normal->url);
     status = HTTP_SP_STATUS_OK;
 
 reply:
@@ -174,6 +179,12 @@ void sc_snooping_serve(int sockfd)
 #endif
         sp2c_req = (http_sp2c_req_pkt_t *)buf;
         sp2c_req->url_len = ntohs(sp2c_req->url_len);
+        if (sp2c_req->url_len >= SC_RES_URL_MAX_LEN) {
+            fprintf(stderr, "%s WARNING: sp2c_req's url (%u) is longer than %d\n",
+                                __func__, sp2c_req->url_len, SC_RES_URL_MAX_LEN);
+            continue;
+        }
+
         switch (sp2c_req->sp2c_action) {
         case HTTP_SP2C_ACTION_PARSE:
             sc_snooping_do_parse(sockfd, &sa, salen, sp2c_req);
@@ -230,7 +241,7 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     req->session_id = ri->id;
     req->c2sp_action = HTTP_C2SP_ACTION_ADD;
     req->url_len = htons(strlen(ri->url));
-    strcpy((char *)req->usr_data, ri->url);
+    sc_res_copy_url((char *)req->usr_data, ri->url, 1);
 
     if ((nsend = sendto(sockfd, req, sizeof(http_c2sp_req_pkt_t), 0, (struct sockaddr *)&sa, salen)) < 0) {
         fprintf(stderr, "%s ERROR sendto failed: %s\n", __func__, strerror(errno));

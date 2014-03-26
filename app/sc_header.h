@@ -16,13 +16,57 @@
 #ifndef __SC_HEADER_H__
 #define __SC_HEADER_H__
 
-#include "sc_resource.h"
-
+#define SC_NGX_ROOT_PATH                "/data/usb0/"
 #define SC_NGX_DEFAULT_IP_ADDR          "127.0.0.1"
 #define SC_NGX_DEFAULT_PORT             8089
 
 #define SC_CLIENT_DEFAULT_IP_ADDR       "0.0.0.0"
 #define SC_SNOOP_MOD_DEFAULT_IP_ADDR    "20.0.0.1"
+
+#define SC_KF_FLV_READ_MAX              (32*1024)
+#define SC_KF_FLV_MAX_NUM               256
+
+typedef struct sc_kf_flv_info_s {
+	unsigned int file_pos;	/* 偏移量，单位字节 */
+	unsigned int time;		/* 时间，单位秒 */
+} sc_kf_flv_info_t;
+
+#include "sc_resource.h"
+
+int sc_kf_flv_create_info(sc_res_info_t *ri);
+
+/* 在关键帧列表中，根据时间查找对应的偏移量
+ *@keyframe已有序，按时间从小到大
+ * return对应的偏移量
+ */
+static inline u32 sc_kf_flv_seek_offset(u32 targetTime, sc_kf_flv_info_t *keyframe, u32 key_num)
+{
+    u32 left = 0, right = 0;
+    u32 midIndex, mid;
+    u32 midValue, last_judge;
+
+    for (right = key_num - 1; left != right;) {
+        midIndex = (right + left) / 2;
+        mid = (right - left);
+        midValue = keyframe[midIndex].time ;
+        if (midValue == targetTime) {
+            return keyframe[midIndex].file_pos;
+        }
+
+        if(targetTime > midValue){
+            left = midIndex;
+        } else {
+            right = midIndex;
+        }
+       
+        if (mid <= 2) {
+           break;
+        }        
+    }
+
+    last_judge = (keyframe[right].time - keyframe[left].time) / 2;
+    return (last_judge > targetTime ? keyframe[right].file_pos : keyframe[left].file_pos);
+}
 
 int sc_ngx_download(char *ngx_ip, char *url);
 
