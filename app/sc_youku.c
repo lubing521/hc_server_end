@@ -12,7 +12,7 @@ int sc_url_is_yk(char *url)
     }
 }
 
-int sc_get_yk_video(char *url, sc_resource_info_t *origin)
+int sc_get_yk_video(char *url, sc_res_info_t *origin)
 {
     char yk_url[BUFFER_LEN];                /* Youku video public URL */
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
@@ -22,7 +22,7 @@ int sc_get_yk_video(char *url, sc_resource_info_t *origin)
     int i, j;
     int err = 0, status, ret;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
-    sc_resource_info_t *parsed;
+    sc_res_info_t *parsed;
 
     if (origin == NULL) {
         fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
@@ -140,7 +140,7 @@ int sc_get_yk_video(char *url, sc_resource_info_t *origin)
                  * Step 3 - using real URL to download.
                  */
                 /* zhaoyao XXX TODO: need remembering segments count in origin */
-                ret = sc_res_info_add_parsed(sc_resource_info_list, origin, real_url, &parsed);
+                ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
                 if (ret != 0) {
                     fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
                                         __func__, real_url);

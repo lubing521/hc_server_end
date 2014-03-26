@@ -13,6 +13,9 @@
  * History
  */
 
+#ifndef __NET_UTIL_H__
+#define __NET_UTIL_H__
+
 #include "common.h"
 
 #define TCP_CONN_MAX_RETRY_TIME     16      /* TCP connect maximum retry time (sec) */
@@ -22,4 +25,6 @@ int sock_init_server(int type, const struct sockaddr *addr, socklen_t alen, int 
 
 int http_host_connect(const char *host);    /* Connect http 80 port */
 int http_parse_status_line(char *buf, int *status);
+
+#endif /* __NET_UTIL_H__ */
 

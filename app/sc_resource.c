@@ -1,23 +1,24 @@
 #include "common.h"
 #include "sc_header.h"
+#include "sc_resource.h"
 
-volatile unsigned long sc_resource_info_session_id_curr = 0;
-sc_resource_list_t *sc_resource_info_list = NULL;
-int sc_resource_share_mem_shmid = -1;
+volatile unsigned long sc_res_info_session_id_curr = 0;
+sc_res_list_t *sc_res_info_list = NULL;
+int sc_res_share_mem_shmid = -1;
 
-sc_resource_list_t *sc_res_list_alloc_and_init()
+sc_res_list_t *sc_res_list_alloc_and_init()
 {
-    sc_resource_list_t *rl;
+    sc_res_list_t *rl;
     int mem_size, i;
     void *shmptr;
     int shmid;
 
-    mem_size = SC_RESOURCE_SHARE_MEM_SIZE;
-    if ((shmid = shmget(SC_RESOURCE_SHARE_MEM_ID, mem_size, SC_RESOURCE_SHARE_MEM_MODE | IPC_CREAT)) < 0) {
+    mem_size = SC_RES_SHARE_MEM_SIZE;
+    if ((shmid = shmget(SC_RES_SHARE_MEM_ID, mem_size, SC_RES_SHARE_MEM_MODE | IPC_CREAT)) < 0) {
         fprintf(stderr, "%s shmget failed, memory size %d: %s", __func__, mem_size, strerror(errno));
         return NULL;
     }
-    sc_resource_share_mem_shmid = shmid;
+    sc_res_share_mem_shmid = shmid;
 
     if ((shmptr = shmat(shmid, 0, 0)) == (void *)-1) {
         fprintf(stderr, "%s shmat failed: %s", __func__, strerror(errno));
@@ -26,8 +27,8 @@ sc_resource_list_t *sc_res_list_alloc_and_init()
     }
     memset(shmptr, 0, mem_size);
 
-    rl = (sc_resource_list_t *)shmptr;
-    rl->total = 0x1 << SC_RESOURCE_NUM_MAX_SHIFT;
+    rl = (sc_res_list_t *)shmptr;
+    rl->total = 0x1 << SC_RES_NUM_MAX_SHIFT;
     rl->res[0].id = 0;
     for (i = 1; i < rl->total; i++) {
         rl->res[i].id = (unsigned long)(&(rl->res[i - 1]));
@@ -39,20 +40,20 @@ sc_resource_list_t *sc_res_list_alloc_and_init()
 
 int sc_res_list_destroy_and_uninit()
 {
-    if (shmctl(sc_resource_share_mem_shmid, IPC_RMID, NULL) < 0) {
+    if (shmctl(sc_res_share_mem_shmid, IPC_RMID, NULL) < 0) {
         fprintf(stderr, "%s shmctl failed: %s", __func__, strerror(errno));
         return -1;
     }
 
-    sc_resource_share_mem_shmid = -1;
-    sc_resource_info_list = NULL;
+    sc_res_share_mem_shmid = -1;
+    sc_res_info_list = NULL;
 
     return 0;
 }
 
-static sc_resource_info_t *sc_res_info_get(sc_resource_list_t *rl)
+static sc_res_info_t *sc_res_info_get(sc_res_list_t *rl)
 {
-    sc_resource_info_t *ri;
+    sc_res_info_t *ri;
 
     if (rl == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
@@ -65,44 +66,44 @@ static sc_resource_info_t *sc_res_info_get(sc_resource_list_t *rl)
     }
 
     ri = rl->free;
-    rl->free = (sc_resource_info_t *)(ri->id);
+    rl->free = (sc_res_info_t *)(ri->id);
 
-    memset(ri, 0, sizeof(sc_resource_info_t));
-    ri->id = sc_resource_info_session_id_curr++;    /* Mark a global context id */
+    memset(ri, 0, sizeof(sc_res_info_t));
+    ri->id = sc_res_info_session_id_curr++;    /* Mark a global context id */
 
     return ri;
 }
 
-static void sc_res_info_put(sc_resource_list_t *rl, sc_resource_info_t *ri)
+static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     if (rl == NULL || ri == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return;
     }
 
-    memset(ri, 0, sizeof(sc_resource_info_t));
+    memset(ri, 0, sizeof(sc_res_info_t));
     ri->id = (unsigned long)(rl->free);
     rl->free = ri;
 }
 
-int sc_res_info_add_normal(sc_resource_list_t *rl, const char *url, sc_resource_info_t **normal)
+int sc_res_info_add_normal(sc_res_list_t *rl, const char *url, sc_res_info_t **normal)
 {
     int len;
-    sc_resource_info_t *ri;
+    sc_res_info_t *ri;
 
     if (rl == NULL || url == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
     len = strlen(url);
-    if (len >= SC_RESOURCE_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RESOURCE_URL_MAX_LEN);
+    if (len >= SC_RES_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
         return -1;
     }
 
     ri = sc_res_info_get(rl);
     if (ri == NULL) {
-        fprintf(stderr, "%s ERROR: get free resource_info failed\n", __func__);
+        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
         return -1;
     }
 
@@ -116,7 +117,7 @@ int sc_res_info_add_normal(sc_resource_list_t *rl, const char *url, sc_resource_
     return 0;
 }
 
-void sc_res_info_del_normal(sc_resource_list_t *rl, sc_resource_info_t *ri)
+void sc_res_info_del_normal(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     if (rl == NULL || ri == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
@@ -124,7 +125,7 @@ void sc_res_info_del_normal(sc_resource_list_t *rl, sc_resource_info_t *ri)
     }
 
     if (!sc_res_is_normal(ri)) {
-        fprintf(stderr, "%s ERROR: can not delete 0x%lx flag resource_info\n", __func__, ri->flag);
+        fprintf(stderr, "%s ERROR: can not delete 0x%lx flag res_info\n", __func__, ri->flag);
         return;
     }
 
@@ -135,24 +136,24 @@ void sc_res_info_del_normal(sc_resource_list_t *rl, sc_resource_info_t *ri)
     sc_res_info_put(rl, ri);
 }
 
-int sc_res_info_add_origin(sc_resource_list_t *rl, const char *url, sc_resource_info_t **origin)
+int sc_res_info_add_origin(sc_res_list_t *rl, const char *url, sc_res_info_t **origin)
 {
     int len;
-    sc_resource_info_t *ri;
+    sc_res_info_t *ri;
 
     if (rl == NULL || url == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
     len = strlen(url);
-    if (len >= SC_RESOURCE_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RESOURCE_URL_MAX_LEN);
+    if (len >= SC_RES_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
         return -1;
     }
 
     ri = sc_res_info_get(rl);
     if (ri == NULL) {
-        fprintf(stderr, "%s ERROR: get free resource_info failed\n", __func__);
+        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
         return -1;
     }
 
@@ -166,7 +167,7 @@ int sc_res_info_add_origin(sc_resource_list_t *rl, const char *url, sc_resource_
     return 0;
 }
 
-void sc_res_info_del_origin(sc_resource_list_t *rl, sc_resource_info_t *ri)
+void sc_res_info_del_origin(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     if (rl == NULL || ri == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
@@ -187,27 +188,27 @@ void sc_res_info_del_origin(sc_resource_list_t *rl, sc_resource_info_t *ri)
     sc_res_info_put(rl, ri);
 }
 
-int sc_res_info_add_parsed(sc_resource_list_t *rl,
-                           sc_resource_info_t *origin_ri,
+int sc_res_info_add_parsed(sc_res_list_t *rl,
+                           sc_res_info_t *origin_ri,
                            const char *url,
-                           sc_resource_info_t **parsed)
+                           sc_res_info_t **parsed)
 {
     int len;
-    sc_resource_info_t *ri;
+    sc_res_info_t *ri;
 
     if (rl == NULL || origin_ri == NULL || url == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
     len = strlen(url);
-    if (len >= SC_RESOURCE_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RESOURCE_URL_MAX_LEN);
+    if (len >= SC_RES_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
         return -1;
     }
 
     ri = sc_res_info_get(rl);
     if (ri == NULL) {
-        fprintf(stderr, "%s ERROR: get free resource_info failed\n", __func__);
+        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
         return -1;
     }
 
@@ -230,9 +231,9 @@ int sc_res_info_add_parsed(sc_resource_list_t *rl,
     return 0;
 }
 
-void sc_res_info_del_parsed(sc_resource_list_t *rl,
-                            sc_resource_info_t *origin_ri,
-                            sc_resource_info_t *ri)
+void sc_res_info_del_parsed(sc_res_list_t *rl,
+                            sc_res_info_t *origin_ri,
+                            sc_res_info_t *ri)
 {
     if (rl == NULL || origin_ri == NULL || ri == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
@@ -240,7 +241,7 @@ void sc_res_info_del_parsed(sc_resource_list_t *rl,
     }
 
     if (sc_res_is_origin(ri) || sc_res_is_normal(ri)) {
-        fprintf(stderr, "%s ERROR: can not delete 0x%lx flag resource_info\n", __func__, ri->flag);
+        fprintf(stderr, "%s ERROR: can not delete 0x%lx flag res_info\n", __func__, ri->flag);
         return;
     }
 
@@ -253,9 +254,9 @@ void sc_res_info_del_parsed(sc_resource_list_t *rl,
     sc_res_info_put(rl, ri);
 }
 
-sc_resource_info_t *sc_res_info_find(sc_resource_list_t *rl, const char *url)
+sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url)
 {
-    sc_resource_info_t *curr;
+    sc_res_info_t *curr;
     int i;
 
     if (rl == NULL || url == NULL) {
@@ -273,9 +274,9 @@ sc_resource_info_t *sc_res_info_find(sc_resource_list_t *rl, const char *url)
     return NULL;
 }
 
-int sc_res_list_process_func(sc_resource_list_t *rl)
+int sc_res_list_process_func(sc_res_list_t *rl)
 {
-    sc_resource_info_t *curr;
+    sc_res_info_t *curr;
     int i, err = 0, ret;
 
     if (rl == NULL) {
@@ -325,7 +326,7 @@ void *sc_res_list_process_thread(void *arg)
     int ret;
 
     while (1) {
-        ret = sc_res_list_process_func(sc_resource_info_list);
+        ret = sc_res_list_process_func(sc_res_info_list);
         if (ret < 0) {
             fprintf(stderr, "%s exit...\n", __func__);
             break;

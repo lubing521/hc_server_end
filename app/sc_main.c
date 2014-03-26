@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    sc_resource_info_list = sc_res_list_alloc_and_init();
-    if (sc_resource_info_list == NULL) {
-        fprintf(stderr, "sc_resource_info_list init failed\n");
+    sc_res_info_list = sc_res_list_alloc_and_init();
+    if (sc_res_info_list == NULL) {
+        fprintf(stderr, "sc_res_info_list init failed\n");
         return -1;
     }
 

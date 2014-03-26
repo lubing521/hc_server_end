@@ -43,7 +43,7 @@ static void sc_snooping_do_parse(int sockfd,
     int ret;
     u8 status;
     char url[BUFFER_LEN];
-    sc_resource_info_t *origin;
+    sc_res_info_t *origin;
 
     if (req->url_len >= BUFFER_LEN) {
         fprintf(stderr, "%s: invalid URL, it length(%u) should less than BUFFER_LEN(%d)\n",
@@ -55,7 +55,7 @@ static void sc_snooping_do_parse(int sockfd,
     bzero(url, BUFFER_LEN);
     strcpy(url, (char *)req->url_data);
 
-    origin = sc_res_info_find(sc_resource_info_list, url);
+    origin = sc_res_info_find(sc_res_info_list, url);
     if (origin != NULL) {
         if (!sc_res_is_origin(origin)) {
             fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, url);
@@ -67,7 +67,7 @@ static void sc_snooping_do_parse(int sockfd,
         goto reply;
     }
 
-    ret = sc_res_info_add_origin(sc_resource_info_list, url, &origin);
+    ret = sc_res_info_add_origin(sc_res_info_list, url, &origin);
     if (ret != 0) {
         fprintf(stderr, "%s: add url in resources list failed\n", __func__);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
@@ -108,9 +108,9 @@ static void sc_snooping_do_down(int sockfd,
 {
     int ret;
     u8 status;
-    sc_resource_info_t *normal;
+    sc_res_info_t *normal;
 
-    ret = sc_res_info_add_normal(sc_resource_info_list, (const char *)req->url_data, &normal);
+    ret = sc_res_info_add_normal(sc_res_info_list, (const char *)req->url_data, &normal);
     if (ret != 0) {
         fprintf(stderr, "%s: add url in resources list failed\n", __func__);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
@@ -190,7 +190,7 @@ void sc_snooping_serve(int sockfd)
     }
 }
 
-int sc_snooping_do_add(sc_resource_info_t *ri)
+int sc_snooping_do_add(sc_res_info_t *ri)
 {
     int err = 0, nsend, nrecv;
     int sockfd;

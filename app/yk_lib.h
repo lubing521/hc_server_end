@@ -14,6 +14,9 @@
  * History
  */
 
+#ifndef __YK_LIB_H__
+#define __YK_LIB_H__
+
 #include "common.h"
 
 #define YK_FILEID_LEN           66   /* 视频文件名解析后的长度 */
@@ -120,4 +123,6 @@ int yk_parse_flvpath(char *data, char *real_url);
 void yk_destroy_streams_all(yk_stream_info_t *streams[]);
 void yk_debug_streams_all(yk_stream_info_t *streams[]);
 int yk_http_session(char *url, char *referer, char *response);
+
+#endif /* __YK_LIB_H__ */
 
