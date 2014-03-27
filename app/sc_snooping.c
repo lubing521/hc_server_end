@@ -147,7 +147,7 @@ void sc_snooping_serve(int sockfd)
     int nrecv;
     struct sockaddr sa;
     socklen_t salen;
-    char buf[BUFFER_LEN];
+    char buf[SC_SNOOPING_SND_RCV_BUF_LEN];
     http_sp2c_req_pkt_t *sp2c_req;
 #if DEBUG
     struct sockaddr_in *in_sa;
@@ -163,13 +163,13 @@ void sc_snooping_serve(int sockfd)
         salen = sizeof(struct sockaddr);
         bzero(&sa, salen);
         bzero(buf, sizeof(buf));
-        if ((nrecv = recvfrom(sockfd, buf, BUFFER_LEN, 0, &sa, &salen)) < 0) {
+        if ((nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, &sa, &salen)) < 0) {
             fprintf(stderr, "%s: recvfrom error: %s", __func__, strerror(errno));
             continue;
         }
 
-        if (nrecv != sizeof(http_sp2c_req_pkt_t)) {
-            fprintf(stderr, "%s: recvfrom %d bytes, not is http_sp2c_req_pkt_t\n", __func__, nrecv);
+        if (nrecv < sizeof(http_sp2c_req_pkt_t)) {
+            fprintf(stderr, "%s: recvfrom invalid %d bytes\n", __func__, nrecv);
             continue;
         }
 #if DEBUG
@@ -207,7 +207,7 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     int sockfd;
     struct sockaddr_in sa;
     socklen_t salen;
-    static char buf[BUFFER_LEN];
+    static char buf[SC_SNOOPING_SND_RCV_BUF_LEN];
     http_c2sp_req_pkt_t *req;
     http_c2sp_res_pkt_t *res;
 
@@ -232,9 +232,9 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     }
 
     memset(buf, 0, sizeof(buf));
-    if (BUFFER_LEN < sizeof(http_c2sp_req_pkt_t)) {
+    if (SC_SNOOPING_SND_RCV_BUF_LEN < sizeof(http_c2sp_req_pkt_t)) {
         fprintf(stderr, "%s ERROR: small buf(%d) can not hold c2sp_req(%d)\n",
-                            __func__, BUFFER_LEN, sizeof(http_c2sp_req_pkt_t));
+                            __func__, SC_SNOOPING_SND_RCV_BUF_LEN, sizeof(http_c2sp_req_pkt_t));
         return -1;
     }
     req = (http_c2sp_req_pkt_t *)buf;
@@ -248,12 +248,14 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         err = -1;
         goto out;
     }
+    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
 
     memset(buf, 0, sizeof(buf));
-    nrecv = recvfrom(sockfd, buf, BUFFER_LEN, 0, NULL, NULL);
+    nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, NULL, NULL);
+    fprintf(stdout, "%s recvfrom %d\n", __func__, nrecv);
     /* zhaoyao TODO XXX: timeout */
-    if (nrecv != sizeof(http_c2sp_res_pkt_t)) {
-        fprintf(stderr, "%s ERROR recvfrom %d, is not equal to %d: %s\n",
+    if (nrecv < 0) {
+        fprintf(stderr, "%s ERROR recvfrom %d, is not valid to %d: %s\n",
                             __func__, nrecv, sizeof(http_c2sp_res_pkt_t), strerror(errno));
         err = -1;
         goto out;

@@ -23,6 +23,7 @@
 
 #define SC_CLIENT_DEFAULT_IP_ADDR       "0.0.0.0"
 #define SC_SNOOP_MOD_DEFAULT_IP_ADDR    "20.0.0.1"
+#define SC_SNOOPING_SND_RCV_BUF_LEN     1024
 
 #define SC_KF_FLV_READ_MAX              (32*1024)
 #define SC_KF_FLV_MAX_NUM               256

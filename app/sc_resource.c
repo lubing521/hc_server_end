@@ -30,28 +30,49 @@ void sc_res_copy_url(char *url, char *o_url, char with_para)
     }
 }
 
-sc_res_list_t *sc_res_list_alloc_and_init()
+static int sc_res_list_alloc_share_mem(sc_res_list_t **prl)
 {
-    sc_res_list_t *rl;
-    int mem_size, i;
+    int mem_size;
     void *shmptr;
     int shmid;
+
+    if (prl == NULL) {
+        return -1;
+    }
 
     mem_size = SC_RES_SHARE_MEM_SIZE;
     if ((shmid = shmget(SC_RES_SHARE_MEM_ID, mem_size, SC_RES_SHARE_MEM_MODE | IPC_CREAT)) < 0) {
         fprintf(stderr, "%s shmget failed, memory size %d: %s", __func__, mem_size, strerror(errno));
-        return NULL;
+        return -1;
     }
-    sc_res_share_mem_shmid = shmid;
 
     if ((shmptr = shmat(shmid, 0, 0)) == (void *)-1) {
         fprintf(stderr, "%s shmat failed: %s", __func__, strerror(errno));
-        sc_res_list_destroy_and_uninit();
-        return NULL;
+        sc_res_list_destroy_and_uninit(shmid);
+        return -1;
     }
     memset(shmptr, 0, mem_size);
 
-    rl = (sc_res_list_t *)shmptr;
+    *prl = shmptr;
+
+    return shmid;
+}
+
+int sc_res_list_alloc_and_init(sc_res_list_t **prl)
+{
+    sc_res_list_t *rl;
+    int ret, i;
+
+    if (prl == NULL) {
+        return -1;
+    }
+
+    ret = sc_res_list_alloc_share_mem(&rl);
+    if (ret < 0) {
+        fprintf(stderr, "%s allocate failed\n", __func__);
+        return -1;
+    }
+
     rl->total = 0x1 << SC_RES_NUM_MAX_SHIFT;
     rl->res[0].id = (unsigned long)INVALID_PTR;
     for (i = 1; i < rl->total; i++) {
@@ -59,17 +80,18 @@ sc_res_list_t *sc_res_list_alloc_and_init()
     }
     rl->free = (&(rl->res[i - 1]));
 
-    return rl;
+    *prl = rl;
+
+    return ret;
 }
 
-int sc_res_list_destroy_and_uninit()
+int sc_res_list_destroy_and_uninit(int shmid)
 {
-    if (shmctl(sc_res_share_mem_shmid, IPC_RMID, NULL) < 0) {
-        fprintf(stderr, "%s shmctl failed: %s", __func__, strerror(errno));
+    if (shmctl(shmid, IPC_RMID, NULL) < 0) {
+        fprintf(stderr, "%s shmctl remove %d failed: %s", __func__, shmid, strerror(errno));
         return -1;
     }
 
-    sc_res_share_mem_shmid = -1;
     sc_res_info_list = NULL;
 
     return 0;

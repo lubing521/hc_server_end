@@ -20,11 +20,11 @@
 
 #include "sc_header.h"
 
-#define SC_RES_SHARE_MEM_ID        65507
+#define SC_RES_SHARE_MEM_ID        65509
 #define SC_RES_SHARE_MEM_SIZE      (sizeof(sc_res_list_t) + (sizeof(sc_res_info_t) << SC_RES_NUM_MAX_SHIFT))
 #define SC_RES_SHARE_MEM_MODE      0666
 
-#define SC_RES_URL_MAX_LEN         256
+#define SC_RES_URL_MAX_LEN         512
 #define SC_RES_NUM_MAX_SHIFT       10          /* Number is 1 << 10 */
 
 #define SC_RES_FLAG_NORMAL    (0x00000001UL)   /* Snooping inform Nginx to directly download */
@@ -138,7 +138,7 @@ static inline int sc_res_map_url_to_file_path(char *url, char *fpath)
 }
 
 extern sc_res_list_t *sc_res_info_list;
-sc_res_list_t *sc_res_list_alloc_and_init();
+int sc_res_list_alloc_and_init(sc_res_list_t **prl);
 int sc_res_list_destroy_and_uninit();
 void *sc_res_list_process_thread(void *arg);
 int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal);

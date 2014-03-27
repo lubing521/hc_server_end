@@ -2,7 +2,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#define DEBUG_GETFILE   1   /* zhaoyao TODO: add debug switch */
+#define DEBUG_GETFILE   0   /* zhaoyao TODO: add debug switch */
 #define BUFLEN          64
 #define BUFLEN_L        512
 

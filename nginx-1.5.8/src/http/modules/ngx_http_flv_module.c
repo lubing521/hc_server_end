@@ -202,9 +202,10 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                         ngx_memzero(file, SC_RES_URL_MAX_LEN);
                         sc_res_map_url_to_file_path(curr->url, file);
                         if (ngx_strncmp(&file[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(file) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
-                            ngx_log_stderr(NGX_OK, "%s: search key frame\n", __func__);
                             real_offset = sc_kf_flv_seek_offset(start, curr->kf_info, curr->kf_num);
                             len = of.size - real_offset;
+                            ngx_log_stderr(NGX_OK, "*** %s: start(%O), len(%O), offset(%O), file(%O)\n",
+                                                    __func__, start, len, real_offset, of.size);
                             start = real_offset;
                             i = 1;
                             break;

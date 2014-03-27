@@ -11,6 +11,7 @@ int main(int argc, char *argv[])
     socklen_t salen;
     char *ip_addr, default_ip[MAX_HOST_NAME_LEN] = SC_CLIENT_DEFAULT_IP_ADDR;
     pthread_t tid;
+    int shmid;
 
     if (argc == 2) {
         ip_addr = argv[1];
@@ -23,9 +24,9 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    sc_res_info_list = sc_res_list_alloc_and_init();
-    if (sc_res_info_list == NULL) {
-        fprintf(stderr, "sc_res_info_list init failed\n");
+    shmid = sc_res_list_alloc_and_init(&sc_res_info_list);
+    if (shmid < 0) {
+        fprintf(stderr, "sc_res_list_alloc_and_init failed\n");
         return -1;
     }
 
@@ -58,7 +59,7 @@ int main(int argc, char *argv[])
 out2:
     close(sockfd);
 out1:
-    sc_res_list_destroy_and_uninit();
+    sc_res_list_destroy_and_uninit(shmid);
 
     return err;
 }
