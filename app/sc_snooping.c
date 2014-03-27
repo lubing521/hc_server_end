@@ -248,11 +248,11 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         err = -1;
         goto out;
     }
-    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
+//    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
 
     memset(buf, 0, sizeof(buf));
     nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, NULL, NULL);
-    fprintf(stdout, "%s recvfrom %d\n", __func__, nrecv);
+//    fprintf(stdout, "%s recvfrom %d\n", __func__, nrecv);
     /* zhaoyao TODO XXX: timeout */
     if (nrecv < 0) {
         fprintf(stderr, "%s ERROR recvfrom %d, is not valid to %d: %s\n",

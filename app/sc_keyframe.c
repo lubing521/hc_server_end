@@ -342,6 +342,7 @@ int sc_kf_flv_create_info(sc_res_info_t *ri)
     }
 
     sc_res_set_kf_crt(ri);
+    fprintf(stdout, "%s OK\n", __func__);
 
 out:
     fclose(fp);
