@@ -207,7 +207,7 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     int sockfd;
     struct sockaddr_in sa;
     socklen_t salen;
-    static char buf[SC_SNOOPING_SND_RCV_BUF_LEN];
+    char buf[SC_SNOOPING_SND_RCV_BUF_LEN];
     http_c2sp_req_pkt_t *req;
     http_c2sp_res_pkt_t *res;
 
