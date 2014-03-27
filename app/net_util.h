@@ -20,6 +20,9 @@
 
 #define TCP_CONN_MAX_RETRY_TIME     16      /* TCP connect maximum retry time (sec) */
 
+#define LF                  ((unsigned char) 10)
+#define CR                  ((unsigned char) 13)
+
 int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen);
 int sock_init_server(int type, const struct sockaddr *addr, socklen_t alen, int qlen);
 

@@ -30,46 +30,6 @@ void sc_res_copy_url(char *url, char *o_url, char with_para)
     }
 }
 
-int sc_res_map_url_to_file_path(char *url, char *fpath)
-{
-    char temp[SC_RES_URL_MAX_LEN], *p;
-    int i, first_slash = 1;
-
-    /* zhaoyao XXX TODO: length check */
-    if (url == NULL || fpath == NULL) {
-        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
-        return -1;
-    }
-
-    if (strncmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
-        fprintf(stderr, "%s WARNING: %s has \"http://\"\n", __func__, url);
-        url = url + HTTP_URL_PRE_LEN;
-    }
-
-    bzero(temp, SC_RES_URL_MAX_LEN);
-    for (p = url, i = 0; *p != '?' && *p != '\0'; p++, i++) {
-        if (first_slash && *p == '.') {
-            temp[i] = '_';
-            continue;
-        }
-        if (*p == '/') {
-            if (first_slash) {
-                temp[i] = *p;
-                first_slash = 0;
-            } else {
-                temp[i] = '_';
-            }
-        } else {
-            temp[i] = *p;
-        }
-    }
-
-    fpath = strcat(fpath, SC_NGX_ROOT_PATH);
-    fpath = strcat(fpath, temp);
-
-    return 0;
-}
-
 sc_res_list_t *sc_res_list_alloc_and_init()
 {
     sc_res_list_t *rl;

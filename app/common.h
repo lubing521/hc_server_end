@@ -31,7 +31,7 @@
 
 #include <pthread.h>
 
-#define DEBUG               0
+#define DEBUG               1
 
 #define BUFFER_LEN          512
 
@@ -39,9 +39,6 @@
 
 #define HTTP_URL_PREFIX     "http://"
 #define HTTP_URL_PRE_LEN    7       /* strlen("http://") */
-
-#define LF                  ((unsigned char) 10)
-#define CR                  ((unsigned char) 13)
 
 #define INVALID_PTR         ((void *) -1)
 
