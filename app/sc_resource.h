@@ -27,11 +27,16 @@
 #define SC_RES_URL_MAX_LEN         512
 #define SC_RES_NUM_MAX_SHIFT       10          /* Number is 1 << 10 */
 
+/* URL type flag, also ri type flag */
 #define SC_RES_FLAG_NORMAL    (0x00000001UL)   /* Snooping inform Nginx to directly download */
 #define SC_RES_FLAG_ORIGIN    (0x00000002UL)   /* Original URL needed to be parsed */
-#define SC_RES_FLAG_STORED    (0x00000004UL)   /* Resource is stored in local file system */
-#define SC_RES_FLAG_NOTIFY    (0x00000008UL)   /* Stored resource URL is notified to Snooping Module */
-#define SC_RES_FLAG_KF_CRT    (0x00000010UL)   /* Resource's key frame information is created */
+#define SC_RES_FLAG_PARSED    (0x00000004UL)   /* Parsed URL from original one */
+
+/* ri control flag */
+#define SC_RES_FLAG_STORED    (0x00000010UL)   /* Resource is stored, can ONLY set by Nginx */
+#define SC_RES_FLAG_D_FAIL    (0x00000020UL)   /* Resource download failed, set by Nginx, unset by SC */
+#define SC_RES_FLAG_NOTIFY    (0x00000040UL)   /* Stored resource URL is notified to Snooping Module */
+#define SC_RES_FLAG_KF_CRT    (0x00000080UL)   /* Resource's key frame information is created */
 typedef struct sc_res_info_s {
     unsigned long id;
     unsigned long flag;
@@ -54,6 +59,13 @@ typedef struct sc_res_info_s {
     do {						                    \
         if ((ri) != NULL) {                         \
             (ri)->flag |= SC_RES_FLAG_KF_CRT;  \
+        }                                           \
+    } while (0)
+
+#define sc_res_set_d_fail(ri)                       \
+    do {						                    \
+        if ((ri) != NULL) {                         \
+            (ri)->flag |= SC_RES_FLAG_D_FAIL;  \
         }                                           \
     } while (0)
 
@@ -84,12 +96,28 @@ typedef struct sc_res_info_s {
             (ri)->flag |= SC_RES_FLAG_ORIGIN;  \
         }                                           \
     } while (0)
+
+#define sc_res_set_parsed(ri)                       \
+    do {                                            \
+        if ((ri) != NULL) {                         \
+            (ri)->flag |= SC_RES_FLAG_PARSED;  \
+        }                                           \
+    } while (0)
+
+#define sc_res_unset_d_fail(ri)                       \
+    do {						                    \
+        if ((ri) != NULL) {                         \
+            (ri)->flag &= ((~0UL) ^ SC_RES_FLAG_D_FAIL);  \
+        }                                           \
+    } while (0)
         
 #define sc_res_is_kf_crt(ri)    ((ri)->flag & SC_RES_FLAG_KF_CRT)
+#define sc_res_is_d_fail(ri)    ((ri)->flag & SC_RES_FLAG_D_FAIL)
 #define sc_res_is_stored(ri)    ((ri)->flag & SC_RES_FLAG_STORED)
 #define sc_res_is_notify(ri)    ((ri)->flag & SC_RES_FLAG_NOTIFY)
 #define sc_res_is_normal(ri)    ((ri)->flag & SC_RES_FLAG_NORMAL)
 #define sc_res_is_origin(ri)    ((ri)->flag & SC_RES_FLAG_ORIGIN)
+#define sc_res_is_parsed(ri)    ((ri)->flag & SC_RES_FLAG_PARSED)
 
 typedef struct sc_res_list_s {
     int total;                              /* Equals to 1 << SC_RES_NUM_MAX_SHIFT */
@@ -97,6 +125,7 @@ typedef struct sc_res_list_s {
     sc_res_info_t res[];
 } sc_res_list_t;
 
+/* zhaoyao XXX TODO: faster, and add match routine */
 static inline int sc_res_map_url_to_file_path(char *url, char *fpath)
 {
     char temp[SC_RES_URL_MAX_LEN], *p;

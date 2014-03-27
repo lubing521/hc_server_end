@@ -5,13 +5,15 @@
 sc_res_list_t *sc_res_info_list = NULL;
 int sc_res_share_mem_shmid = -1;
 
-/* zhaoyao XXX: not copy "http://", and omit parameter in o_url is depending on with_para */
+/*
+ * zhaoyao XXX: not copy "http://", omitting parameter in o_url or not, is depending on with_para
+ * zhaoyao XXX TODO: length control and avoiding overflow.
+ */
 void sc_res_copy_url(char *url, char *o_url, char with_para)
 {
     char *start = o_url, *p, *q;
 
     if (url == NULL || o_url == NULL) {
-        fprintf(stderr, "%s: invalid input\n", __func__);
         return;
     }
 
@@ -102,7 +104,6 @@ static sc_res_info_t *sc_res_info_get(sc_res_list_t *rl)
     sc_res_info_t *ri;
 
     if (rl == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return NULL;
     }
 
@@ -123,7 +124,6 @@ static sc_res_info_t *sc_res_info_get(sc_res_list_t *rl)
 static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     if (rl == NULL || ri == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return;
     }
 
@@ -155,6 +155,9 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal)
 
     sc_res_set_normal(ri);
     sc_res_copy_url(ri->url, url, 1);
+#if DEBUG
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ri->url);
+#endif
 
     if (normal != NULL) {
         *normal = ri;
@@ -166,7 +169,6 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal)
 void sc_res_info_del_normal(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     if (rl == NULL || ri == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return;
     }
 
@@ -188,7 +190,6 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin)
     sc_res_info_t *ri;
 
     if (rl == NULL || url == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
     len = strlen(url);
@@ -205,6 +206,9 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin)
 
     sc_res_set_origin(ri);
     sc_res_copy_url(ri->url, url, 0);
+#if DEBUG
+    fprintf(stdout, "%s: copied url without parameter:%s\n", __func__, ri->url);
+#endif
 
     if (origin != NULL) {
         *origin = ri;
@@ -216,7 +220,6 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin)
 void sc_res_info_del_origin(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     if (rl == NULL || ri == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return;
     }
 
@@ -243,7 +246,6 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     sc_res_info_t *ri;
 
     if (rl == NULL || origin_ri == NULL || url == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
     len = strlen(url);
@@ -258,7 +260,11 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
         return -1;
     }
 
+    sc_res_set_parsed(ri);
     sc_res_copy_url(ri->url, url, 1);
+#if DEBUG
+    fprintf(stdout, "%s: copied url without parameter:%s\n", __func__, ri->url);
+#endif
 
     if (origin_ri->cnt == 0) {  /* First derivative is come */
         origin_ri->parsed = ri;
@@ -282,11 +288,10 @@ void sc_res_info_del_parsed(sc_res_list_t *rl,
                             sc_res_info_t *ri)
 {
     if (rl == NULL || origin_ri == NULL || ri == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return;
     }
 
-    if (sc_res_is_origin(ri) || sc_res_is_normal(ri)) {
+    if (!sc_res_is_parsed(ri)) {
         fprintf(stderr, "%s ERROR: can not delete 0x%lx flag res_info\n", __func__, ri->flag);
         return;
     }
@@ -300,13 +305,15 @@ void sc_res_info_del_parsed(sc_res_list_t *rl,
     sc_res_info_put(rl, ri);
 }
 
+/*
+ * zhaoyao: exact matching, TODO XXX add fuzzy matching or pattern matching.
+ */
 sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url)
 {
     sc_res_info_t *curr;
     int i;
 
     if (rl == NULL || url == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return NULL;
     }
 
@@ -320,13 +327,29 @@ sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url)
     return NULL;
 }
 
+static int sc_res_retry_download(sc_res_info_t *ri)
+{
+    int ret;
+
+    if (ri == NULL) {
+        return -1;
+    }
+
+    ret = sc_ngx_download(NULL, ri->url);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: %s failed\n", __func__, ri->url);
+    }
+
+    return ret;
+}
+
+
 int sc_res_list_process_func(sc_res_list_t *rl)
 {
     sc_res_info_t *curr;
     int i, err = 0, ret;
 
     if (rl == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
 
@@ -342,7 +365,18 @@ int sc_res_list_process_func(sc_res_list_t *rl)
         }
 
         if (!sc_res_is_stored(curr)) {
-            /* zhaoyao XXX TODO: timeout, and re-download */
+            /* zhaoyao XXX: timeout, and re-download */
+            if (sc_res_is_d_fail(curr)) {   /* Nginx tell us to re-download it */
+                fprintf(stderr, "%s use sc_res_retry_download %s\n", __func__, curr->url);
+                ret = sc_res_retry_download(curr);
+                if (ret != 0) {
+                    fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, curr->url);
+                    err++;
+                } else {
+                    fprintf(stdout, "%s inform Nginx re-download %s success\n", __func__, curr->url);
+                    sc_res_unset_d_fail(curr);
+                }
+            }
             continue;
         }
 
