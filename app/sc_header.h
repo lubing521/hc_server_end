@@ -40,11 +40,13 @@ int sc_kf_flv_create_info(sc_res_info_t *ri);
  *@keyframe已有序，按时间从小到大
  * return对应的偏移量
  */
-static inline u32 sc_kf_flv_seek_offset(u32 targetTime, sc_kf_flv_info_t *keyframe, u32 key_num)
+static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
+                                                 sc_kf_flv_info_t *keyframe,
+                                                 unsigned int key_num)
 {
-    u32 left = 0, right = 0;
-    u32 midIndex, mid;
-    u32 midValue, last_judge;
+    unsigned int left = 0, right = 0;
+    unsigned int midIndex, mid;
+    unsigned int midValue, last_judge;
 
     for (right = key_num - 1; left != right;) {
         midIndex = (right + left) / 2;

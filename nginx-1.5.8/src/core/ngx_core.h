@@ -9,7 +9,7 @@
 #define _NGX_CORE_H_INCLUDED_
 
 #include "/mnt/hgfs/Work-code/Cache/app/sc_header.h"
-extern sc_resource_list_t *sc_resource_info_list;
+extern sc_res_list_t *sc_resource_info_list;
 
 
 typedef struct ngx_module_s      ngx_module_t;

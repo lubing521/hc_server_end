@@ -73,6 +73,11 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
 
+    off_t                      real_offset;
+    sc_res_info_t             *curr;
+    int                        j;
+    char                       file[SC_RES_URL_MAX_LEN];
+
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
     }
@@ -184,6 +189,28 @@ ngx_http_flv_handler(ngx_http_request_t *r)
             if (start) {
                 len = sizeof(ngx_flv_header) - 1 + len - start;
                 i = 0;
+
+                /*
+                 * zhaoyao XXX: all we treat is YOUKU .flv video.
+                 */
+                if (sc_resource_info_list != NULL) {
+                    for (j = 0; j < sc_resource_info_list->total; j++) {
+                        curr = &sc_resource_info_list->res[j];
+                        if (!sc_res_is_kf_crt(curr)) {
+                            continue;
+                        }
+                        ngx_memzero(file, SC_RES_URL_MAX_LEN);
+                        sc_res_map_url_to_file_path(curr->url, file);
+                        if (ngx_strncmp(&file[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(file) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
+                            ngx_log_stderr(NGX_OK, "%s: search key frame\n", __func__);
+                            real_offset = sc_kf_flv_seek_offset(start, curr->kf_info, curr->kf_num);
+                            len = of.size - real_offset;
+                            start = real_offset;
+                            i = 1;
+                            break;
+                        }
+                    }
+                }
             }
         }
     }

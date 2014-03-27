@@ -16,6 +16,8 @@
 #ifndef __SC_RESOURCE_H__
 #define __SC_RESOURCE_H__
 
+#include <string.h>
+
 #include "sc_header.h"
 
 #define SC_RES_SHARE_MEM_ID        65507
@@ -101,13 +103,13 @@ static inline int sc_res_map_url_to_file_path(char *url, char *fpath)
     int i, first_slash = 1;
 
     /* zhaoyao XXX TODO: length check */
-    if (url == NULL || fpath == NULL) {
-        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
+    if (url == 0 || fpath == 0) {
+//        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
         return -1;
     }
 
     if (strncmp(url, "http://", 7) == 0) {
-        fprintf(stderr, "%s WARNING: %s has \"http://\"\n", __func__, url);
+//        fprintf(stderr, "%s WARNING: %s has \"http://\"\n", __func__, url);
         url = url + 7;
     }
 

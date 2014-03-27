@@ -3120,7 +3120,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                     /* zhaoyao XXX: download and store data success */
                     ngx_log_stderr(NGX_OK, "****** %s store upstream *** data *** success", __func__);
                     if (r->getfile && sc_resource_info_list != NULL) {
-                        sc_resource_info_t *curr;
+                        sc_res_info_t *curr;
                         int i;
                         for (i = 0; i < sc_resource_info_list->total; i++) {
                             curr = &sc_resource_info_list->res[i];

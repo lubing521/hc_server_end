@@ -1,7 +1,8 @@
+#include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-#define DEBUG_GETFILE   0   /* zhaoyao TODO: add debug switch */
+#define DEBUG_GETFILE   1   /* zhaoyao TODO: add debug switch */
 #define BUFLEN          64
 #define BUFLEN_L        512
 
@@ -537,7 +538,10 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         ngx_http_set_ctx(r, myctx, ngx_http_getfile_module);
     }
 #if DEBUG_GETFILE
-    ngx_log_stderr(NGX_OK, "****** %s arguments: %V", __func__, &r->args);
+    ngx_log_stderr(NGX_OK, "*** %s ***", __func__);
+    ngx_log_stderr(NGX_OK, "http uri: \"%V\"", &r->uri);
+    ngx_log_stderr(NGX_OK, "http args: \"%V\"", &r->args);
+    ngx_log_stderr(NGX_OK, "http exten: \"%V\"", &r->exten);
 #endif
     if (r->args.len <= 21) {
         ngx_log_stderr(NGX_OK, "****** %s arguments invalid, less than 21", __func__);

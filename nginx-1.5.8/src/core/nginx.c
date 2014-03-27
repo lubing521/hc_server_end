@@ -10,7 +10,7 @@
 #include <nginx.h>
 
 #include <sys/shm.h>
-sc_resource_list_t *sc_resource_info_list;
+sc_res_list_t *sc_resource_info_list;
 int sc_resource_share_mem_shmid = -1;
 
 
@@ -223,8 +223,8 @@ main(int argc, char *const *argv)
     }
 
     fprintf(stderr, "------------- ZY INIT SHARE MEMORY ------------\n");
-    mem_size = SC_RESOURCE_SHARE_MEM_SIZE;
-    if ((shmid = shmget(SC_RESOURCE_SHARE_MEM_ID, mem_size, SC_RESOURCE_SHARE_MEM_MODE)) < 0) {
+    mem_size = SC_RES_SHARE_MEM_SIZE;
+    if ((shmid = shmget(SC_RES_SHARE_MEM_ID, mem_size, SC_RES_SHARE_MEM_MODE)) < 0) {
         fprintf(stderr, "%s shmget failed, memory size %d: %s\n", __func__, mem_size, strerror(errno));
         return 1;
     }
@@ -237,7 +237,7 @@ main(int argc, char *const *argv)
         sc_resource_share_mem_shmid = -1;
         return 1;
     }
-    sc_resource_info_list = (sc_resource_list_t *)shmptr;
+    sc_resource_info_list = (sc_res_list_t *)shmptr;
     fprintf(stderr, "------------- ZY INIT SHARE MEMORY OK ------------\n");
 
     if (ngx_show_version) {
