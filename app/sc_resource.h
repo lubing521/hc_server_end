@@ -20,7 +20,7 @@
 
 #include "sc_header.h"
 
-#define SC_RES_SHARE_MEM_ID        65509
+#define SC_RES_SHARE_MEM_ID        65511
 #define SC_RES_SHARE_MEM_SIZE      (sizeof(sc_res_list_t) + (sizeof(sc_res_info_t) << SC_RES_NUM_MAX_SHIFT))
 #define SC_RES_SHARE_MEM_MODE      0666
 
@@ -125,43 +125,44 @@ typedef struct sc_res_list_s {
     sc_res_info_t res[];
 } sc_res_list_t;
 
-/* zhaoyao XXX TODO: faster, and add match routine */
-static inline int sc_res_map_url_to_file_path(char *url, char *fpath)
+/*
+ * zhaoyao: faster, and truncate parameter in url;
+ *          fpath buffer size is len.
+ */
+static inline int sc_res_map_url_to_file_path(char *url, char *fpath, unsigned int len)
 {
-    char temp[SC_RES_URL_MAX_LEN], *p;
+    char *p;
     int i, first_slash = 1;
 
-    /* zhaoyao XXX TODO: length check */
     if (url == 0 || fpath == 0) {
-//        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
+        return -1;
+    }
+    if (strncmp(url, "http://", 7) == 0) {
+        url = url + 7;
+    }
+    if (len <= strlen(url) + SC_NGX_ROOT_PATH_LEN) {
         return -1;
     }
 
-    if (strncmp(url, "http://", 7) == 0) {
-//        fprintf(stderr, "%s WARNING: %s has \"http://\"\n", __func__, url);
-        url = url + 7;
-    }
-
-    bzero(temp, SC_RES_URL_MAX_LEN);
+    bzero(fpath, len);
+    fpath = strcat(fpath, SC_NGX_ROOT_PATH);
+    fpath = fpath + SC_NGX_ROOT_PATH_LEN;
     for (p = url, i = 0; *p != '?' && *p != '\0'; p++, i++) {
         if (first_slash && *p == '.') {
-            temp[i] = '_';
+            fpath[i] = '_';
             continue;
         }
         if (*p == '/') {
             if (first_slash) {
-                temp[i] = *p;
+                fpath[i] = *p;
                 first_slash = 0;
             } else {
-                temp[i] = '_';
+                fpath[i] = '_';
             }
         } else {
-            temp[i] = *p;
+            fpath[i] = *p;
         }
     }
-
-    fpath = strcat(fpath, SC_NGX_ROOT_PATH);
-    fpath = strcat(fpath, temp);
 
     return 0;
 }
@@ -177,8 +178,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
                            char *url,
                            sc_res_info_t **parsed);
 sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url);
-void sc_res_copy_url(char *url, char *o_url, char with_para);
-int sc_res_map_url_to_file_path(char *url, char *fpath);
+void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 
 #endif /* __SC_RESOURCE_H__ */
 

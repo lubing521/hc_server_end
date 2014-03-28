@@ -46,7 +46,7 @@ static void sc_snooping_do_parse(int sockfd,
     sc_res_info_t *origin;
 
     bzero(url, SC_RES_URL_MAX_LEN);
-    sc_res_copy_url(url, (char *)req->url_data, 0);     /* zhaoyao: do not care about parameter */
+    sc_res_copy_url(url, (char *)req->url_data, SC_RES_URL_MAX_LEN, 0); /* zhaoyao: do not care about parameter */
 
     origin = sc_res_info_find(sc_res_info_list, url);
     if (origin != NULL) {
@@ -65,24 +65,21 @@ static void sc_snooping_do_parse(int sockfd,
         fprintf(stderr, "%s: add url in resources list failed\n", __func__);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
+    } else {
+        /* zhaoyao XXX: return OK if add origin-type ri success anyway */
+        status = HTTP_SP_STATUS_OK;
     }
 
-    /* zhaoyao XXX TODO FIXME: if failure occured below, added origin ri should be deleted !!! */
-
-    if (sc_url_is_yk(url)) {
-        ret = sc_get_yk_video(url, origin);
-        if (ret < 0) {
-            fprintf(stderr, "%s: parse and down %s failed\n", __func__, url);
-            status = HTTP_SP_STATUS_DEFAULT_ERROR;
-            goto reply;
-        } else {
-            status = HTTP_SP_STATUS_OK;
-            fprintf(stdout, "%s url: %s success\n", __func__, url);
-        }
+    /*
+     * zhaoyao XXX TODO FIXME: if failure occured below, added origin ri should be deleted ???
+     *                         parsing origin url maybe fail, we should make sure that all segments
+     *                         are added in rl.
+     */
+    ret = sc_get_yk_video(url, origin);
+    if (ret < 0) {
+        fprintf(stderr, "%s: parse or down %s failed\n", __func__, url);
     } else {
-        fprintf(stderr, "%s: unknown URL: %s\n", __func__, url);
-        status = HTTP_SP_STATUS_DEFAULT_ERROR;
-        goto reply;
+        fprintf(stdout, "%s url: %s success\n", __func__, url);
     }
 
 reply:
@@ -241,7 +238,7 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     req->session_id = ri->id;
     req->c2sp_action = HTTP_C2SP_ACTION_ADD;
     req->url_len = htons(strlen(ri->url));
-    sc_res_copy_url((char *)req->usr_data, ri->url, 1);
+    sc_res_copy_url((char *)req->usr_data, ri->url, HTTP_SP_URL_LEN_MAX, 1);
 
     if ((nsend = sendto(sockfd, req, sizeof(http_c2sp_req_pkt_t), 0, (struct sockaddr *)&sa, salen)) < 0) {
         fprintf(stderr, "%s ERROR sendto failed: %s\n", __func__, strerror(errno));

@@ -386,8 +386,6 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[])
         return -1;
     }
 
-    /* zhaoyao TODO: Get streamsizes */
-
     return 0;
 }
 

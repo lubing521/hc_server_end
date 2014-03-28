@@ -55,7 +55,6 @@ void yk_print_usage(char *cmd)
 }
 
 /*
- * zhaoyao TODO: url's validity
  * v.youku.com/v_show/id_XNjgzMjc0MjY4.html
  */
 int yk_is_valid_url(char *yk_url)
@@ -77,14 +76,6 @@ int yk_is_valid_url(char *yk_url)
     cur = strstr(cur, tag2);
     if (cur == NULL) {
         return 0;
-    }
-
-    cur = strchr(cur, '?');
-    if (cur != NULL) {
-#if DEBUG
-        fprintf(stderr, "%s WARNING truncating parameters\n", __func__);
-#endif
-        *cur = '\0';    /* zhaoyao XXX TODO: Truncate parameters, side-effect */
     }
 
     return 1;

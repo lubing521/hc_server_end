@@ -45,6 +45,22 @@ static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
                                                  sc_kf_flv_info_t *keyframe,
                                                  unsigned int key_num)
 {
+    /* 顺序查找，返回比targetTime小的最后一个值 */
+    unsigned int index;
+    unsigned int i;
+
+    /* zhaoyao TODO: performance should be optimized */
+    for (i = 1 ; i < key_num; i++) {
+        if (keyframe[i].time > targetTime) {
+            break;
+        }
+    }
+
+    index = i - 1;
+    return keyframe[index].file_pos;
+
+#if 0
+    /* 二分查找，返回相隔最近的值 */
     unsigned int left = 0, right = 0;
     unsigned int midIndex, mid;
     unsigned int midValue, last_judge;
@@ -70,6 +86,7 @@ static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
 
     last_judge = (keyframe[right].time - keyframe[left].time) / 2;
     return (last_judge > targetTime ? keyframe[right].file_pos : keyframe[left].file_pos);
+#endif
 }
 
 int sc_ngx_download(char *ngx_ip, char *url);

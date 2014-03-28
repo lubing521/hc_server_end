@@ -25,13 +25,15 @@ static char sc_ngx_get_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
                                    "Host: %s\r\n"
                                    "Connection: close\r\n\r\n";
 
-static int sc_ngx_build_get(const char *ip, const char *uri, char *buf)
+static int sc_ngx_build_get(const char *ip, const char *uri, char *buf, unsigned int len)
 {
-    if (buf == NULL) {
+    if (buf == NULL || uri == NULL || ip == NULL) {
         return -1;
     }
 
-    /* zhaoyao XXX TODO: checking request line ,header and length */
+    if (len <= (strlen(sc_ngx_get_pattern) + strlen(ip) + strlen(uri) - 4)) {
+        return -1;
+    }
 
     sprintf(buf, sc_ngx_get_pattern, uri, ip);
 
@@ -91,18 +93,12 @@ int sc_ngx_download(char *ngx_ip, char *url)
     }
 
     memset(buffer, 0, BUFFER_LEN);
-    if (sc_ngx_build_get(ip_addr, url, buffer) < 0) {
+    if (sc_ngx_build_get(ip_addr, url, buffer, BUFFER_LEN) < 0) {
         fprintf(stderr, "sc_ngx_build_get failed\n");
         err = -1;
         goto out;
     }
-    len = strlen(buffer);
-    if (len >= BUFFER_LEN) {
-        fprintf(stderr, "%s WARNING: sc_ngx_build_get length %d too long\n", __func__, len);
-        err = -1;
-        goto out;
-    }
-	len = len + 1; /* zhaoyao: plus terminator '\0' */
+    len = strlen(buffer) + 1; /* zhaoyao: plus terminator '\0' */
 
     nsend = send(sockfd, buffer, len, 0);
     if (nsend != len) {

@@ -46,6 +46,8 @@ int sc_get_yk_video(char *url, sc_res_info_t *origin)
         return -1;
     }
 
+    strtok(yk_url, "?");    /* zhaoyao XXX: always truncating parameters. */
+
     response = malloc(RESP_BUF_LEN);
     if (response == NULL) {
         perror("Malloc failed");

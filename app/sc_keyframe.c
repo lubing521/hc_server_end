@@ -212,6 +212,7 @@ static int sc_kf_flv_find_kf_word(unsigned char *buf, int tag_size)
  *@fp, 文件句柄
  *@key_info, 生成的关键帧列表, 按时间序递增 
  *@key_num, 关键帧的个数
+ * script tag, video tag, audio tag
  */
  
 static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *key_num)
@@ -242,7 +243,7 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
 	fseek(fp, 0, SEEK_SET);  /* 定位到文件开头 */
 
 	memset(buf, 0, sizeof(buf));
-    /* 找第一个tag, 即是script tag */    
+    /* 找第一个tag, 即是script tag */
     read_cnt = fread((void *)buf, sizeof(unsigned char), SC_KF_FLV_READ_MAX, fp);
     if (read_cnt) {
         is_tag = sc_kf_flv_find_tag_pos(buf, read_cnt, &tag_size, &tag_pos);
@@ -322,7 +323,7 @@ int sc_kf_flv_create_info(sc_res_info_t *ri)
     }
 
     bzero(fpath, BUFFER_LEN);
-    if (sc_res_map_url_to_file_path(ri->url, fpath) != 0) {
+    if (sc_res_map_url_to_file_path(ri->url, fpath, BUFFER_LEN) != 0) {
         fprintf(stderr, "%s ERROR: map url %s to file path failed\n", __func__, ri->url);
         return -1;
     }

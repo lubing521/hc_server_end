@@ -6,10 +6,9 @@ sc_res_list_t *sc_res_info_list = NULL;
 int sc_res_share_mem_shmid = -1;
 
 /*
- * zhaoyao XXX: not copy "http://", omitting parameter in o_url or not, is depending on with_para
- * zhaoyao XXX TODO: length control and avoiding overflow.
+ * zhaoyao XXX: not copy "http://", omitting parameter in o_url or not, is depending on with_para.
  */
-void sc_res_copy_url(char *url, char *o_url, char with_para)
+void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para)
 {
     char *start = o_url, *p, *q;
 
@@ -29,6 +28,10 @@ void sc_res_copy_url(char *url, char *o_url, char with_para)
         for (p = url, q = start; *q != '?' && *q != '\0'; p++, q++) {
             *p = *q;
         }
+    }
+
+    if (url + len < p) {
+        fprintf(stderr, "%s ERROR overflow, buffer len %u, but copied %u\n", __func__, len, (unsigned int)p - (unsigned int)url);
     }
 }
 
@@ -132,6 +135,18 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
     rl->free = ri;
 }
 
+/*
+ * zhaoyao TODO
+ */
+static int sc_res_info_permit_adding(char *url)
+{
+    if (sc_url_is_yk(url)) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal)
 {
     int len;
@@ -141,6 +156,12 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal)
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
         return -1;
     }
+
+    if (!sc_res_info_permit_adding(url)) {
+        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        return -1;
+    }
+
     len = strlen(url);
     if (len >= SC_RES_URL_MAX_LEN) {
         fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
@@ -154,7 +175,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_t **normal)
     }
 
     sc_res_set_normal(ri);
-    sc_res_copy_url(ri->url, url, 1);
+    sc_res_copy_url(ri->url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ri->url);
 #endif
@@ -192,6 +213,12 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin)
     if (rl == NULL || url == NULL) {
         return -1;
     }
+
+    if (!sc_res_info_permit_adding(url)) {
+        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        return -1;
+    }
+
     len = strlen(url);
     if (len >= SC_RES_URL_MAX_LEN) {
         fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
@@ -205,7 +232,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_t **origin)
     }
 
     sc_res_set_origin(ri);
-    sc_res_copy_url(ri->url, url, 0);
+    sc_res_copy_url(ri->url, url, SC_RES_URL_MAX_LEN, 0);
 #if DEBUG
     fprintf(stdout, "%s: copied url without parameter:%s\n", __func__, ri->url);
 #endif
@@ -248,6 +275,12 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     if (rl == NULL || origin_ri == NULL || url == NULL) {
         return -1;
     }
+
+    if (!sc_res_info_permit_adding(url)) {
+        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        return -1;
+    }
+
     len = strlen(url);
     if (len >= SC_RES_URL_MAX_LEN) {
         fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
@@ -261,7 +294,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     }
 
     sc_res_set_parsed(ri);
-    sc_res_copy_url(ri->url, url, 1);
+    sc_res_copy_url(ri->url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
     fprintf(stdout, "%s: copied url without parameter:%s\n", __func__, ri->url);
 #endif

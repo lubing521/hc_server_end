@@ -73,7 +73,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
 
-    off_t                      real_offset;
+    off_t                      real_offset, pre_kf2_size = 0;
     sc_res_info_t             *curr;
     int                        j;
     char                       file[SC_RES_URL_MAX_LEN];
@@ -200,14 +200,17 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                             continue;
                         }
                         ngx_memzero(file, SC_RES_URL_MAX_LEN);
-                        sc_res_map_url_to_file_path(curr->url, file);
+                        if (sc_res_map_url_to_file_path(curr->url, file, SC_RES_URL_MAX_LEN) != 0) {
+                            ngx_log_stderr(NGX_OK, "*** %s ***: sc_res_map_url_to_file_path error\n", __func__);
+                            break;
+                        }
                         if (ngx_strncmp(&file[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(file) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
                             real_offset = sc_kf_flv_seek_offset(start, curr->kf_info, curr->kf_num);
-                            len = of.size - real_offset;
-                            ngx_log_stderr(NGX_OK, "*** %s: start(%O), len(%O), offset(%O), file(%O)\n",
-                                                    __func__, start, len, real_offset, of.size);
+                            pre_kf2_size = curr->kf_info[1].file_pos;
+                            len = of.size - real_offset + pre_kf2_size;
+                            ngx_log_stderr(NGX_OK, "*** %s: start(%O), len(%O), offset(%O), file(%O), pre_kf2_size(%O)\n",
+                                                    __func__, start, len, real_offset, of.size, pre_kf2_size);
                             start = real_offset;
-                            i = 1;
                             break;
                         }
                     }
@@ -236,9 +239,25 @@ ngx_http_flv_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        b->pos = ngx_flv_header;
-        b->last = ngx_flv_header + sizeof(ngx_flv_header) - 1;
-        b->memory = 1;
+        if (pre_kf2_size != 0) {
+            b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
+            if (b->file == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+            b->file_pos = 0;
+            b->file_last = pre_kf2_size;
+            b->in_file = b->file_last ? 1 : 0;
+            b->last_buf = (r == r->main) ? 1 : 0;
+            b->file->fd = of.fd;
+            b->file->name = path;
+            b->file->log = log;
+            b->file->directio = of.is_directio;
+            
+        } else {
+            b->pos = ngx_flv_header;
+            b->last = ngx_flv_header + sizeof(ngx_flv_header) - 1;
+            b->memory = 1;
+        }
 
         out[0].buf = b;
         out[0].next = &out[1];

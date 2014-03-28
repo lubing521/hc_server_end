@@ -16,9 +16,6 @@
 #include "common.h"
 #include "net_util.h"
 
-#define LF                  ((unsigned char) 10)
-#define CR                  ((unsigned char) 13)
-
 int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen)
 {
     int nsec;
