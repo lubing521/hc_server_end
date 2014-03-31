@@ -332,7 +332,7 @@ static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *
         return -1;
     }
 
-    if (limit < 5) {
+    if (limit < SC_KF_FLV_LIMITED_NUM_MIN) {
         fprintf(stderr, "%s ERROR: limit %u is too small\n", __func__, limit);
         return -1;
     }

@@ -27,6 +27,7 @@
 
 #define SC_KF_FLV_READ_MAX              (32*1024)
 #define SC_KF_FLV_MAX_NUM               256
+#define SC_KF_FLV_LIMITED_NUM_MIN       5
 
 typedef struct sc_kf_flv_info_s {
 	unsigned int file_pos;	/* 偏移量，单位字节 */
