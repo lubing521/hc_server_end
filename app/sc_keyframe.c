@@ -214,7 +214,8 @@ static int sc_kf_flv_find_kf_word(unsigned char *buf, int tag_size)
  *@key_num, 关键帧的个数
  * script tag, video tag, audio tag
  */
- 
+
+#define SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM  256
 static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *key_num)
 {
 	int tag_pos;
@@ -237,6 +238,11 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
 
     if (key_info == NULL) {
 		printf("error: the input key_info is NULL\r\n");
+        return false;
+    }
+
+    if (key_num == NULL) {
+		printf("error: the input key_num is NULL\r\n");
         return false;
     }
 
@@ -272,6 +278,11 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
     keyframe_num = *((unsigned int *)(&switch_buf));
     keyframe_num = be32toh(keyframe_num);
     *key_num = keyframe_num;
+    if (keyframe_num > SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM) {
+        fprintf(stderr, "%s ERROR: keyframe is too many(%u) than temp num(%u)\n",
+                            __func__, keyframe_num, SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM);
+        return false;
+    }
     nonius = nonius + 4;
     /* filepositions信息 */
     for (kf = 0; kf < keyframe_num; kf++) {
@@ -305,6 +316,86 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
 	return true;
 }
 
+static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *key_info, u32 *key_num)
+{
+    u32 temp_ki_num;
+    /*
+     * zhaoyao XXX FIXME TODO: key frame's quantity may be huge, e.g. single .flv video;
+     *                         allocate it in heap, not in stack.
+     */
+    sc_kf_flv_info_t temp_ki[SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM];
+
+    int delta, i, drop = 0;
+    u32 div;
+
+    if (fp == NULL || key_info == NULL || key_num == NULL) {
+        return -1;
+    }
+
+    if (limit < 5) {
+        fprintf(stderr, "%s ERROR: limit %u is too small\n", __func__, limit);
+        return -1;
+    }
+
+    if (sc_kf_flv_create_info_do(fp, temp_ki, &temp_ki_num) != true) {
+        return -1;
+    }
+
+    if (temp_ki_num <= limit) {
+        for (i = 0; i < temp_ki_num; i++) {
+            key_info[i].file_pos = temp_ki[i].file_pos;
+            key_info[i].time = temp_ki[i].time;
+        }
+        *key_num = temp_ki_num;
+        return 0;
+    }
+
+    *key_num = 0;
+    delta = (int)(temp_ki_num - limit);
+    div = temp_ki_num / limit;
+    for (i = 0; i < 2; i++) {   /* zhaoyao: first two key frames are needed */
+        key_info[i].file_pos = temp_ki[i].file_pos;
+        key_info[i].time = temp_ki[i].time;
+        (*key_num)++;
+    }
+    if (div == 1) {
+        for ( ; i < temp_ki_num; i++) {
+            if (delta > 0 && drop) {
+                delta--;
+                drop = !drop;
+                continue;
+            }
+            key_info[(*key_num)].file_pos = temp_ki[i].file_pos;
+            key_info[(*key_num)].time = temp_ki[i].time;
+            (*key_num)++;
+            drop = !drop;
+        }
+    } else {
+        div = div + 1;
+        for ( ; i < temp_ki_num; i++) {
+            if ((i % div) == 0) {
+                key_info[(*key_num)].file_pos = temp_ki[i].file_pos;
+                key_info[(*key_num)].time = temp_ki[i].time;
+                (*key_num)++;
+                if ((*key_num) >= limit) {
+                    break;
+                }
+            }
+        }
+    }
+
+    fprintf(stdout, "%s: true kf_num %u, limit to %u, compressed to %u\n",
+                        __func__, temp_ki_num, limit, *key_num);
+
+    if ((*key_num) > limit) {
+        fprintf(stderr, "%s FATAL ERROR: generate key_frame(%u) is more than limit(%u)\n",
+                            __func__, (*key_num), limit);
+        return -1;
+    }
+
+    return 0;
+}
+
 int sc_kf_flv_create_info(sc_res_info_t *ri)
 {
     FILE *fp;
@@ -336,7 +427,7 @@ int sc_kf_flv_create_info(sc_res_info_t *ri)
 
     memset(ri->kf_info, 0, sizeof(ri->kf_info));
     ri->kf_num = 0;
-    if (sc_kf_flv_create_info_do(fp, ri->kf_info, (u32 *)&ri->kf_num) != true) {
+    if (sc_kf_flv_create_info_limited(fp, SC_KF_FLV_MAX_NUM, ri->kf_info, (u32 *)&ri->kf_num) != 0) {
         fprintf(stderr, "%s ERROR: create %s key frame info failed\n", __func__, fpath);
         err = -1;
         goto out;
