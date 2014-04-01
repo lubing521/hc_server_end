@@ -3120,24 +3120,21 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                     /* zhaoyao XXX: download and store data success */
                     ngx_log_stderr(NGX_OK, "****** %s store upstream *** data *** success", __func__);
                     if (r->getfile && sc_resource_info_list != NULL) {
-                        sc_res_info_t *curr;
+                        sc_res_info_active_t *curr;
                         int i;
-                        for (i = 0; i < sc_resource_info_list->total; i++) {
-                            curr = &sc_resource_info_list->res[i];
-                            if (sc_res_is_origin(curr)) {
-                                continue;
-                            }
-                            if (ngx_strncmp(curr->url, r->args.data, r->args.len) == 0) {
-                                if (sc_res_is_stored(curr)) {
+                        for (i = 0; i < SC_RES_INFO_NUM_MAX_ACTIVE; i++) {
+                            curr = &sc_resource_info_list->active[i];
+                            if (ngx_strncmp(curr->common.url, r->args.data, r->args.len) == 0) {
+                                if (sc_res_is_stored(&curr->common)) {
                                     ngx_log_stderr(NGX_OK, "***** %s WARNING re-store URL:\n\t%V",
                                                         __func__, &r->args);
                                 } else {
-                                    sc_res_set_stored(curr);
+                                    sc_res_set_stored(&curr->common);
                                 }
                                 break;
                             }
                         }
-                        if (i == sc_resource_info_list->total) {
+                        if (i == SC_RES_INFO_NUM_MAX_ACTIVE) {
                             ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
                                                 __func__, &r->args);
                         }
@@ -3514,24 +3511,21 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         /* zhaoyao XXX: when download failed, set_d_fail to ask SC re-generate download request */
         ngx_log_stderr(NGX_OK, "****** %s prematurely deleted temp_file, getfile *** failed ***", __func__);
         if (r->getfile && sc_resource_info_list != NULL) {
-            sc_res_info_t *curr;
+            sc_res_info_active_t *curr;
             int i;
-            for (i = 0; i < sc_resource_info_list->total; i++) {
-                curr = &sc_resource_info_list->res[i];
-                if (sc_res_is_origin(curr)) {
-                    continue;
-                }
-                if (ngx_strncmp(curr->url, r->args.data, r->args.len) == 0) {
-                    if (sc_res_is_stored(curr)) {
+            for (i = 0; i < SC_RES_INFO_NUM_MAX_ACTIVE; i++) {
+                curr = &sc_resource_info_list->active[i];
+                if (ngx_strncmp(curr->common.url, r->args.data, r->args.len) == 0) {
+                    if (sc_res_is_stored(&curr->common)) {
                         ngx_log_stderr(NGX_OK, "***** %s WARNING re-stored URL:\n\t%V",
                                                         __func__, &r->args);
                     } else {
-                        sc_res_set_d_fail(curr);    /* zhaoyao XXX: mark download failed */
+                        sc_res_set_d_fail(&curr->common);    /* zhaoyao XXX: mark download failed */
                     }
                     break;
                 }
             }
-            if (i == sc_resource_info_list->total) {
+            if (i == SC_RES_INFO_NUM_MAX_ACTIVE) {
                 ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
                                     __func__, &r->args);
             }

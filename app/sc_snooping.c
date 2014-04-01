@@ -43,14 +43,14 @@ static void sc_snooping_do_parse(int sockfd,
     int ret;
     u8 status;
     char url[SC_RES_URL_MAX_LEN];
-    sc_res_info_t *origin;
+    sc_res_info_origin_t *origin;
 
     bzero(url, SC_RES_URL_MAX_LEN);
     sc_res_copy_url(url, (char *)req->url_data, SC_RES_URL_MAX_LEN, 0); /* zhaoyao: do not care about parameter */
 
-    origin = sc_res_info_find(sc_res_info_list, url);
+    origin = sc_res_info_find_origin(sc_res_info_list, url);
     if (origin != NULL) {
-        if (!sc_res_is_origin(origin)) {
+        if (!sc_res_is_origin(&origin->common)) {
             fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, url);
         }
 #if DEBUG
@@ -75,7 +75,7 @@ static void sc_snooping_do_parse(int sockfd,
      *                         parsing origin url maybe fail, we should make sure that all segments
      *                         are added in rl.
      */
-    ret = sc_get_yk_video(url, origin);
+    ret = sc_get_yk_video(origin);
     if (ret < 0) {
         fprintf(stderr, "%s: parse or down %s failed\n", __func__, url);
     } else {
@@ -98,11 +98,11 @@ static void sc_snooping_do_down(int sockfd,
 {
     int ret;
     u8 status;
-    sc_res_info_t *normal;
+    sc_res_info_active_t *normal;
 
-    normal = sc_res_info_find(sc_res_info_list, (const char *)req->url_data);
+    normal = sc_res_info_find_active(sc_res_info_list, (const char *)req->url_data);
     if (normal != NULL) {
-        if (!sc_res_is_normal(normal)) {
+        if (!sc_res_is_normal(&normal->common)) {
             fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, req->url_data);
         }
 #if DEBUG
@@ -119,15 +119,15 @@ static void sc_snooping_do_down(int sockfd,
         goto reply;
     }
 
-    ret = sc_ngx_download(NULL, normal->url);
+    ret = sc_ngx_download(NULL, normal->common.url);
     if (ret != 0) {
-        fprintf(stderr, "%s: download %s failed\n", __func__, normal->url);
+        fprintf(stderr, "%s: download %s failed\n", __func__, normal->common.url);
         /* zhaoyao XXX TODO FIXME: do we need sc_res_info_del_normal() now ??? */
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
 
-    fprintf(stdout, "%s: inform Nginx to download %s success\n", __func__, normal->url);
+    fprintf(stdout, "%s: inform Nginx to download %s success\n", __func__, normal->common.url);
     status = HTTP_SP_STATUS_OK;
 
 reply:

@@ -40,6 +40,11 @@
 #define HTTP_URL_PREFIX     "http://"
 #define HTTP_URL_PRE_LEN    7       /* strlen("http://") */
 
+#define VIDEO_FLV_SUFFIX             "flv"
+#define VIDEO_FLV_SUFFIX_LEN         3
+#define VIDEO_MP4_SUFFIX             "mp4"
+#define VIDEO_MP4_SUFFIX_LEN         3
+
 #define INVALID_PTR         ((void *) -1)
 
 #define true                1

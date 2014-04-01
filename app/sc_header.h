@@ -29,6 +29,11 @@
 #define SC_KF_FLV_MAX_NUM               256
 #define SC_KF_FLV_LIMITED_NUM_MIN       5
 
+#define SC_VIDEO_FLV_SUFFIX             "flv"
+#define SC_VIDEO_FLV_SUFFIX_LEN         3
+#define SC_VIDEO_MP4_SUFFIX             "mp4"
+#define SC_VIDEO_MP4_SUFFIX_LEN         3
+
 typedef struct sc_kf_flv_info_s {
 	unsigned int file_pos;	/* 偏移量，单位字节 */
 	unsigned int time;		/* 时间，单位秒 */
@@ -36,7 +41,7 @@ typedef struct sc_kf_flv_info_s {
 
 #include "sc_resource.h"
 
-int sc_kf_flv_create_info(sc_res_info_t *ri);
+int sc_kf_flv_create_info(sc_res_info_active_t *active);
 
 /* 在关键帧列表中，根据时间查找对应的偏移量
  *@keyframe已有序，按时间从小到大
@@ -66,7 +71,7 @@ int sc_ngx_download(char *ngx_ip, char *url);
 void sc_snooping_serve(int sockfd);
 int sc_snooping_do_add(sc_res_info_t *ri);
 
-int sc_get_yk_video(char *url, sc_res_info_t *origin);
+int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);
 
 #endif /* __SC_HEADER_H__ */

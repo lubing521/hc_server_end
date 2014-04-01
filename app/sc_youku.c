@@ -12,8 +12,32 @@ int sc_url_is_yk(char *url)
     }
 }
 
-int sc_get_yk_video(char *url, sc_res_info_t *origin)
+static int sc_get_yk_download_video_type(yk_stream_info_t *streams[])
 {
+    int i, ret = -1;
+
+    if (streams == NULL) {
+        return -1;
+    }
+
+    for (i = 0; i < STREAM_TYPE_TOTAL && streams[i] != NULL; i++) {
+        if (strncmp(streams[i]->type, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN) == 0) {
+            ret = i;
+        }
+        if (strncmp(streams[i]->type, VIDEO_MP4_SUFFIX, VIDEO_MP4_SUFFIX_LEN) == 0) {
+            ret = i;
+            /* zhaoyao: .mp4 type video has the priority */
+            goto out;
+        }
+    }
+
+out:
+    return ret;
+}
+
+int sc_get_yk_video(sc_res_info_origin_t *origin)
+{
+    char *url;
     char yk_url[BUFFER_LEN];                /* Youku video public URL */
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
     char fp_url[BUFFER_LEN];                /* getflvpath URL */
@@ -22,14 +46,18 @@ int sc_get_yk_video(char *url, sc_res_info_t *origin)
     int i, j;
     int err = 0, status, ret;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
-    sc_res_info_t *parsed;
+    sc_res_info_active_t *parsed;
+    sc_res_video_t vtype;
+    int download_index;
 
     if (origin == NULL) {
         fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
         return -1;
     }
 
-    if (url == NULL || strlen(url) <= HTTP_URL_PRE_LEN) {
+    url = origin->common.url;
+
+    if (strlen(url) <= HTTP_URL_PRE_LEN) {
         fprintf(stderr, "%s invalid input url\n", __func__);
         return -1;
     }
@@ -96,17 +124,34 @@ int sc_get_yk_video(char *url, sc_res_info_t *origin)
         //yk_debug_streams_all(streams);
     }
 
-    /* zhaoyao XXX TODO: now we only care about the first type stream */
-    for (i = 0; i < 1 && streams[i] != NULL; i++) {
+    download_index = sc_get_yk_download_video_type(streams);
+    if (download_index < 0 && download_index >= STREAM_TYPE_TOTAL) {
+        fprintf(stderr, "%s ERROR: sc_get_yk_download_video_type %d is invalid index\n",
+                            __func__, download_index);
+        err = -1;
+        goto out;
+    }
+
+    /* zhaoyao XXX: now we only care about the download_index type */
+    for (i = download_index; i < download_index + 1; i++) {
         strm = streams[i];
 
         if (strm->segs == NULL) {   /* Has no segments info, innormal situation */
             fprintf(stderr, "WARNING: stream %s has no segs\n", strm->type);
-            continue;
+            err = -1;
+            goto out;   /* zhaoyao XXX: since we only download_index, any fail here should ERROR */
+            //continue;
         }
 #if DEBUG
         printf("Stream type: %s\n", strm->type);
 #endif
+        vtype = sc_res_video_type_obtain(strm->type);
+        if (!sc_res_video_type_is_valid(vtype)) {
+            fprintf(stderr, "%s WARNING: type %s not support\n", __func__, strm->type);
+            err = -1;
+            goto out;   /* zhaoyao XXX: since we only download_index, any fail here should ERROR */
+            //continue;
+        }
 
         for (j = 0; j < STREAM_SEGS_MAX && strm->segs[j] != NULL; j++) {
             /*
@@ -142,7 +187,7 @@ int sc_get_yk_video(char *url, sc_res_info_t *origin)
                  * Step 3 - using real URL to download.
                  */
                 /* zhaoyao XXX TODO: need remembering segments count in origin */
-                ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
+                ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, real_url, &parsed);
                 if (ret != 0) {
                     fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
                                         __func__, real_url);

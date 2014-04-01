@@ -229,8 +229,8 @@ static char *yk_parse_pl_streamfileids(const char *cur, yk_stream_info_t *stream
             ret = ret + 3;
             streams[i] = p;
             i++;
-        } else if (memcmp(ret, "flv", 3) == 0) {
-            p = yk_create_stream_info("flv");
+        } else if (memcmp(ret, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN) == 0) {
+            p = yk_create_stream_info(VIDEO_FLV_SUFFIX);
             if (p == NULL) {
                 goto error;
             }
@@ -325,8 +325,8 @@ static char *yk_parse_pl_segs(const char *cur, yk_stream_info_t *streams[])
             if (ret == NULL) {
                 goto error;
             }
-        } else if (memcmp(ret, "flv", 3) == 0) {
-            p = yk_find_stream_info(streams, "flv");
+        } else if (memcmp(ret, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN) == 0) {
+            p = yk_find_stream_info(streams, VIDEO_FLV_SUFFIX);
             if (p == NULL) {
                 goto error;
             }

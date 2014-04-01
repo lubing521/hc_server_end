@@ -49,7 +49,7 @@ bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_da
     if ((strcmp(play_list->fileType, "hd2") == 0) || 
         (strcmp(play_list->fileType, "hd3") == 0)) {
         memset(_loc8_, 0, sizeof(_loc8_));
-        memcpy(_loc8_, "flv", 3);
+        memcpy(_loc8_, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN);
     }
 
     if(play_list->drm)
@@ -84,7 +84,7 @@ bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_da
     /* 以下是可选的参数 */
     #if 0
 
-    if ((strcmp(play_list->fileType, "flv") == 0) || 
+    if ((strcmp(play_list->fileType, SC_VIDEO_FLV_SUFFIX) == 0) || 
         (strcmp(play_list->fileType, "flvhd") == 0)) {
         strcat(out_url, "&hd=0"); 
     } else {

@@ -396,14 +396,23 @@ static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *
     return 0;
 }
 
-int sc_kf_flv_create_info(sc_res_info_t *ri)
+int sc_kf_flv_create_info(sc_res_info_active_t *active)
 {
     FILE *fp;
     int err = 0;
     char fpath[BUFFER_LEN];
+    sc_res_info_t *ri;
 
-    if (ri == NULL) {
+    if (active == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    ri = &active->common;
+
+    if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
+        fprintf(stderr, "%s ERROR: only normal or parsed (active) can create flv keyframe info\n",
+                            __func__);
         return -1;
     }
 
@@ -425,9 +434,9 @@ int sc_kf_flv_create_info(sc_res_info_t *ri)
         return -1;
     }
 
-    memset(ri->kf_info, 0, sizeof(ri->kf_info));
-    ri->kf_num = 0;
-    if (sc_kf_flv_create_info_limited(fp, SC_KF_FLV_MAX_NUM, ri->kf_info, (u32 *)&ri->kf_num) != 0) {
+    memset(active->kf_info, 0, sizeof(active->kf_info));
+    active->kf_num = 0;
+    if (sc_kf_flv_create_info_limited(fp, SC_KF_FLV_MAX_NUM, active->kf_info, (u32 *)&active->kf_num) != 0) {
         fprintf(stderr, "%s ERROR: create %s key frame info failed\n", __func__, fpath);
         err = -1;
         goto out;

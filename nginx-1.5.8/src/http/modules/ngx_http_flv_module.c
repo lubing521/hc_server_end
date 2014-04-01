@@ -74,7 +74,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *clcf;
 
     off_t                      real_offset, pre_kf2_size = 0;
-    sc_res_info_t             *curr;
+    sc_res_info_active_t      *curr;
     int                        j;
     char                       file[SC_RES_URL_MAX_LEN];
 
@@ -194,13 +194,13 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                  * zhaoyao XXX: all we treat is YOUKU .flv video.
                  */
                 if (sc_resource_info_list != NULL) {
-                    for (j = 0; j < sc_resource_info_list->total; j++) {
-                        curr = &sc_resource_info_list->res[j];
-                        if (!sc_res_is_kf_crt(curr)) {
+                    for (j = 0; j < SC_RES_INFO_NUM_MAX_ACTIVE; j++) {
+                        curr = &sc_resource_info_list->active[j];
+                        if (!sc_res_is_kf_crt(&curr->common)) {
                             continue;
                         }
                         ngx_memzero(file, SC_RES_URL_MAX_LEN);
-                        if (sc_res_map_url_to_file_path(curr->url, file, SC_RES_URL_MAX_LEN) != 0) {
+                        if (sc_res_map_url_to_file_path(curr->common.url, file, SC_RES_URL_MAX_LEN) != 0) {
                             ngx_log_stderr(NGX_OK, "*** %s ***: sc_res_map_url_to_file_path error\n", __func__);
                             break;
                         }
