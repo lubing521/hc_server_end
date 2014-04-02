@@ -222,11 +222,14 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
 }
 
 /*
- * zhaoyao TODO
+ * zhaoyao XXX: Snooping module Client's private simple check.
  */
 static int sc_res_info_permit_adding(char *url)
 {
     if (sc_url_is_yk(url)) {
+        return 1;
+    }
+    if (sc_url_is_sohu(url)) {
         return 1;
     }
 
@@ -299,9 +302,9 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
         return -1;
     }
 
-    sc_res_copy_url(ri->common.url, url, SC_RES_URL_MAX_LEN, 0);
+    sc_res_copy_url(ri->common.url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url without parameter:%s\n", __func__, ri->common.url);
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ri->common.url);
 #endif
 
     if (origin != NULL) {

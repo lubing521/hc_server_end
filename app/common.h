@@ -35,6 +35,8 @@
 
 #define BUFFER_LEN          1024
 
+#define RESP_BUF_LEN            (0x1 << 15)         /* 32KB */
+
 #define MAX_HOST_NAME_LEN   32
 
 #define HTTP_URL_PREFIX     "http://"

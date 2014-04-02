@@ -68,6 +68,8 @@ int sc_snooping_do_add(sc_res_info_t *ri);
 
 int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);
+int sc_url_is_sohu(char * url);
+int sc_get_sohu_video(sc_res_info_origin_t *origin);
 
 #endif /* __SC_HEADER_H__ */
 

@@ -42,11 +42,14 @@ static void sc_snooping_do_parse(int sockfd,
 {
     int ret;
     u8 status;
-    char url[SC_RES_URL_MAX_LEN];
+    char *url;
     sc_res_info_origin_t *origin;
+    
+#if DEBUG
+        fprintf(stdout, "%s DEBUG: req url:\n\t%s\n", __func__, req->url_data);
+#endif
 
-    bzero(url, SC_RES_URL_MAX_LEN);
-    sc_res_copy_url(url, (char *)req->url_data, SC_RES_URL_MAX_LEN, 0); /* zhaoyao: do not care about parameter */
+    url = (char *)req->url_data;
 
     origin = sc_res_info_find_origin(sc_res_info_list, url);
     if (origin != NULL) {
@@ -67,6 +70,7 @@ static void sc_snooping_do_parse(int sockfd,
         goto reply;
     } else {
         /* zhaoyao XXX: return OK if add origin-type ri success anyway */
+        fprintf(stdout, "%s: add origin url success:\n\t%s\n", __func__, origin->common.url);
         status = HTTP_SP_STATUS_OK;
     }
 
@@ -75,11 +79,18 @@ static void sc_snooping_do_parse(int sockfd,
      *                         parsing origin url maybe fail, we should make sure that all segments
      *                         are added in rl.
      */
-    ret = sc_get_yk_video(origin);
+    if (sc_url_is_yk(origin->common.url)) {
+        ret = sc_get_yk_video(origin);
+    } else if (sc_url_is_sohu(origin->common.url)) {
+        ret = sc_get_sohu_video(origin);
+    } else {
+        fprintf(stderr, "%s: URL not support\n", __func__);
+        goto reply;
+    }
+
+
     if (ret < 0) {
         fprintf(stderr, "%s: parse or down %s failed\n", __func__, url);
-    } else {
-        fprintf(stdout, "%s url: %s success\n", __func__, url);
     }
 
 reply:

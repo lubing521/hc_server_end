@@ -22,8 +22,6 @@
 #define YK_FILEID_LEN           66   /* 视频文件名解析后的长度 */
 #define YK_MAX_NAME_LEN         32
 
-#define RESP_BUF_LEN            (0x1 << 15)         /* 32KB */
-
 #define SEED_STRING_LEN         8
 
 #define STREAM_TYPE_TOTAL       4   /* flv, mp4, hd2, hd3 */
@@ -115,7 +113,7 @@ bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_da
                     bool use_jumptime, int jump_time, char *out_url);
 
 int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url);
-int yk_is_valid_url(char *yk_url);
+int yk_is_tradition_url(char *yk_url);
 void yk_print_usage(char *cmd);
 int yk_build_request(char *host, char *uri, char *referer, char *buf);
 int yk_parse_playlist(char *data, yk_stream_info_t *streams[]);

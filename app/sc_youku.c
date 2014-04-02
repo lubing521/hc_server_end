@@ -3,6 +3,7 @@
 #include "net_util.h"
 #include "yk_lib.h"
 
+/* zhaoyao XXX: sc's private simple check */
 int sc_url_is_yk(char *url)
 {
     if (strstr(url, "youku") != NULL) {
@@ -35,9 +36,11 @@ out:
     return ret;
 }
 
-int sc_get_yk_video(sc_res_info_origin_t *origin)
+/*
+ * Full path: .html -> getPlaylist -> getFlvpath -> real_url
+ */
+static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
 {
-    char *url;
     char yk_url[BUFFER_LEN];                /* Youku video public URL */
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
     char fp_url[BUFFER_LEN];                /* getflvpath URL */
@@ -50,31 +53,7 @@ int sc_get_yk_video(sc_res_info_origin_t *origin)
     sc_res_video_t vtype;
     int download_index;
 
-    if (origin == NULL) {
-        fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
-        return -1;
-    }
-
-    url = origin->common.url;
-
-    if (strlen(url) <= HTTP_URL_PRE_LEN) {
-        fprintf(stderr, "%s invalid input url\n", __func__);
-        return -1;
-    }
-    memset(yk_url, 0, BUFFER_LEN);
-    if (memcmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
-        fprintf(stderr, "%s WARNING url cannot have \"http://\" prefix\n", __func__);
-        memcpy(yk_url, url + HTTP_URL_PRE_LEN, strlen(url) - HTTP_URL_PRE_LEN);
-    } else {
-        memcpy(yk_url, url, strlen(url));
-    }
-
-    if (!yk_is_valid_url(yk_url)) {
-        fprintf(stderr, "%s ERROR: invalid URL of Youku video: %s\n", __func__, yk_url);
-        return -1;
-    }
-
-    strtok(yk_url, "?");    /* zhaoyao XXX: always truncating parameters. */
+    sc_res_copy_url(yk_url, origin->common.url, BUFFER_LEN, 0); /* zhaoyao: do not care para in traditional way */
 
     response = malloc(RESP_BUF_LEN);
     if (response == NULL) {
@@ -199,6 +178,7 @@ int sc_get_yk_video(sc_res_info_origin_t *origin)
                 }
                 ret = sc_ngx_download(NULL, real_url);
                 if (ret < 0) {
+                    /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {
@@ -214,5 +194,24 @@ out:
     yk_destroy_streams_all(streams);
 
     return err;
+}
+
+int sc_get_yk_video(sc_res_info_origin_t *origin)
+{
+    int ret;
+
+    if (origin == NULL) {
+        fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
+        return -1;
+    }
+
+    if (yk_is_tradition_url(origin->common.url)) {
+        ret = sc_get_yk_video_tradition(origin);
+    } else {
+        fprintf(stderr, "%s ERROR: no support: %s\n", __func__, origin->common.url);
+        ret = -1;
+    }
+
+    return ret;
 }
 

@@ -13,7 +13,6 @@
  * History
  */
 
-#include "common.h"
 #include "yk_lib.h"
 #include "net_util.h"
 
@@ -57,9 +56,9 @@ void yk_print_usage(char *cmd)
 /*
  * v.youku.com/v_show/id_XNjgzMjc0MjY4.html
  */
-int yk_is_valid_url(char *yk_url)
+int yk_is_tradition_url(char *yk_url)
 {
-    static char *tag1 = "youku.com";
+    static char *tag1 = "v.youku.com";
     static char *tag2 = "/id_";
     char *cur;
 
