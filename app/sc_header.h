@@ -29,11 +29,6 @@
 #define SC_KF_FLV_MAX_NUM               256
 #define SC_KF_FLV_LIMITED_NUM_MIN       5
 
-#define SC_VIDEO_FLV_SUFFIX             "flv"
-#define SC_VIDEO_FLV_SUFFIX_LEN         3
-#define SC_VIDEO_MP4_SUFFIX             "mp4"
-#define SC_VIDEO_MP4_SUFFIX_LEN         3
-
 typedef struct sc_kf_flv_info_s {
 	unsigned int file_pos;	/* 偏移量，单位字节 */
 	unsigned int time;		/* 时间，单位秒 */

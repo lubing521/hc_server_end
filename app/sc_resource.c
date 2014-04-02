@@ -22,10 +22,10 @@ sc_res_video_t sc_res_video_type_obtain(char *str)
     len = len - 3;
     p = str + len;
 
-    if (strncmp(p, SC_VIDEO_FLV_SUFFIX, SC_VIDEO_FLV_SUFFIX_LEN) == 0) {
+    if (strncmp(p, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN) == 0) {
         return SC_RES_VIDEO_FLV;
     }
-    if (strncmp(p, SC_VIDEO_MP4_SUFFIX, SC_VIDEO_MP4_SUFFIX_LEN) == 0) {
+    if (strncmp(p, VIDEO_MP4_SUFFIX, VIDEO_MP4_SUFFIX_LEN) == 0) {
         return SC_RES_VIDEO_MP4;
     }
 
