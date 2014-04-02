@@ -110,6 +110,7 @@ static void sc_snooping_do_down(int sockfd,
     int ret;
     u8 status;
     sc_res_info_active_t *normal;
+    char local_path[SC_RES_URL_MAX_LEN];
 
     normal = sc_res_info_find_active(sc_res_info_list, (const char *)req->url_data);
     if (normal != NULL) {
@@ -120,7 +121,7 @@ static void sc_snooping_do_down(int sockfd,
         fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, req->url_data);
 #endif
         status = HTTP_SP_STATUS_OK;
-        goto reply;        
+        goto reply;
     }
 
     ret = sc_res_info_add_normal(sc_res_info_list, (char *)req->url_data, &normal);
@@ -130,16 +131,24 @@ static void sc_snooping_do_down(int sockfd,
         goto reply;
     }
 
-    ret = sc_ngx_download(NULL, normal->common.url);
+    /* zhaoyao XXX: when add normal ri success, status set to OK, and calm down Snooping module */
+    status = HTTP_SP_STATUS_OK;
+
+    bzero(local_path, SC_RES_URL_MAX_LEN);
+    ret = sc_res_get_local_path(&normal->common, local_path);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: sc_res_get_local_path failed, url %s\n", __func__, normal->common.url);
+        goto reply;
+    }
+
+    ret = sc_ngx_download(normal->common.url, local_path);
     if (ret != 0) {
         fprintf(stderr, "%s: download %s failed\n", __func__, normal->common.url);
         /* zhaoyao XXX TODO FIXME: do we need sc_res_info_del_normal() now ??? */
-        status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
 
     fprintf(stdout, "%s: inform Nginx to download %s success\n", __func__, normal->common.url);
-    status = HTTP_SP_STATUS_OK;
 
 reply:
     ret = sc_snooping_resp_to_sp(sockfd, sa, salen, req, status);

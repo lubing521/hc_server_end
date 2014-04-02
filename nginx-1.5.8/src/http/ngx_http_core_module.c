@@ -1987,8 +1987,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     u_char                    *last;
     size_t                     alias;
     ngx_http_core_loc_conf_t  *clcf;
-    unsigned int len, i, first_slash = 1;
-    u_char *p, temp[256];
+    unsigned int len;
+    u_char *p;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -2056,33 +2056,19 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
     }
 
     if (r->getfile) {
-        /* zhaoyao: URI is like this /getfile?222.73.245.205/youku/2180E8ADC6A6.flv */
-        if (r->args.len >= sizeof(temp)) {
-            ngx_log_stderr(NGX_OK, "%s-%d: WARNING URL too long(%d)\n", __func__, __LINE__, r->args.len);
+        /* zhaoyao: URI is like this /getfile?222.73.245.205/youku/2180E8ADC6A6.flv?localpath=xxx */
+        p = (u_char *)ngx_strstr(r->args.data, "localpath=");
+        if (p == NULL) {
+            ngx_log_stderr(NGX_OK, "%s ERROR: localpath miss!!!\n", __func__);
+            goto default_way;
         }
-        ngx_memzero(temp, sizeof(temp));
-
-        for (p = r->args.data, i = 0; p < r->args.len + r->args.data && *p != '?'; p++, i++) {
-            if (first_slash && *p == '.') {
-                temp[i] = '_';
-                continue;
-            }
-            if (*p == '/') {
-                if (first_slash) {
-                    temp[i] = *p;
-                    first_slash = 0;
-                } else {
-                    temp[i] = '_';
-                }
-            } else {
-                temp[i] = *p;
-            }
-        }
-        len = i;
+        p = p + 10;
+        len = r->args.len + r->args.data - p;
 
         *last++ = '/';
-        last = ngx_cpystrn(last, temp, len + 1);
+        last = ngx_cpystrn(last, p, len + 1);
     } else {
+default_way:
         last = ngx_cpystrn(last, r->uri.data + alias, r->uri.len - alias + 1);
     }
 

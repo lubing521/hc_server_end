@@ -21,21 +21,36 @@
 static char sc_ngx_default_ip_addr[] = SC_NGX_DEFAULT_IP_ADDR;
 static uint16_t sc_ngx_default_port = SC_NGX_DEFAULT_PORT;
 
-static char sc_ngx_get_pattern[] = "GET /getfile?%s HTTP/1.1\r\n"
+static char sc_ngx_get_pattern[] = "GET /getfile?%s%s HTTP/1.1\r\n"
                                    "Host: %s\r\n"
                                    "Connection: close\r\n\r\n";
 
-static int sc_ngx_build_get(const char *ip, const char *uri, char *buf, unsigned int len)
+static int sc_ngx_build_get(const char *ip,
+                            const char *uri,
+                            const char *local_path,
+                            char *buf,
+                            unsigned int len)
 {
-    if (buf == NULL || uri == NULL || ip == NULL) {
+    char lp[SC_RES_URL_MAX_LEN];
+
+    if (buf == NULL || uri == NULL || local_path == NULL || ip == NULL) {
         return -1;
     }
 
-    if (len <= (strlen(sc_ngx_get_pattern) + strlen(ip) + strlen(uri) - 4)) {
+    bzero(lp, SC_RES_URL_MAX_LEN);
+    if (strchr(uri, '?')) {
+        sprintf(lp, "&localpath=%s", local_path);
+    } else {
+        sprintf(lp, "?localpath=%s", local_path);
+    }
+
+    if (len <= (strlen(sc_ngx_get_pattern) + strlen(ip) + strlen(uri) + strlen(lp) - 6)) {
         return -1;
     }
 
-    sprintf(buf, sc_ngx_get_pattern, uri, ip);
+    sprintf(buf, sc_ngx_get_pattern, uri, lp, ip);
+
+    fprintf(stdout, "%s DEBUG request:\n%s\n", __func__, buf);
 
     return 0;
 }
@@ -47,12 +62,12 @@ static int sc_ngx_build_get(const char *ip, const char *uri, char *buf, unsigned
  *      调用接口；
  *      输入资源真实的URL，告知Nginx使用upstream方式下载资源。
  *
- * @ngx_ip: -IN Nginx用于响应下载请求的IP地址
- * @url:    -IN 资源真实的URL，注意是去掉"http://"的，例如58.211.22.175/youku/x/xxx.flv
+ * @url:        -IN 资源真实的URL，注意是去掉"http://"的，例如58.211.22.175/youku/x/xxx.flv
+ * @local_path: -IN 资源保存在本地的路径
  *
  * RETURN: -1表示失败，0表示成功。
  */
-int sc_ngx_download(char *ngx_ip, char *url)
+int sc_ngx_download(char *url, char *local_path)
 {
     int sockfd;
     struct sockaddr_in sa;
@@ -62,12 +77,9 @@ int sc_ngx_download(char *ngx_ip, char *url)
     int nsend, nrecv, len;
     int err = 0, status;
 
-    if (ngx_ip == NULL) {
-        ip_addr = sc_ngx_default_ip_addr;
-    } else {
-        ip_addr = ngx_ip;
-    }
-    if (url == NULL) {
+    ip_addr = sc_ngx_default_ip_addr;
+
+    if (url == NULL || local_path == NULL) {
         fprintf(stderr, "%s invalid argument\n", __func__);
         return -1;
     }
@@ -93,8 +105,8 @@ int sc_ngx_download(char *ngx_ip, char *url)
     }
 
     memset(buffer, 0, BUFFER_LEN);
-    if (sc_ngx_build_get(ip_addr, url, buffer, BUFFER_LEN) < 0) {
-        fprintf(stderr, "sc_ngx_build_get failed\n");
+    if (sc_ngx_build_get(ip_addr, url, local_path, buffer, BUFFER_LEN) < 0) {
+        fprintf(stderr, "%s ERROR: sc_ngx_build_get failed\n", __func__);
         err = -1;
         goto out;
     }

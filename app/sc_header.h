@@ -61,15 +61,19 @@ static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
     return keyframe[index].file_pos;
 }
 
-int sc_ngx_download(char *ngx_ip, char *url);
+int sc_ngx_download(char *url, char *local_path);
 
 void sc_snooping_serve(int sockfd);
 int sc_snooping_do_add(sc_res_info_t *ri);
 
 int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);
-int sc_url_is_sohu(char * url);
+int sc_yk_url_to_local_path(char *url, char *local_path, int len);
+
 int sc_get_sohu_video(sc_res_info_origin_t *origin);
+int sc_url_is_sohu(char * url);
+int sc_url_is_sohu_file_url(char *url);
+int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len);
 
 #endif /* __SC_HEADER_H__ */
 

@@ -13,17 +13,72 @@ int sc_url_is_sohu(char *url)
     }
 }
 
+int sc_url_is_sohu_file_url(char *url)
+{
+    if (strstr(url, "?file=/") != NULL) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len)
+{
+    char *p, *q;
+    int first_slash = 1;
+
+    if (file_url == NULL || local_path == NULL) {
+        return -1;
+    }
+
+    if (!sc_url_is_sohu_file_url(file_url)) {
+        return -1;
+    }
+
+    if (len <= strlen(file_url)) {
+        return -1;
+    }
+
+    for (p = file_url, q = local_path; *p != '\0'; p++, q++) {
+        if (first_slash && *p == '.') {
+            *q = '_';
+            continue;
+        }
+        if (*p == '/') {
+            if (first_slash) {
+                *q = *p;
+                first_slash = 0;
+            } else {
+                *q = '_';
+            }
+            continue;
+        }
+        if (*p == '?') {
+            *q = '_';
+            continue;
+        }
+        *q = *p;
+    }
+    *q = '\0';
+
+    return 0;
+}
+
 /*
  * hot.vrs.sohu.com/ipad1683703_4507722770245_4894024.m3u8?plat=0
  * ipad1683703_4507722770245_4894024.m3u8
- * real_url
+ * 220.181.61.212/ipad?file=/233/180/zDIDW3pmePf3wxIGQKHut1.mp4
+ * 118.123.211.22/sohu/ts/zC1LzEtlslvesEAgo6oGTGwUoKV7-wvwkGqy4akxs6q3jwvZSSMPX9xuTlmyqKsGXf5dXpAlsaiLzx?key=q3Zw9eUXpP3vaPi5gz4fmsYkuFctH8VFwXJ9BA..&r=OZ-AtpRgTC-1XfwNXlVLTlvAHdi64FVbtf5Lz3-A4pAdhlibsZoVo6Li&n=1&a=2001&cip=125.69.90.35&nid=299
  */
 static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
 {
-    int err = 0, status;
-    char m3u8_url[SC_RES_URL_MAX_LEN], real_url[SC_RES_URL_MAX_LEN];
+    int err = 0, status, ret;
+    char m3u8_url[SC_RES_URL_MAX_LEN];
+    char file_url[SC_RES_URL_MAX_LEN];
+    char local_path[SC_RES_URL_MAX_LEN];
+    char real_url[SC_RES_URL_MAX_LEN];
     sc_res_video_t vtype;
-//    sc_res_info_active_t *parsed;
+    sc_res_info_active_t *parsed;
     char *response = NULL, *curr;
 
     /* zhaoyao: do not care para in m3u8 way */
@@ -57,24 +112,65 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
     }
 
     for (curr = response; curr != NULL; ) {
-        bzero(real_url, SC_RES_URL_MAX_LEN);
-        curr = sohu_parse_m3u8_response(curr, real_url);
+        bzero(file_url, SC_RES_URL_MAX_LEN);
+        curr = sohu_parse_m3u8_response(curr, file_url);
 
-        /* zhaoyao XXX: real_url MUST end with ".flv" or ".mp4" */
-        vtype = sc_res_video_type_obtain(real_url);
+        /* zhaoyao XXX: file_url MUST end with ".flv" or ".mp4" */
+        vtype = sc_res_video_type_obtain(file_url);
         if (!sc_res_video_type_is_valid(vtype)) {
-            fprintf(stderr, "%s WARNING: %s type not support\n", __func__, real_url);
+            fprintf(stderr, "%s WARNING: %s type not support\n", __func__, file_url);
             continue;
         }
 
-        fprintf(stdout, "%s real_url: %s\n", __func__, real_url);
-
-#if 0
-        /* zhaoyao XXX TODO: need remembering segments count in origin */
-        ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, real_url, &parsed);
+        bzero(local_path, SC_RES_URL_MAX_LEN);
+        ret = sc_sohu_file_url_to_local_path(file_url, local_path, SC_RES_URL_MAX_LEN);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
-                                __func__, real_url);
+            fprintf(stderr, "%s ERROR: sc_sohu_file_url_to_local_path failed, file_url:\n\t%s\n",
+                                __func__, file_url);
+            continue;
+        }
+
+        if (sohu_http_session(file_url, response) < 0) {
+            fprintf(stderr, "%s ERROR: sohu_http_session faild, URL: %s\n", __func__, file_url);
+            continue;
+        }
+
+        if (http_parse_status_line(response, &status) < 0) {
+            fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response);
+            continue;
+        }
+
+        if (status == 301) {
+//            fprintf(stdout, "%s get response success:\n%s", __func__, response);
+        } else {
+            fprintf(stderr, "%s ERROR: file_url response status code %d:\n%s", __func__, status, response);
+            continue;
+        }
+
+        bzero(real_url, SC_RES_URL_MAX_LEN);
+        ret = sohu_parse_file_url_response(response, real_url);
+        if (ret != 0) {
+            fprintf(stderr, "%s ERROR: parse real_url failed, response is\n%s", __func__, response);
+            continue;
+        }
+
+#if 1
+        /*
+         * zhaoyao XXX: using file_url to create parsed ri, and local_path to store file.
+         * file_url:   220.181.61.212/ipad?file=/109/193/XKUNcCADy8eM9ypkrIfhU4.mp4
+         * local_path: 220.181.61.212/ipad_file=_109_193_XKUNcCADy8eM9ypkrIfhU4.mp4
+         * real_url:   118.123.211.11/sohu/ts/zC1LzEwlslvesEAgoE.........
+         */
+        fprintf(stdout, "%s file_url: %s\n", __func__, file_url);
+        fprintf(stdout, "%s local_path: %s\n", __func__, local_path);
+        fprintf(stdout, "%s real_url: %s\n", __func__, real_url);
+#endif
+
+        /* zhaoyao XXX TODO: need remembering segments count in origin */
+        ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, file_url, &parsed);
+        if (ret != 0) {
+            fprintf(stderr, "%s ERROR: add file_url\n\t%s\nto resource list failed, give up downloading...\n",
+                                __func__, file_url);
             /*
              * zhaoyao XXX: we can not using Nginx to download, without ri we can not track
              *              downloaded resources.
@@ -82,12 +178,12 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
             continue;
         }
 
-        ret = sc_ngx_download(NULL, real_url);
+        ret = sc_ngx_download(real_url, local_path);
         if (ret < 0) {
             /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
             fprintf(stderr, "%s ERROR: url %s inform Nginx failed\n", __func__, real_url);
         }
-#endif
+
     }
 
 out:

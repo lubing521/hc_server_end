@@ -276,6 +276,7 @@ sc_res_info_active_t *sc_res_info_find_active(sc_res_list_t *rl, const char *url
 sc_res_info_origin_t *sc_res_info_find_origin(sc_res_list_t *rl, const char *url);
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 sc_res_video_t sc_res_video_type_obtain(char *str);
+int sc_res_get_local_path(sc_res_info_t *ri, char *local_path);
 
 #endif /* __SC_RESOURCE_H__ */
 

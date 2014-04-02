@@ -232,6 +232,9 @@ static int sc_res_info_permit_adding(char *url)
     if (sc_url_is_sohu(url)) {
         return 1;
     }
+    if (sc_url_is_sohu_file_url(url)) {
+        return 1;
+    }
 
     return 0;
 }
@@ -352,7 +355,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     sc_res_set_parsed(&active->common);
     sc_res_copy_url(active->common.url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url without parameter:%s\n", __func__, active->common.url);
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, active->common.url);
 #endif
 
     active->vtype = vtype;
@@ -469,15 +472,87 @@ sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url)
     return NULL;
 }
 
+static int sc_url_to_local_path_default(char *url, char *local_path, int len)
+{
+    char *p, *q;
+    int first_slash = 1;
+
+    if (url == NULL || local_path == NULL) {
+        return -1;
+    }
+
+    if (len <= strlen(url)) {
+        return -1;
+    }
+
+    for (p = url, q = local_path; *p != '\0' && *p != '?'; p++, q++) {
+        if (first_slash && *p == '.') {
+            *q = '_';
+            continue;
+        }
+        if (*p == '/') {
+            if (first_slash) {
+                *q = *p;
+                first_slash = 0;
+            } else {
+                *q = '_';
+            }
+            continue;
+        }
+        *q = *p;
+    }
+    *q = '\0';
+
+    return 0;
+}
+
+int sc_res_get_local_path(sc_res_info_t *ri, char *local_path)
+{
+    int ret = -1;
+
+    if (ri == NULL || local_path == NULL) {
+        return -1;
+    }
+
+    if (sc_url_is_yk(ri->url)) {
+        ret = sc_yk_url_to_local_path(ri->url, local_path, SC_RES_URL_MAX_LEN);
+    } else if (sc_url_is_sohu_file_url(ri->url)) {
+        ret = sc_sohu_file_url_to_local_path(ri->url, local_path, SC_RES_URL_MAX_LEN);
+    } else {
+        fprintf(stdout, "%s DEBUG: using sc_url_to_local_path_default, url %s\n", __func__, ri->url);
+        ret = sc_url_to_local_path_default(ri->url, local_path, SC_RES_URL_MAX_LEN);
+    }
+
+    return ret;
+}
+
 static int sc_res_retry_download(sc_res_info_t *ri)
 {
     int ret;
+    char local_path[SC_RES_URL_MAX_LEN];
 
     if (ri == NULL) {
         return -1;
     }
 
-    ret = sc_ngx_download(NULL, ri->url);
+    if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
+        return -1;
+    }
+
+    bzero(local_path, SC_RES_URL_MAX_LEN);
+    ret = sc_res_get_local_path(ri, local_path);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: sc_res_get_local_path failed, url %s\n", __func__, ri->url);
+        return ret;
+    }
+
+    /* zhaoyao TODO: sohu video should generate real_url based on ri->url */
+    if (sc_url_is_sohu_file_url(ri->url)) {
+        fprintf(stderr, "%s sohu video retry download not suppoted now...\n", __func__);
+        return 0;
+    }
+
+    ret = sc_ngx_download(ri->url, local_path);
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: %s failed\n", __func__, ri->url);
     }

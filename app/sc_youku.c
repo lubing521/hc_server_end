@@ -13,6 +13,45 @@ int sc_url_is_yk(char *url)
     }
 }
 
+int sc_yk_url_to_local_path(char *url, char *local_path, int len)
+{
+    char *p, *q;
+    int first_slash = 1;
+
+    if (url == NULL || local_path == NULL) {
+        return -1;
+    }
+
+    if (!sc_url_is_yk(url)) {
+        return -1;
+    }
+
+    if (len <= strlen(url)) {
+        return -1;
+    }
+
+    for (p = url, q = local_path; *p != '\0' && *p != '?'; p++, q++) {
+        if (first_slash && *p == '.') {
+            *q = '_';
+            continue;
+        }
+        if (*p == '/') {
+            if (first_slash) {
+                *q = *p;
+                first_slash = 0;
+            } else {
+                *q = '_';
+            }
+            continue;
+        }
+        *q = *p;
+    }
+    *q = '\0';
+
+    return 0;
+}
+
+
 static int sc_get_yk_download_video_type(yk_stream_info_t *streams[])
 {
     int i, ret = -1;
@@ -45,6 +84,7 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
     char fp_url[BUFFER_LEN];                /* getflvpath URL */
     char real_url[BUFFER_LEN];              /* Youku video file's real URL */
+    char local_path[SC_RES_URL_MAX_LEN];
     char *response = NULL;
     int i, j;
     int err = 0, status, ret;
@@ -165,6 +205,13 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 /*
                  * Step 3 - using real URL to download.
                  */
+                bzero(local_path, SC_RES_URL_MAX_LEN);
+                ret = sc_yk_url_to_local_path(real_url, local_path, SC_RES_URL_MAX_LEN);
+                if (ret != 0) {
+                    fprintf(stderr, "%s ERROR: sc_yk_url_to_local_path failed, url %s\n", __func__, real_url);
+                    err = -1;
+                    goto out;
+                }
                 /* zhaoyao XXX TODO: need remembering segments count in origin */
                 ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, real_url, &parsed);
                 if (ret != 0) {
@@ -176,7 +223,7 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                      */
                     continue;
                 }
-                ret = sc_ngx_download(NULL, real_url);
+                ret = sc_ngx_download(real_url, local_path);
                 if (ret < 0) {
                     /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);

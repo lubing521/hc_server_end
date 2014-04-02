@@ -125,14 +125,14 @@ int sohu_is_m3u8_url(char *sohu_url)
     return 1;
 }
 
-char *sohu_parse_m3u8_response(char *curr, char *real_url)
+char *sohu_parse_m3u8_response(char *curr, char *file_url)
 {
     char *ret = NULL, *p;
     char *tag1 = "file=";
     char *tag2 = "#EXT-X-DISCONTINUITY";
     unsigned long len;
 
-    if (curr == NULL || real_url == NULL) {
+    if (curr == NULL || file_url == NULL) {
         return ret;
     }
 
@@ -153,12 +153,46 @@ char *sohu_parse_m3u8_response(char *curr, char *real_url)
     if (len >= SC_RES_URL_MAX_LEN) {
         fprintf(stderr, "%s ERROR: parsed url len %lu, exceed limit %u\n", __func__, len, SC_RES_URL_MAX_LEN);
     } else {
-        strncpy(real_url, curr, len);
+        strncpy(file_url, curr, len);
     }
 
     ret = strstr(curr, tag2);
 
     return ret;
+}
+
+int sohu_parse_file_url_response(char *response, char *real_url)
+{
+    char *tag = "Location:";
+    char *p;
+    int len;
+
+    if (response == NULL || real_url == NULL) {
+        return -1;
+    }
+
+    p = strstr(response, tag);
+    if (p == NULL) {
+        return -1;
+    }
+
+    p = strstr(p, HTTP_URL_PREFIX);
+    if (p == NULL) {
+        return -1;
+    }
+
+    p = p + HTTP_URL_PRE_LEN;
+    len = strlen(p);
+    if (len >= SC_RES_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: real url is too long:\n%s\n", __func__, p);
+        return -1;
+    }
+
+    strcpy(real_url, p);
+    /* zhaoyao XXX: real_url end with "\r\n\r\n" */
+    real_url[len - 4] = '\0';
+
+    return 0;
 }
 
 
