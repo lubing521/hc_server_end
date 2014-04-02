@@ -50,7 +50,9 @@ static int sc_ngx_build_get(const char *ip,
 
     sprintf(buf, sc_ngx_get_pattern, uri, lp, ip);
 
+#if DEBUG
     fprintf(stdout, "%s DEBUG request:\n%s\n", __func__, buf);
+#endif
 
     return 0;
 }
