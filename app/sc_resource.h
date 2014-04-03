@@ -91,7 +91,14 @@ static inline int sc_res_video_type_is_valid(sc_res_video_t vtype)
 typedef struct sc_res_info_s {
     unsigned long id;
     unsigned long flag;
-    char url[SC_RES_URL_MAX_LEN]; /* zhaoyao XXX: stored file's local path is generated from it. */
+    /*
+     * zhaoyao XXX: 对于origin，由于来自Snooping模块的URL千差万别，需要根据不同视频网站构建统一的URL
+     *              格式，origin本来对Snooping模块，且只要具备恢复视频资源信息的功能即可；
+     *              对于parsed和normal，该URL必须与资源在本地存储的路径(local_path)对应起来，而且该
+     *              url还会通知Snooping模块做重定向；
+     *              注意: 对于sohu视频，parsed的URL仍然不是最终的资源URL。
+     */
+    char url[SC_RES_URL_MAX_LEN];
 } sc_res_info_t;
 
 typedef struct sc_res_info_origin_s {
