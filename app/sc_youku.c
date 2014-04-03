@@ -60,6 +60,7 @@ int sc_yk_gen_origin_url(char *req_url, char *origin_url)
                     "&video_id=",
                     "&id=",
                     "&vid=",
+                    "&local_vid=",
                     NULL };
     char *start = NULL;
     int i, len = 0;
