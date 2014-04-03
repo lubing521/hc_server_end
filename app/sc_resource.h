@@ -91,7 +91,7 @@ static inline int sc_res_video_type_is_valid(sc_res_video_t vtype)
 typedef struct sc_res_info_s {
     unsigned long id;
     unsigned long flag;
-    char url[SC_RES_URL_MAX_LEN];
+    char url[SC_RES_URL_MAX_LEN]; /* zhaoyao XXX: stored file's local path is generated from it. */
 } sc_res_info_t;
 
 typedef struct sc_res_info_origin_s {

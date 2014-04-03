@@ -51,6 +51,7 @@ static void sc_snooping_do_parse(int sockfd,
 
     url = (char *)req->url_data;
 
+    /* zhaoyao XXX FIXME TODO: 如果参数不一样，url也将被视为不一样，如何配合snooping做好过滤? */
     origin = sc_res_info_find_origin(sc_res_info_list, url);
     if (origin != NULL) {
         if (!sc_res_is_origin(&origin->common)) {
@@ -65,7 +66,7 @@ static void sc_snooping_do_parse(int sockfd,
 
     ret = sc_res_info_add_origin(sc_res_info_list, url, &origin);
     if (ret != 0) {
-        fprintf(stderr, "%s: add url in resources list failed\n", __func__);
+        fprintf(stderr, "%s: add %s in resources list failed\n", __func__, url);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     } else {
