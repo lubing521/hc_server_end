@@ -94,6 +94,7 @@ typedef struct sc_res_info_s {
     /*
      * zhaoyao XXX: 对于origin，由于来自Snooping模块的URL千差万别，需要根据不同视频网站构建统一的URL
      *              格式，origin本来对Snooping模块，且只要具备恢复视频资源信息的功能即可；
+     *
      *              对于parsed和normal，该URL必须与资源在本地存储的路径(local_path)对应起来，而且该
      *              url还会通知Snooping模块做重定向；
      *              注意: 对于sohu视频，parsed的URL仍然不是最终的资源URL。
@@ -284,6 +285,7 @@ sc_res_info_origin_t *sc_res_info_find_origin(sc_res_list_t *rl, const char *url
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 sc_res_video_t sc_res_video_type_obtain(char *str);
 int sc_res_get_local_path(sc_res_info_t *ri, char *local_path);
+int sc_res_gen_origin_url(char *req_url, char *origin_url);
 
 #endif /* __SC_RESOURCE_H__ */
 

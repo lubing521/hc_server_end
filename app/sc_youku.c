@@ -3,6 +3,8 @@
 #include "net_util.h"
 #include "yk_lib.h"
 
+static char sc_yk_origin_url_pattern[] = "v.youku.com/v_show/id_%s.html";
+
 /* zhaoyao XXX: sc's private simple check */
 int sc_url_is_yk(char *url)
 {
@@ -47,6 +49,47 @@ int sc_yk_url_to_local_path(char *url, char *local_path, int len)
         *q = *p;
     }
     *q = '\0';
+
+    return 0;
+}
+
+int sc_yk_gen_origin_url(char *req_url, char *origin_url)
+{
+    char buf[16];
+    char *tag[] = { "v_show/id_",
+                    "&video_id=",
+                    "&id=",
+                    "&vid=",
+                    NULL };
+    char *start = NULL;
+    int i, len = 0;
+
+    if (req_url == NULL || origin_url == NULL) {
+        return -1;
+    }
+
+    for (i = 0; tag[i] != NULL; i++) {
+        start = strstr(req_url, tag[i]);
+        if (start == NULL) {
+            continue;
+        }
+        start = start + strlen(tag[i]);
+        for (len = 0; isalnum(start[len]); len++) {
+            ;
+        }
+        goto generate;
+    }
+
+error:
+    return -1;
+
+generate:
+    if (len != 13) {
+        goto error;
+    }
+    bzero(buf, sizeof(buf));
+    strncpy(buf, start, len);
+    sprintf(origin_url, sc_yk_origin_url_pattern, buf);
 
     return 0;
 }

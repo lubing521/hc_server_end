@@ -42,36 +42,44 @@ static void sc_snooping_do_parse(int sockfd,
 {
     int ret;
     u8 status;
-    char *url;
+    char *req_url, origin_url[SC_RES_URL_MAX_LEN];
     sc_res_info_origin_t *origin;
     
 #if DEBUG
-        fprintf(stdout, "%s DEBUG: req url:\n\t%s\n", __func__, req->url_data);
+    fprintf(stdout, "%s DEBUG: req url:\n\t%s\n", __func__, req->url_data);
 #endif
 
-    url = (char *)req->url_data;
+    req_url = (char *)req->url_data;
 
     /* zhaoyao XXX FIXME TODO: 如果参数不一样，url也将被视为不一样，如何配合snooping做好过滤? */
-    origin = sc_res_info_find_origin(sc_res_info_list, url);
+    bzero(origin_url, SC_RES_URL_MAX_LEN);
+    ret = sc_res_gen_origin_url(req_url, origin_url);
+    if (ret != 0) {
+        fprintf(stderr, "%s: generate origin url failed, req_url: %s...\n", __func__, req_url);
+        status = HTTP_SP_STATUS_OK;
+        goto reply;
+    }
+
+    origin = sc_res_info_find_origin(sc_res_info_list, origin_url);
     if (origin != NULL) {
         if (!sc_res_is_origin(&origin->common)) {
-            fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, url);
+            fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, origin->common.url);
         }
 #if DEBUG
-        fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, url);
+        fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, origin->common.url);
 #endif
         status = HTTP_SP_STATUS_OK;
         goto reply;
     }
 
-    ret = sc_res_info_add_origin(sc_res_info_list, url, &origin);
+    ret = sc_res_info_add_origin(sc_res_info_list, origin_url, &origin);
     if (ret != 0) {
-        fprintf(stderr, "%s: add %s in resources list failed\n", __func__, url);
+        fprintf(stderr, "%s: add %s in resources list failed\n", __func__, origin_url);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     } else {
         /* zhaoyao XXX: return OK if add origin-type ri success anyway */
-        fprintf(stdout, "%s: add origin url success:\n\t%s\n", __func__, origin->common.url);
+        fprintf(stdout, "%s: add origin url success: %s\n", __func__, origin->common.url);
         status = HTTP_SP_STATUS_OK;
     }
 
@@ -91,7 +99,7 @@ static void sc_snooping_do_parse(int sockfd,
 
 
     if (ret < 0) {
-        fprintf(stderr, "%s: parse or down %s failed\n", __func__, url);
+        fprintf(stderr, "%s: parse or down %s failed\n", __func__, origin->common.url);
     }
 
 reply:

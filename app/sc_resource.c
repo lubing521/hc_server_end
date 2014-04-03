@@ -236,6 +236,8 @@ static int sc_res_info_permit_adding(char *url)
         return 1;
     }
 
+    fprintf(stderr, "%s is forbidden, URL: %s\n", __func__, url);
+
     return 0;
 }
 
@@ -524,6 +526,25 @@ int sc_res_get_local_path(sc_res_info_t *ri, char *local_path)
     }
 
     return ret;
+}
+
+int sc_res_gen_origin_url(char *req_url, char *origin_url)
+{
+    int ret;
+
+    if (req_url == NULL || origin_url == NULL) {
+        return -1;
+    }
+
+    if (sc_url_is_yk(req_url)) {
+        ret = sc_yk_gen_origin_url(req_url, origin_url);
+        return ret;
+    } else if (sc_url_is_sohu(req_url)) {
+        ret = sc_sohu_gen_origin_url(req_url, origin_url);
+        return ret;
+    } else {
+        return -1;
+    }
 }
 
 static int sc_res_retry_download(sc_res_info_t *ri)

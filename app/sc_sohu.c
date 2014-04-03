@@ -3,6 +3,8 @@
 #include "net_util.h"
 #include "sohu_lib.h"
 
+static char sc_sohu_origin_url_pattern[] = "hot.vrs.sohu.com/ipad%s";
+
 /* zhaoyao XXX: sc's private simple check */
 int sc_url_is_sohu(char *url)
 {
@@ -63,6 +65,39 @@ int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len)
 
     return 0;
 }
+
+int sc_sohu_gen_origin_url(char *req_url, char *origin_url)
+{
+    char buf[SC_RES_URL_MAX_LEN];
+    char tag[] = "hot.vrs.sohu.com/ipad";
+    char tag2[] = ".m3u8";
+    char *start = NULL;
+    int len = 0;
+
+    if (req_url == NULL || origin_url == NULL) {
+        return -1;
+    }
+
+    start = strstr(req_url, tag);
+    if (start == NULL) {
+        return -1;
+    }
+    if (strstr(start, tag2) == NULL) {
+        return -1;
+    }
+
+    start = start + strlen(tag);
+    for (len = 0; start[len] != '?' && start[len] != '\0'; len++) {
+        ;
+    }
+
+    bzero(buf, sizeof(buf));
+    strncpy(buf, start, len);
+    sprintf(origin_url, sc_sohu_origin_url_pattern, buf);
+
+    return 0;
+}
+
 
 /*
  * hot.vrs.sohu.com/ipad1683703_4507722770245_4894024.m3u8?plat=0
