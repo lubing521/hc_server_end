@@ -599,7 +599,6 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         if (!sc_res_is_stored(ri)) {
             /* zhaoyao XXX: timeout, and re-download */
             if (sc_res_is_d_fail(ri)) {   /* Nginx tell us to re-download it */
-                fprintf(stderr, "%s use sc_res_retry_download %s\n", __func__, ri->url);
                 ret = sc_res_retry_download(ri);
                 if (ret != 0) {
                     fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);

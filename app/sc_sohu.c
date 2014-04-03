@@ -80,6 +80,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
     sc_res_video_t vtype;
     sc_res_info_active_t *parsed;
     char *response = NULL, *curr;
+    char response2[BUFFER_LEN];
 
     /* zhaoyao: do not care para in m3u8 way */
     sc_res_copy_url(m3u8_url, origin->common.url, SC_RES_URL_MAX_LEN, 0);
@@ -91,7 +92,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
         goto out;
     }
 
-    if (sohu_http_session(m3u8_url, response) < 0) {
+    if (sohu_http_session(m3u8_url, response, RESP_BUF_LEN) < 0) {
         fprintf(stderr, "sohu_http_session faild, URL: %s\n", m3u8_url);
         err = -1;
         goto out;
@@ -104,7 +105,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
     }
 
     if (status == 200) {
-//        fprintf(stdout, "%s get response success:\n%s", __func__, response);
+//        fprintf(stdout, "%s get response success:\n***************\n%s\n***************\n", __func__, response);
     } else {
         fprintf(stderr, "%s ERROR: m3u8 response status code %d:\n%s", __func__, status, response);
         err = -1;
@@ -130,31 +131,31 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
             continue;
         }
 
-        if (sohu_http_session(file_url, response) < 0) {
+        if (sohu_http_session(file_url, response2, BUFFER_LEN) < 0) {
             fprintf(stderr, "%s ERROR: sohu_http_session faild, URL: %s\n", __func__, file_url);
             continue;
         }
 
-        if (http_parse_status_line(response, &status) < 0) {
-            fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response);
+        if (http_parse_status_line(response2, &status) < 0) {
+            fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response2);
             continue;
         }
 
         if (status == 301) {
 //            fprintf(stdout, "%s get response success:\n%s", __func__, response);
         } else {
-            fprintf(stderr, "%s ERROR: file_url response status code %d:\n%s", __func__, status, response);
+            fprintf(stderr, "%s ERROR: file_url response status code %d:\n%s", __func__, status, response2);
             continue;
         }
 
         bzero(real_url, SC_RES_URL_MAX_LEN);
-        ret = sohu_parse_file_url_response(response, real_url);
+        ret = sohu_parse_file_url_response(response2, real_url);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: parse real_url failed, response is\n%s", __func__, response);
+            fprintf(stderr, "%s ERROR: parse real_url failed, response is\n%s", __func__, response2);
             continue;
         }
 
-#if 1
+#if DEBUG
         /*
          * zhaoyao XXX: using file_url to create parsed ri, and local_path to store file.
          * file_url:   220.181.61.212/ipad?file=/109/193/XKUNcCADy8eM9ypkrIfhU4.mp4

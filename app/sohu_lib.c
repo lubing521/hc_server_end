@@ -35,7 +35,7 @@ int sohu_build_request(char *host, char *uri, char *buf)
 /*
  * hot.vrs.sohu.com/ipad1683703_4507722770245_4894024.m3u8
  */
-int sohu_http_session(char *url, char *response)
+int sohu_http_session(char *url, char *response, unsigned long resp_len)
 {
     int sockfd = -1, err = 0;
     char host[MAX_HOST_NAME_LEN], *uri_start;
@@ -84,12 +84,15 @@ int sohu_http_session(char *url, char *response)
         goto out;
     }
 
-    memset(response, 0, RESP_BUF_LEN);
-    nrecv = recv(sockfd, response, RESP_BUF_LEN, MSG_WAITALL);
+    memset(response, 0, resp_len);
+    nrecv = recv(sockfd, response, resp_len, MSG_WAITALL);
     if (nrecv <= 0) {
         fprintf(stderr, "%s ERROR: recv failed or meet EOF, %d: %s\n", __func__, nrecv, strerror(errno));
         err = -1;
         goto out;
+    }
+    if (nrecv == resp_len) {
+        fprintf(stderr, "%s WARNING: receive %d bytes, response buffer is full!!!\n", __func__, nrecv);
     }
 
 out:
@@ -133,17 +136,20 @@ char *sohu_parse_m3u8_response(char *curr, char *file_url)
     unsigned long len;
 
     if (curr == NULL || file_url == NULL) {
+        fprintf(stderr, "%s ERROR: Invalid input, curr is NULL\n", __func__);
         return ret;
     }
 
     curr = strstr(curr, HTTP_URL_PREFIX);
     if (curr == NULL) {
+        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, HTTP_URL_PREFIX);
         return ret;
     }
 
     curr = curr + HTTP_URL_PRE_LEN;
     p = strstr(curr, tag1);
     if (p == NULL) {
+        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, tag1);
         return ret;
     }
     for ( ; *p != '&' && *p != '\0'; p++) {

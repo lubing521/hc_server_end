@@ -265,6 +265,7 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         err = -1;
         goto out;
     }
+    fprintf(stdout, "%s url: %s\n", __func__, req->usr_data);
 //    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
 
     memset(buf, 0, sizeof(buf));

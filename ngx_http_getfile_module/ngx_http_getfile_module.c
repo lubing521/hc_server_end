@@ -178,7 +178,7 @@ static ngx_int_t getfile_get_real_uri_from_uri(ngx_http_request_t *r, char ru[])
 static ngx_int_t getfile_upstream_create_request(ngx_http_request_t *r)
 {
     static ngx_str_t backendQueryLine =
-            ngx_string("GET %s HTTP/1.1\r\nHost: %V\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36\r\nConnection: close\r\n\r\n");
+            ngx_string("GET %s HTTP/1.0\r\nHost: %V\r\nUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36\r\nConnection: close\r\n\r\n");
     ngx_int_t queryLineLen;
     ngx_buf_t *b;
     char real_uri[BUFLEN_L];
