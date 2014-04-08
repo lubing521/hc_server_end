@@ -16,7 +16,7 @@
 #ifndef __SC_HEADER_H__
 #define __SC_HEADER_H__
 
-#define SC_NGX_ROOT_PATH                "/data/usb0/"
+#define SC_NGX_ROOT_PATH                "/usr/local/hot-cache/"
 #define SC_NGX_ROOT_PATH_LEN            (sizeof(SC_NGX_ROOT_PATH) - 1)
 #define SC_NGX_DEFAULT_IP_ADDR          "127.0.0.1"
 #define SC_NGX_DEFAULT_PORT             8089
