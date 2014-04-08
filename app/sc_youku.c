@@ -15,6 +15,10 @@ int sc_url_is_yk(char *url)
     }
 }
 
+/*
+ * ri->url: 101.226.245.141/youku/657F3DA0E044A84268416F5901/030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
+ * local_path: 101_226_245_141/030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
+ */
 int sc_yk_url_to_local_path(char *url, char *local_path, int len)
 {
     char *p, *q;
@@ -32,22 +36,22 @@ int sc_yk_url_to_local_path(char *url, char *local_path, int len)
         return -1;
     }
 
-    for (p = url, q = local_path; *p != '\0' && *p != '?'; p++, q++) {
-        if (first_slash && *p == '.') {
+    for (p = url, q = local_path; *p != '/'; p++, q++) {
+        if (*p == '.') {
             *q = '_';
-            continue;
-        }
-        if (*p == '/') {
-            if (first_slash) {
-                *q = *p;
-                first_slash = 0;
-            } else {
-                *q = '_';
-            }
             continue;
         }
         *q = *p;
     }
+
+    for (p = url + strlen(url) - 1; *p != '/'; p--) {
+        ;
+    }
+
+    for ( ; *p != '\0' && *p != '?'; p++, q++ ) {
+        *q = *p;
+    }
+
     *q = '\0';
 
     return 0;
