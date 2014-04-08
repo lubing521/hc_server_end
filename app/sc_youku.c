@@ -22,7 +22,6 @@ int sc_url_is_yk(char *url)
 int sc_yk_url_to_local_path(char *url, char *local_path, int len)
 {
     char *p, *q;
-    int first_slash = 1;
 
     if (url == NULL || local_path == NULL) {
         return -1;
