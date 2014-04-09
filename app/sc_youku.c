@@ -262,6 +262,10 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                      */
                     continue;
                 }
+                /*
+                 * zhaoyao XXX TODO: should not call this directly, generate local path should be
+                 *                   done in sc_res_info_add_parsed.
+                 */
                 bzero(parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
                 ret = sc_yk_url_to_local_path(real_url, parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
                 if (ret != 0) {

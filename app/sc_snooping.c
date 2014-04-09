@@ -142,13 +142,6 @@ static void sc_snooping_do_down(int sockfd,
     /* zhaoyao XXX: when add normal ri success, status set to OK, and calm down Snooping module */
     status = HTTP_SP_STATUS_OK;
 
-    bzero(normal->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
-    ret = sc_res_get_local_path(&normal->common, normal->localpath);
-    if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_get_local_path failed, url %s\n", __func__, normal->common.url);
-        goto reply;
-    }
-
     ret = sc_ngx_download(normal->common.url, normal->localpath);
     if (ret != 0) {
         fprintf(stderr, "%s: download %s failed\n", __func__, normal->common.url);

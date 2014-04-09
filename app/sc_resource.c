@@ -241,9 +241,63 @@ static int sc_res_info_permit_adding(char *url)
     return 0;
 }
 
+static int sc_res_url_to_local_path_default(char *url, char *local_path, int len)
+{
+    char *p, *q;
+    int first_slash = 1;
+
+    if (url == NULL || local_path == NULL) {
+        return -1;
+    }
+
+    if (len <= strlen(url)) {
+        return -1;
+    }
+
+    for (p = url, q = local_path; *p != '\0' && *p != '?'; p++, q++) {
+        if (first_slash && *p == '.') {
+            *q = '_';
+            continue;
+        }
+        if (*p == '/') {
+            if (first_slash) {
+                *q = *p;
+                first_slash = 0;
+            } else {
+                *q = '_';
+            }
+            continue;
+        }
+        *q = *p;
+    }
+    *q = '\0';
+
+    return 0;
+}
+
+static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
+{
+    int ret = -1;
+
+    if (active == NULL) {
+        return -1;
+    }
+
+    if (sc_url_is_yk(active->common.url)) {
+        ret = sc_yk_url_to_local_path(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+    } else if (sc_url_is_sohu_file_url(active->common.url)) {
+        ret = sc_sohu_file_url_to_local_path(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+    } else {
+        fprintf(stdout, "%s DEBUG: using sc_res_url_to_local_path_default, url %s\n", __func__, active->common.url);
+        ret = sc_res_url_to_local_path_default(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+    }
+
+    return ret;
+}
+
 int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **normal)
 {
-    int len;
+    int len, ret;
     sc_res_info_active_t *active;
 
     if (rl == NULL || url == NULL) {
@@ -274,11 +328,21 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, active->common.url);
 #endif
 
+    ret = sc_res_info_gen_active_local_path(active);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: sc_res_info_gen_active_local_path failed, url %s\n", __func__, active->common.url);
+        goto error;
+    }
+
     if (normal != NULL) {
         *normal = active;
     }
 
     return 0;
+
+error:
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)active);
+    return -1;
 }
 
 int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **origin)
@@ -472,63 +536,6 @@ sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url)
     }
 
     return NULL;
-}
-
-static int sc_url_to_local_path_default(char *url, char *local_path, int len)
-{
-    char *p, *q;
-    int first_slash = 1;
-
-    if (url == NULL || local_path == NULL) {
-        return -1;
-    }
-
-    if (len <= strlen(url)) {
-        return -1;
-    }
-
-    for (p = url, q = local_path; *p != '\0' && *p != '?'; p++, q++) {
-        if (first_slash && *p == '.') {
-            *q = '_';
-            continue;
-        }
-        if (*p == '/') {
-            if (first_slash) {
-                *q = *p;
-                first_slash = 0;
-            } else {
-                *q = '_';
-            }
-            continue;
-        }
-        *q = *p;
-    }
-    *q = '\0';
-
-    return 0;
-}
-
-/*
- * zhaoyao TODO: input only need ri.
- */
-int sc_res_get_local_path(sc_res_info_t *ri, char *local_path)
-{
-    int ret = -1;
-
-    if (ri == NULL || local_path == NULL) {
-        return -1;
-    }
-
-    if (sc_url_is_yk(ri->url)) {
-        ret = sc_yk_url_to_local_path(ri->url, local_path, SC_RES_LOCAL_PATH_MAX_LEN);
-    } else if (sc_url_is_sohu_file_url(ri->url)) {
-        ret = sc_sohu_file_url_to_local_path(ri->url, local_path, SC_RES_LOCAL_PATH_MAX_LEN);
-    } else {
-        fprintf(stdout, "%s DEBUG: using sc_url_to_local_path_default, url %s\n", __func__, ri->url);
-        ret = sc_url_to_local_path_default(ri->url, local_path, SC_RES_LOCAL_PATH_MAX_LEN);
-    }
-
-    return ret;
 }
 
 int sc_res_gen_origin_url(char *req_url, char *origin_url)
