@@ -110,7 +110,6 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
     int err = 0, status, ret;
     char m3u8_url[SC_RES_URL_MAX_LEN];
     char file_url[SC_RES_URL_MAX_LEN];
-    char local_path[SC_RES_URL_MAX_LEN];
     char real_url[SC_RES_URL_MAX_LEN];
     sc_res_video_t vtype;
     sc_res_info_active_t *parsed;
@@ -158,14 +157,6 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
             continue;
         }
 
-        bzero(local_path, SC_RES_URL_MAX_LEN);
-        ret = sc_sohu_file_url_to_local_path(file_url, local_path, SC_RES_URL_MAX_LEN);
-        if (ret != 0) {
-            fprintf(stderr, "%s ERROR: sc_sohu_file_url_to_local_path failed, file_url:\n\t%s\n",
-                                __func__, file_url);
-            continue;
-        }
-
         if (sohu_http_session(file_url, response2, BUFFER_LEN) < 0) {
             fprintf(stderr, "%s ERROR: sohu_http_session faild, URL: %s\n", __func__, file_url);
             continue;
@@ -190,18 +181,6 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
             continue;
         }
 
-#if DEBUG
-        /*
-         * zhaoyao XXX: using file_url to create parsed ri, and local_path to store file.
-         * file_url:   220.181.61.212/ipad?file=/109/193/XKUNcCADy8eM9ypkrIfhU4.mp4
-         * local_path: 220.181.61.212/ipad_file=_109_193_XKUNcCADy8eM9ypkrIfhU4.mp4
-         * real_url:   118.123.211.11/sohu/ts/zC1LzEwlslvesEAgoE.........
-         */
-        fprintf(stdout, "%s file_url: %s\n", __func__, file_url);
-        fprintf(stdout, "%s local_path: %s\n", __func__, local_path);
-        fprintf(stdout, "%s real_url: %s\n", __func__, real_url);
-#endif
-
         /* zhaoyao XXX TODO: need remembering segments count in origin */
         ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, file_url, &parsed);
         if (ret != 0) {
@@ -214,7 +193,28 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
             continue;
         }
 
-        ret = sc_ngx_download(real_url, local_path);
+        /* zhaoyao XXX TODO FIXME: all those local path adding should be done in sc_res_info_add_xxxxx */
+        bzero(parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+        ret = sc_sohu_file_url_to_local_path(file_url, parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+        if (ret != 0) {
+            fprintf(stderr, "%s ERROR: sc_sohu_file_url_to_local_path failed, file_url:\n\t%s\n",
+                                __func__, file_url);
+            continue;
+        }
+
+#if DEBUG
+        /*
+         * zhaoyao XXX: using file_url to create parsed ri, and local_path to store file.
+         * file_url:   220.181.61.212/ipad?file=/109/193/XKUNcCADy8eM9ypkrIfhU4.mp4
+         * local_path: 220.181.61.212/ipad_file=_109_193_XKUNcCADy8eM9ypkrIfhU4.mp4
+         * real_url:   118.123.211.11/sohu/ts/zC1LzEwlslvesEAgoE.........
+         */
+        fprintf(stdout, "%s file_url: %s\n", __func__, file_url);
+        fprintf(stdout, "%s local_path: %s\n", __func__, parsed->localpath);
+        fprintf(stdout, "%s real_url: %s\n", __func__, real_url);
+#endif
+
+        ret = sc_ngx_download(real_url, parsed->localpath);
         if (ret < 0) {
             /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
             fprintf(stderr, "%s ERROR: url %s inform Nginx failed\n", __func__, real_url);

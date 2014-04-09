@@ -76,7 +76,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     off_t                      real_offset, pre_kf2_size = 0;
     sc_res_info_active_t      *curr;
     int                        j;
-    char                       file[SC_RES_URL_MAX_LEN];
+    char                       fpath[512];
 
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -199,12 +199,12 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                         if (!sc_res_is_kf_crt(&curr->common)) {
                             continue;
                         }
-                        ngx_memzero(file, SC_RES_URL_MAX_LEN);
-                        if (sc_res_map_url_to_file_path(curr->common.url, file, SC_RES_URL_MAX_LEN) != 0) {
-                            ngx_log_stderr(NGX_OK, "*** %s ***: sc_res_map_url_to_file_path error\n", __func__);
+                        ngx_memzero(fpath, sizeof(fpath));
+                        if (sc_res_map_to_file_path(curr, fpath, sizeof(fpath)) != 0) {
+                            ngx_log_stderr(NGX_OK, "*** %s ***: sc_res_map_to_file_path error\n", __func__);
                             break;
                         }
-                        if (ngx_strncmp(&file[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(file) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
+                        if (ngx_strncmp(&fpath[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(fpath) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
                             real_offset = sc_kf_flv_seek_offset(start, curr->kf_info, curr->kf_num);
                             pre_kf2_size = curr->kf_info[1].file_pos;
                             len = of.size - real_offset + pre_kf2_size;

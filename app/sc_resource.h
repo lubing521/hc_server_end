@@ -28,6 +28,7 @@
 #define SC_RES_INFO_NUM_MAX_ACTIVE (0x1 << 10)
 
 #define SC_RES_URL_MAX_LEN         512
+#define SC_RES_LOCAL_PATH_MAX_LEN  256
 
 #define SC_RES_GEN_T_SHIFT  24
 #define SC_RES_GEN_T_MASK   0xFF
@@ -122,6 +123,9 @@ typedef struct sc_res_info_active_s {
 
     /* zhaoyao XXX FIXME: at current time, we treat all active as video */
     enum sc_res_video_e vtype;
+
+    /* zhaoyao XXX: stored resources' stored local path, file path is from $ROOT/localpath */
+    char localpath[SC_RES_LOCAL_PATH_MAX_LEN];
 
     sc_kf_flv_info_t kf_info[SC_KF_FLV_MAX_NUM];
     unsigned long kf_num;
@@ -230,40 +234,18 @@ typedef struct sc_res_list_s {
  * zhaoyao: faster, and truncate parameter in url;
  *          fpath buffer size is len.
  */
-static inline int sc_res_map_url_to_file_path(char *url, char *fpath, unsigned int len)
+static inline int sc_res_map_to_file_path(sc_res_info_active_t *active, char *fpath, unsigned int len)
 {
-    char *p;
-    int i, first_slash = 1;
-
-    if (url == 0 || fpath == 0) {
+    if (active == 0 || fpath == 0) {
         return -1;
     }
-    if (strncmp(url, "http://", 7) == 0) {
-        url = url + 7;
-    }
-    if (len <= strlen(url) + SC_NGX_ROOT_PATH_LEN) {
+    if (len <= strlen(active->localpath) + SC_NGX_ROOT_PATH_LEN) {
         return -1;
     }
 
     bzero(fpath, len);
     fpath = strcat(fpath, SC_NGX_ROOT_PATH);
-    fpath = fpath + SC_NGX_ROOT_PATH_LEN;
-    for (p = url, i = 0; *p != '?' && *p != '\0'; p++, i++) {
-        if (first_slash && *p == '.') {
-            fpath[i] = '_';
-            continue;
-        }
-        if (*p == '/') {
-            if (first_slash) {
-                fpath[i] = *p;
-                first_slash = 0;
-            } else {
-                fpath[i] = '_';
-            }
-        } else {
-            fpath[i] = *p;
-        }
-    }
+    fpath = strcat(fpath, active->localpath);
 
     return 0;
 }

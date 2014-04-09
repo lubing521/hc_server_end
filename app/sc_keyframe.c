@@ -416,6 +416,11 @@ int sc_kf_flv_create_info(sc_res_info_active_t *active)
         return -1;
     }
 
+    if (active->vtype != SC_RES_VIDEO_FLV) {
+        fprintf(stderr, "%s ERROR: active->vtype = %d, is not SC_RES_VIDEO_FLV\n", __func__, active->vtype);
+        return -1;
+    }
+
     if (!sc_res_is_stored(ri) || sc_res_is_kf_crt(ri)) {
         fprintf(stderr, "%s ERROR: ri URL:\n\t%s\nflag:%lu can not create flv key frame\n",
                             __func__, ri->url, ri->flag);
@@ -423,8 +428,8 @@ int sc_kf_flv_create_info(sc_res_info_active_t *active)
     }
 
     bzero(fpath, BUFFER_LEN);
-    if (sc_res_map_url_to_file_path(ri->url, fpath, BUFFER_LEN) != 0) {
-        fprintf(stderr, "%s ERROR: map url %s to file path failed\n", __func__, ri->url);
+    if (sc_res_map_to_file_path(active, fpath, BUFFER_LEN) != 0) {
+        fprintf(stderr, "%s ERROR: map %s to file path failed\n", __func__, active->localpath);
         return -1;
     }
 

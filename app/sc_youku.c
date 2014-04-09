@@ -131,7 +131,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
     char pl_url[BUFFER_LEN];                /* getplaylist URL */
     char fp_url[BUFFER_LEN];                /* getflvpath URL */
     char real_url[BUFFER_LEN];              /* Youku video file's real URL */
-    char local_path[SC_RES_URL_MAX_LEN];
     char *response = NULL;
     int i, j;
     int err = 0, status, ret;
@@ -252,13 +251,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 /*
                  * Step 3 - using real URL to download.
                  */
-                bzero(local_path, SC_RES_URL_MAX_LEN);
-                ret = sc_yk_url_to_local_path(real_url, local_path, SC_RES_URL_MAX_LEN);
-                if (ret != 0) {
-                    fprintf(stderr, "%s ERROR: sc_yk_url_to_local_path failed, url %s\n", __func__, real_url);
-                    err = -1;
-                    goto out;
-                }
                 /* zhaoyao XXX TODO: need remembering segments count in origin */
                 ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, real_url, &parsed);
                 if (ret != 0) {
@@ -270,7 +262,14 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                      */
                     continue;
                 }
-                ret = sc_ngx_download(real_url, local_path);
+                bzero(parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+                ret = sc_yk_url_to_local_path(real_url, parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+                if (ret != 0) {
+                    fprintf(stderr, "%s ERROR: sc_yk_url_to_local_path failed, url %s\n", __func__, real_url);
+                    err = -1;
+                    goto out;
+                }
+                ret = sc_ngx_download(real_url, parsed->localpath);
                 if (ret < 0) {
                     /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);

@@ -508,6 +508,9 @@ static int sc_url_to_local_path_default(char *url, char *local_path, int len)
     return 0;
 }
 
+/*
+ * zhaoyao TODO: input only need ri.
+ */
 int sc_res_get_local_path(sc_res_info_t *ri, char *local_path)
 {
     int ret = -1;
@@ -517,12 +520,12 @@ int sc_res_get_local_path(sc_res_info_t *ri, char *local_path)
     }
 
     if (sc_url_is_yk(ri->url)) {
-        ret = sc_yk_url_to_local_path(ri->url, local_path, SC_RES_URL_MAX_LEN);
+        ret = sc_yk_url_to_local_path(ri->url, local_path, SC_RES_LOCAL_PATH_MAX_LEN);
     } else if (sc_url_is_sohu_file_url(ri->url)) {
-        ret = sc_sohu_file_url_to_local_path(ri->url, local_path, SC_RES_URL_MAX_LEN);
+        ret = sc_sohu_file_url_to_local_path(ri->url, local_path, SC_RES_LOCAL_PATH_MAX_LEN);
     } else {
         fprintf(stdout, "%s DEBUG: using sc_url_to_local_path_default, url %s\n", __func__, ri->url);
-        ret = sc_url_to_local_path_default(ri->url, local_path, SC_RES_URL_MAX_LEN);
+        ret = sc_url_to_local_path_default(ri->url, local_path, SC_RES_LOCAL_PATH_MAX_LEN);
     }
 
     return ret;
@@ -550,7 +553,7 @@ int sc_res_gen_origin_url(char *req_url, char *origin_url)
 static int sc_res_retry_download(sc_res_info_t *ri)
 {
     int ret;
-    char local_path[SC_RES_URL_MAX_LEN];
+    sc_res_info_active_t *active;
 
     if (ri == NULL) {
         return -1;
@@ -560,20 +563,14 @@ static int sc_res_retry_download(sc_res_info_t *ri)
         return -1;
     }
 
-    bzero(local_path, SC_RES_URL_MAX_LEN);
-    ret = sc_res_get_local_path(ri, local_path);
-    if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_get_local_path failed, url %s\n", __func__, ri->url);
-        return ret;
-    }
-
     /* zhaoyao TODO: sohu video should generate real_url based on ri->url */
     if (sc_url_is_sohu_file_url(ri->url)) {
         fprintf(stderr, "%s sohu video retry download not suppoted now...\n", __func__);
         return 0;
     }
 
-    ret = sc_ngx_download(ri->url, local_path);
+    active = (sc_res_info_active_t *)ri;
+    ret = sc_ngx_download(ri->url, active->localpath);
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: %s failed\n", __func__, ri->url);
     }
