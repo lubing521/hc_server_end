@@ -33,6 +33,7 @@ sc_res_ctnt_t sc_res_content_type_obtain(char *str)
         return SC_RES_CTNT_VIDEO_MP4;
     }
 
+    len = strlen(str);
     len = len - 4;
     p = str + len;
     if (strncmp(p, TEXT_HTML_SUFFIX, TEXT_HTML_SUFFIX_LEN) == 0) {
