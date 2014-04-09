@@ -42,6 +42,10 @@
 #define HTTP_URL_PREFIX     "http://"
 #define HTTP_URL_PRE_LEN    7       /* strlen("http://") */
 
+#define TEXT_HTML_SUFFIX             "html"
+#define TEXT_HTML_SUFFIX_LEN         4
+#define TEXT_M3U8_SUFFIX             "m3u8"
+#define TEXT_M3U8_SUFFIX_LEN         4
 #define VIDEO_FLV_SUFFIX             "flv"
 #define VIDEO_FLV_SUFFIX_LEN         3
 #define VIDEO_MP4_SUFFIX             "mp4"

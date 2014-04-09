@@ -5,31 +5,46 @@
 sc_res_list_t *sc_res_info_list = NULL;
 int sc_res_share_mem_shmid = -1;
 
-sc_res_video_t sc_res_video_type_obtain(char *str)
+/*
+ * zhaoyao XXX: content type suffix MUST be at the end of str.
+ */
+sc_res_ctnt_t sc_res_content_type_obtain(char *str)
 {
     char *p;
     int len;
 
     if (str == NULL) {
-        return SC_RES_VIDEO_MAX;
+        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return SC_RES_CTNT_TYPE_MAX;
     }
 
     len = strlen(str);
     if (len < 3) {
-        return SC_RES_VIDEO_MAX;
+        fprintf(stderr, "%s ERROR: invalid input %s\n", __func__, str);
+        return SC_RES_CTNT_TYPE_MAX;
     }
 
     len = len - 3;
     p = str + len;
-
     if (strncmp(p, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN) == 0) {
-        return SC_RES_VIDEO_FLV;
+        return SC_RES_CTNT_VIDEO_FLV;
     }
     if (strncmp(p, VIDEO_MP4_SUFFIX, VIDEO_MP4_SUFFIX_LEN) == 0) {
-        return SC_RES_VIDEO_MP4;
+        return SC_RES_CTNT_VIDEO_MP4;
     }
 
-    return SC_RES_VIDEO_MAX;
+    len = len - 4;
+    p = str + len;
+    if (strncmp(p, TEXT_HTML_SUFFIX, TEXT_HTML_SUFFIX_LEN) == 0) {
+        return SC_RES_CTNT_TEXT_HTML;
+    }
+    if (strncmp(p, TEXT_M3U8_SUFFIX, TEXT_M3U8_SUFFIX_LEN) == 0) {
+        return SC_RES_CTNT_TEXT_M3U8;
+    }
+
+    fprintf(stderr, "%s: unknown content type: %s\n", __func__, str);
+
+    return SC_RES_CTNT_TYPE_MAX;
 }
 
 /*
@@ -299,6 +314,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
 {
     int len, ret;
     sc_res_info_active_t *active;
+    sc_res_ctnt_t content_type;
 
     if (rl == NULL || url == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
@@ -327,6 +343,8 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, active->common.url);
 #endif
+    content_type = sc_res_content_type_obtain(url);
+    sc_res_set_content_t(&active->common, content_type);
 
     ret = sc_res_info_gen_active_local_path(active);
     if (ret != 0) {
@@ -349,6 +367,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
 {
     int len;
     sc_res_info_origin_t *ri;
+    sc_res_ctnt_t content_type;
 
     if (rl == NULL || url == NULL) {
         return -1;
@@ -376,6 +395,9 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ri->common.url);
 #endif
 
+    content_type = sc_res_content_type_obtain(url);
+    sc_res_set_content_t(&ri->common, content_type);
+
     if (origin != NULL) {
         *origin = ri;
     }
@@ -385,19 +407,14 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
 
 int sc_res_info_add_parsed(sc_res_list_t *rl,
                            sc_res_info_origin_t *origin,
-                           sc_res_video_t vtype,
                            char *url,
                            sc_res_info_active_t **parsed)
 {
     int len;
     sc_res_info_active_t *active;
+    sc_res_ctnt_t content_type;
 
     if (rl == NULL || origin == NULL || url == NULL) {
-        return -1;
-    }
-
-    if (!sc_res_video_type_is_valid(vtype)) {
-        fprintf(stderr, "%s: video type is not supported\n", __func__);
         return -1;
     }
 
@@ -423,17 +440,17 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, active->common.url);
 #endif
+    content_type = sc_res_content_type_obtain(url);
+    sc_res_set_content_t(&active->common, content_type);
 
-    active->vtype = vtype;
-    if (origin->child_cnt[vtype] == 0) {  /* First derivative is come */
-        origin->child[vtype] = active;
-        active->parent = origin;
+    if (origin->child_cnt == 0) {  /* First derivative is come */
+        origin->child = active;
     } else {
-        active->siblings = origin->child[vtype];
-        origin->child[vtype] = active;
-        active->parent = origin;
+        active->siblings = origin->child;
+        origin->child = active;
     }
-    origin->child_cnt[vtype]++;
+    origin->child_cnt++;
+    active->parent = origin;
 
     if (parsed != NULL) {
         *parsed = active;
@@ -645,7 +662,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
             }
         }
 
-        if ((!sc_res_is_kf_crt(ri)) && (curr->vtype == SC_RES_VIDEO_FLV)) {
+        if (sc_res_is_flv(ri) && !sc_res_is_kf_crt(ri)) {
             fprintf(stderr, "%s use sc_kf_flv_create_info %s\n", __func__, ri->url);
             ret = sc_kf_flv_create_info(curr);
             if (ret != 0) {

@@ -30,19 +30,36 @@
 #define SC_RES_URL_MAX_LEN         512
 #define SC_RES_LOCAL_PATH_MAX_LEN  256
 
-#define SC_RES_GEN_T_SHIFT  24
-#define SC_RES_GEN_T_MASK   0xFF
+#define SC_RES_GEN_T_SHIFT  29
+#define SC_RES_GEN_T_MASK   0x7
 typedef enum sc_res_gen_e {
     SC_RES_GEN_T_NORMAL = 0,        /* Snooping inform Nginx to directly download */
     SC_RES_GEN_T_ORIGIN,            /* Original URL needed to be parsed */
     SC_RES_GEN_T_PARSED,            /* Parsed URL from original one */
 
-    SC_RES_GEN_T_MAX,
+    SC_RES_GEN_T_MAX,               /* MUST <= 7 */
 } sc_res_gen_t;
 #define sc_res_set_gen_t(ri, type)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
+            (ri)->flag &= ((~0UL) ^ (SC_RES_GEN_T_MASK << SC_RES_GEN_T_SHIFT)); \
             (ri)->flag |= (((type) & SC_RES_GEN_T_MASK) << SC_RES_GEN_T_SHIFT); \
+        }                                           \
+    } while (0)
+
+#define SC_RES_WEBSITE_SHIFT  24
+#define SC_RES_WEBSITE_MASK   0x1F
+typedef enum sc_res_website_e {
+    SC_RES_WEBSITE_YOUKU = 0,       /* www.youku.com */
+    SC_RES_WEBSITE_SOHU,            /* www.sohu.com */
+
+    SC_RES_WEBSITE_MAX,             /* MUST <= 31 */
+} sc_res_website_t;
+#define sc_res_set_website(ri, type)                       \
+    do {                                            \
+        if ((ri) != NULL) {                         \
+            (ri)->flag &= ((~0UL) ^ (SC_RES_WEBSITE_MASK << SC_RES_WEBSITE_SHIFT)); \
+            (ri)->flag |= (((type) & SC_RES_WEBSITE_MASK) << SC_RES_WEBSITE_SHIFT); \
         }                                           \
     } while (0)
 
@@ -50,38 +67,19 @@ typedef enum sc_res_gen_e {
 #define SC_RES_CTNT_T_MASK   0XFF
 typedef enum sc_res_ctnt_e {
     SC_RES_CTNT_TEXT_HTML = 0,
+    SC_RES_CTNT_TEXT_M3U8,
     SC_RES_CTNT_VIDEO_FLV,
     SC_RES_CTNT_VIDEO_MP4,
 
-    SC_RES_CTNT_UNSPEC,
-
-    SC_RES_CTNT_TYPE_MAX,
+    SC_RES_CTNT_TYPE_MAX,           /* MUST <= 255 */
 } sc_res_ctnt_t;
 #define sc_res_set_content_t(ri, type)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
+            (ri)->flag &= ((~0UL) ^ (SC_RES_CTNT_T_MASK << SC_RES_CTNT_T_SHIFT)); \
             (ri)->flag |= (((type) & SC_RES_CTNT_T_MASK) << SC_RES_CTNT_T_SHIFT); \
         }                                           \
     } while (0)
-
-/*
- * zhaoyao XXX TODO FIXME: sc_res_video_t should be replaced by sc_res_ctnt_t.
- */
-typedef enum sc_res_video_e {
-    SC_RES_VIDEO_FLV = 0,
-    SC_RES_VIDEO_MP4,
-
-    SC_RES_VIDEO_MAX,
-} sc_res_video_t;
-
-static inline int sc_res_video_type_is_valid(sc_res_video_t vtype)
-{
-    if (vtype < SC_RES_VIDEO_MAX) {
-        return 1;
-    }
-
-    return 0;
-}
 
 /* ri control flag */
 #define SC_RES_F_CTRL_STORED    (0x00000100UL)   /* Resource is stored, can ONLY set by Nginx */
@@ -107,8 +105,8 @@ typedef struct sc_res_info_origin_s {
     /* zhaoyao XXX: common must be the very first member */
     struct sc_res_info_s common;
 
-    unsigned long child_cnt[SC_RES_VIDEO_MAX];
-    struct sc_res_info_active_s *child[SC_RES_VIDEO_MAX];
+    unsigned long child_cnt;
+    struct sc_res_info_active_s *child;
 } sc_res_info_origin_t;
 
 /*
@@ -120,9 +118,6 @@ typedef struct sc_res_info_active_s {
 
     struct sc_res_info_origin_s *parent;
     struct sc_res_info_active_s *siblings;
-
-    /* zhaoyao XXX FIXME: at current time, we treat all active as video */
-    enum sc_res_video_e vtype;
 
     /* zhaoyao XXX: stored resources' stored local path, file path is from $ROOT/localpath */
     char localpath[SC_RES_LOCAL_PATH_MAX_LEN];
@@ -181,6 +176,16 @@ typedef struct sc_res_info_active_s {
         sc_res_set_gen_t((ri), SC_RES_GEN_T_PARSED);  \
     } while (0)
 
+#define sc_res_set_youku(ri)                       \
+    do {                                            \
+        sc_res_set_website((ri), SC_RES_WEBSITE_YOUKU);  \
+    } while (0)
+
+#define sc_res_set_sohu(ri)                       \
+    do {                                            \
+        sc_res_set_website((ri), SC_RES_WEBSITE_SOHU);  \
+    } while (0)
+
 #define sc_res_is_kf_crt(ri)    ((ri)->flag & SC_RES_F_CTRL_KF_CRT)
 #define sc_res_is_d_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_D_FAIL)
 #define sc_res_is_stored(ri)    ((ri)->flag & SC_RES_F_CTRL_STORED)
@@ -215,6 +220,74 @@ static inline int sc_res_is_parsed(sc_res_info_t *ri)
     if (ri != NULL) {
         type = (ri->flag >> SC_RES_GEN_T_SHIFT) & SC_RES_GEN_T_MASK;
         return (type == SC_RES_GEN_T_PARSED);
+    }
+
+    return 0;
+}
+
+static inline int sc_res_is_youku(sc_res_info_t *ri)
+{
+    int website;
+
+    if (ri != NULL) {
+        website = (ri->flag >> SC_RES_WEBSITE_SHIFT) & SC_RES_WEBSITE_MASK;
+        return (website == SC_RES_WEBSITE_YOUKU);
+    }
+
+    return 0;
+}
+static inline int sc_res_is_sohu(sc_res_info_t *ri)
+{
+    int website;
+
+    if (ri != NULL) {
+        website = (ri->flag >> SC_RES_WEBSITE_SHIFT) & SC_RES_WEBSITE_MASK;
+        return (website == SC_RES_WEBSITE_SOHU);
+    }
+
+    return 0;
+}
+
+static inline int sc_res_is_flv(sc_res_info_t *ri)
+{
+    int type;
+
+    if (ri != NULL) {
+        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
+        return (type == SC_RES_CTNT_VIDEO_FLV);
+    }
+
+    return 0;
+}
+static inline int sc_res_is_mp4(sc_res_info_t *ri)
+{
+    int type;
+
+    if (ri != NULL) {
+        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
+        return (type == SC_RES_CTNT_VIDEO_MP4);
+    }
+
+    return 0;
+}
+static inline int sc_res_is_html(sc_res_info_t *ri)
+{
+    int type;
+
+    if (ri != NULL) {
+        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
+        return (type == SC_RES_CTNT_TEXT_HTML);
+    }
+
+    return 0;
+}
+static inline int sc_res_is_m3u8(sc_res_info_t *ri)
+{
+    int type;
+
+    if (ri != NULL) {
+        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
+        return (type == SC_RES_CTNT_TEXT_M3U8);
     }
 
     return 0;
@@ -258,14 +331,12 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
 int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **origin);
 int sc_res_info_add_parsed(sc_res_list_t *rl,
                            sc_res_info_origin_t *origin,
-                           sc_res_video_t vtype,
                            char *url,
                            sc_res_info_active_t **parsed);
 sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url);
 sc_res_info_active_t *sc_res_info_find_active(sc_res_list_t *rl, const char *url);
 sc_res_info_origin_t *sc_res_info_find_origin(sc_res_list_t *rl, const char *url);
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
-sc_res_video_t sc_res_video_type_obtain(char *str);
 int sc_res_gen_origin_url(char *req_url, char *origin_url);
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
 

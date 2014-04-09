@@ -111,7 +111,6 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
     char m3u8_url[SC_RES_URL_MAX_LEN];
     char file_url[SC_RES_URL_MAX_LEN];
     char real_url[SC_RES_URL_MAX_LEN];
-    sc_res_video_t vtype;
     sc_res_info_active_t *parsed;
     char *response = NULL, *curr;
     char response2[BUFFER_LEN];
@@ -150,13 +149,6 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
         bzero(file_url, SC_RES_URL_MAX_LEN);
         curr = sohu_parse_m3u8_response(curr, file_url);
 
-        /* zhaoyao XXX: file_url MUST end with ".flv" or ".mp4" */
-        vtype = sc_res_video_type_obtain(file_url);
-        if (!sc_res_video_type_is_valid(vtype)) {
-            fprintf(stderr, "%s WARNING: %s type not support\n", __func__, file_url);
-            continue;
-        }
-
         if (sohu_http_session(file_url, response2, BUFFER_LEN) < 0) {
             fprintf(stderr, "%s ERROR: sohu_http_session faild, URL: %s\n", __func__, file_url);
             continue;
@@ -182,7 +174,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
         }
 
         /* zhaoyao XXX TODO: need remembering segments count in origin */
-        ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, file_url, &parsed);
+        ret = sc_res_info_add_parsed(sc_res_info_list, origin, file_url, &parsed);
         if (ret != 0) {
             fprintf(stderr, "%s ERROR: add file_url\n\t%s\nto resource list failed, give up downloading...\n",
                                 __func__, file_url);

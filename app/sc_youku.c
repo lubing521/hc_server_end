@@ -113,7 +113,7 @@ static int sc_get_yk_download_video_type(yk_stream_info_t *streams[])
         }
         if (strncmp(streams[i]->type, VIDEO_MP4_SUFFIX, VIDEO_MP4_SUFFIX_LEN) == 0) {
             ret = i;
-            /* zhaoyao: .mp4 type video has the priority */
+            /* zhaoyao: .mp4 type video has the highest priority */
             goto out;
         }
     }
@@ -136,7 +136,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
     int err = 0, status, ret;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
     sc_res_info_active_t *parsed;
-    sc_res_video_t vtype;
     int download_index;
 
     sc_res_copy_url(yk_url, origin->common.url, BUFFER_LEN, 0); /* zhaoyao: do not care para in traditional way */
@@ -210,13 +209,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
 #if DEBUG
         printf("Stream type: %s\n", strm->type);
 #endif
-        vtype = sc_res_video_type_obtain(strm->type);
-        if (!sc_res_video_type_is_valid(vtype)) {
-            fprintf(stderr, "%s WARNING: type %s not support\n", __func__, strm->type);
-            err = -1;
-            goto out;   /* zhaoyao XXX: since we only download_index, any fail here should ERROR */
-            //continue;
-        }
 
         for (j = 0; j < STREAM_SEGS_MAX && strm->segs[j] != NULL; j++) {
             /*
@@ -252,7 +244,7 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                  * Step 3 - using real URL to download.
                  */
                 /* zhaoyao XXX TODO: need remembering segments count in origin */
-                ret = sc_res_info_add_parsed(sc_res_info_list, origin, vtype, real_url, &parsed);
+                ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
                 if (ret != 0) {
                     fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
                                         __func__, real_url);
