@@ -76,6 +76,7 @@ int sc_url_is_sohu(char * url);
 int sc_url_is_sohu_file_url(char *url);
 int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len);
 int sc_sohu_gen_origin_url(char *req_url, char *origin_url);
+int sc_sohu_download(sc_res_info_active_t *parsed);
 
 #endif /* __SC_HEADER_H__ */
 

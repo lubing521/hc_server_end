@@ -588,14 +588,17 @@ static int sc_res_retry_download(sc_res_info_t *ri)
         return -1;
     }
 
-    /* zhaoyao TODO: sohu video should generate real_url based on ri->url */
+    active = (sc_res_info_active_t *)ri;
+
     if (sc_url_is_sohu_file_url(ri->url)) {
-        fprintf(stderr, "%s sohu video retry download not suppoted now...\n", __func__);
-        return 0;
+        /* zhaoyao XXX: sohu video should generate real_url based on ri->url */
+        ret = sc_sohu_download(active);
+    } else {
+        /* zhaoyao: Youku and normal ri using sc_ngx_download to directly download */
+        /* zhaoyao TODO: support sc_youku_download */
+        ret = sc_ngx_download(ri->url, active->localpath);
     }
 
-    active = (sc_res_info_active_t *)ri;
-    ret = sc_ngx_download(ri->url, active->localpath);
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: %s failed\n", __func__, ri->url);
     }
@@ -640,7 +643,10 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         }
 
         if (!sc_res_is_stored(ri)) {
-            /* zhaoyao XXX: timeout, and re-download */
+            /*
+             * zhaoyao XXX TODO: add active success, but inform Nginx to download failed, how to
+             *                   re-download in this situation.
+             */
             if (sc_res_is_d_fail(ri)) {   /* Nginx tell us to re-download it */
                 ret = sc_res_retry_download(ri);
                 if (ret != 0) {
@@ -650,6 +656,8 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
                     fprintf(stdout, "%s inform Nginx re-download %s success\n", __func__, ri->url);
                     sc_res_unset_d_fail(ri);
                 }
+            } else {
+                /* zhaoyao XXX TODO */
             }
             continue;
         }
