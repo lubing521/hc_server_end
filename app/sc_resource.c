@@ -663,7 +663,6 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         }
 
         if (!sc_res_is_notify(ri)) {
-            fprintf(stderr, "%s use sc_snooping_do_add %s\n", __func__, ri->url);
             ret = sc_snooping_do_add(ri);
             if (ret != 0) {
                 fprintf(stderr, "%s inform Snooping Module add URL failed\n", __func__);
