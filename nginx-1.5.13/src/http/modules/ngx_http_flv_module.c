@@ -73,6 +73,11 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
 
+    off_t                      real_offset, pre_kf2_size = 0;
+    sc_res_info_active_t      *curr;
+    int                        j;
+    char                       fpath[512];
+
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
     }
@@ -184,6 +189,31 @@ ngx_http_flv_handler(ngx_http_request_t *r)
             if (start) {
                 len = sizeof(ngx_flv_header) - 1 + len - start;
                 i = 0;
+                /*
+                 * zhaoyao XXX: all we treat is YOUKU .flv video.
+                 */
+                if (sc_resource_info_list != NULL) {
+                    for (j = 0; j < SC_RES_INFO_NUM_MAX_ACTIVE; j++) {
+                        curr = &sc_resource_info_list->active[j];
+                        if (!sc_res_is_kf_crt(&curr->common)) {
+                            continue;
+                        }
+                        ngx_memzero(fpath, sizeof(fpath));
+                        if (sc_res_map_to_file_path(curr, fpath, sizeof(fpath)) != 0) {
+                            ngx_log_stderr(NGX_OK, "*** %s ***: sc_res_map_to_file_path error\n", __func__);
+                            break;
+                        }
+                        if (ngx_strncmp(&fpath[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(fpath) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
+                            real_offset = sc_kf_flv_seek_offset(start, curr->kf_info, curr->kf_num);
+                            pre_kf2_size = curr->kf_info[1].file_pos;
+                            len = of.size - real_offset + pre_kf2_size;
+                            ngx_log_stderr(NGX_OK, "*** %s: start(%O), len(%O), offset(%O), file(%O), pre_kf2_size(%O)\n",
+                                                    __func__, start, len, real_offset, of.size, pre_kf2_size);
+                            start = real_offset;
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -208,9 +238,25 @@ ngx_http_flv_handler(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        b->pos = ngx_flv_header;
-        b->last = ngx_flv_header + sizeof(ngx_flv_header) - 1;
-        b->memory = 1;
+        if (pre_kf2_size != 0) {
+            b->file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
+            if (b->file == NULL) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+            b->file_pos = 0;
+            b->file_last = pre_kf2_size;
+            b->in_file = b->file_last ? 1 : 0;
+            b->last_buf = (r == r->main) ? 1 : 0;
+            b->file->fd = of.fd;
+            b->file->name = path;
+            b->file->log = log;
+            b->file->directio = of.is_directio;
+        } else {
+            b->pos = ngx_flv_header;
+            b->last = ngx_flv_header + sizeof(ngx_flv_header) - 1;
+            b->memory = 1;
+        }
+
 
         out[0].buf = b;
         out[0].next = &out[1];
@@ -228,6 +274,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     }
 
     r->allow_ranges = 1;
+    r->keepalive = 0;
 
     rc = ngx_http_send_header(r);
 

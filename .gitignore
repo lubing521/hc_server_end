@@ -2,6 +2,7 @@
 *.ini
 nginx-1.5.8/objs/
 nginx-1.5.13/objs/
+nginx-1.5.13/Makefile
 ngx_http_sr_module/
 app/*
 !app/*.c

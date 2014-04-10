@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <nginx.h>
 
+#include <sys/shm.h>
+sc_res_list_t *sc_resource_info_list;
+int sc_resource_share_mem_shmid = -1;
+
 
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static ngx_int_t ngx_get_options(int argc, char *const *argv);
@@ -205,6 +209,8 @@ main(int argc, char *const *argv)
     ngx_log_t        *log;
     ngx_cycle_t      *cycle, init_cycle;
     ngx_core_conf_t  *ccf;
+    void *shmptr;
+    int shmid, mem_size;
 
     ngx_debug_init();
 
@@ -215,6 +221,24 @@ main(int argc, char *const *argv)
     if (ngx_get_options(argc, argv) != NGX_OK) {
         return 1;
     }
+
+    fprintf(stderr, "------------- ZY INIT SHARE MEMORY ------------\n");
+    mem_size = SC_RES_SHARE_MEM_SIZE;
+    if ((shmid = shmget(SC_RES_SHARE_MEM_ID, mem_size, SC_RES_SHARE_MEM_MODE)) < 0) {
+        fprintf(stderr, "%s shmget failed, memory size %d: %s\n", __func__, mem_size, strerror(errno));
+        return 1;
+    }
+    sc_resource_share_mem_shmid = shmid;
+    if ((shmptr = shmat(shmid, 0, 0)) == (void *)-1) {
+        fprintf(stderr, "%s shmat failed: %s\n", __func__, strerror(errno));
+        if (shmctl(shmid, IPC_RMID, NULL) < 0) {
+            fprintf(stderr, "%s shmctl failed: %s\n", __func__, strerror(errno));
+        }
+        sc_resource_share_mem_shmid = -1;
+        return 1;
+    }
+    sc_resource_info_list = (sc_res_list_t *)shmptr;
+    fprintf(stderr, "------------- ZY INIT SHARE MEMORY OK ------------\n");
 
     if (ngx_show_version) {
         ngx_write_stderr("nginx version: " NGINX_VER NGX_LINEFEED);

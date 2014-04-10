@@ -3091,6 +3091,19 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
 }
 
 
+static ngx_int_t
+ngx_http_upstream_sc_res_match_localpath(sc_res_info_active_t *active, char *local_path, size_t len)
+{
+    if (active != NULL && local_path != NULL) {
+        if (ngx_strncmp(active->localpath, local_path, len) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
 static void
 ngx_http_upstream_process_request(ngx_http_request_t *r)
 {
@@ -3114,7 +3127,34 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                     && (u->headers_in.content_length_n == -1
                         || u->headers_in.content_length_n == tf->offset))
                 {
+                    char *start;
+                    size_t len;
                     ngx_http_upstream_store(r, u);
+                    /* zhaoyao XXX: download and store data success */
+                    ngx_log_stderr(NGX_OK, "****** %s store upstream *** data *** success", __func__);
+                    start = ngx_strstr(r->args.data, "localpath=");
+                    if (r->getfile && sc_resource_info_list != NULL && start != NULL) {
+                        sc_res_info_active_t *curr;
+                        int i;
+                        start += 10;
+                        len = r->args.len + (size_t)r->args.data - (size_t)start;
+                        for (i = 0; i < SC_RES_INFO_NUM_MAX_ACTIVE; i++) {
+                            curr = &sc_resource_info_list->active[i];
+                            if (ngx_http_upstream_sc_res_match_localpath(curr, start, len)) {
+                                if (sc_res_is_stored(&curr->common)) {
+                                    ngx_log_stderr(NGX_OK, "***** %s WARNING re-store URL:\n\t%V",
+                                                                __func__, &r->args);
+                                } else {
+                                    sc_res_set_stored(&curr->common);
+                                }
+                                break;
+                            }
+                        }
+                        if (i == SC_RES_INFO_NUM_MAX_ACTIVE) {
+                            ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
+                                                        __func__, &r->args);
+                        }
+                    }
                     u->store = 0;
                 }
             }
@@ -3253,6 +3293,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "upstream stores \"%s\" to \"%s\"",
                    tf->file.name.data, path.data);
+    ngx_log_stderr(NGX_OK, "****** %s \"%s\" to \"%s\"", __func__, tf->file.name.data, path.data);
 
     (void) ngx_ext_rename_file(&tf->file.name, &path, &ext);
 }
@@ -3483,6 +3524,33 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     if (u->store && u->pipe && u->pipe->temp_file
         && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
     {
+        /* zhaoyao XXX: when download failed, set_d_fail to ask SC re-generate download request */
+        ngx_log_stderr(NGX_OK, "****** %s prematurely deleted temp_file, getfile *** failed ***", __func__);
+        char *start;
+        size_t len;
+        start = ngx_strstr(r->args.data, "localpath=");
+        if (r->getfile && sc_resource_info_list != NULL && start != NULL) {
+            sc_res_info_active_t *curr;
+            int i;
+            start += 10;
+            len = r->args.len + (size_t)r->args.data - (size_t)start;
+            for (i = 0; i < SC_RES_INFO_NUM_MAX_ACTIVE; i++) {
+                curr = &sc_resource_info_list->active[i];
+                if (ngx_http_upstream_sc_res_match_localpath(curr, start, len)) {
+                    if (sc_res_is_stored(&curr->common)) {
+                        ngx_log_stderr(NGX_OK, "***** %s WARNING re-stored URL:\n\t%V",
+                                                    __func__, &r->args);
+                    } else {
+                        sc_res_set_d_fail(&curr->common);    /* zhaoyao XXX: mark download failed */
+                    }
+                    break;
+                }
+            }
+            if (i == SC_RES_INFO_NUM_MAX_ACTIVE) {
+                ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
+                                            __func__, &r->args);
+            }
+        }
         if (ngx_delete_file(u->pipe->temp_file->file.name.data)
             == NGX_FILE_ERROR)
         {

@@ -413,6 +413,16 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
 
         for (i = 0; i < clcf->error_pages->nelts; i++) {
             if (err_page[i].status == error) {
+                /*
+                 * zhaoyao TODO FIXME XXX: NGX_HTTP_BAD_GATEWAY cause to ngx_http_send_error_page()
+                 * then cause core phase run overflow to 11.
+                 */
+                if (error == NGX_HTTP_BAD_GATEWAY) {
+                    ngx_log_stderr(NGX_OK, "%s error is %i NGX_HTTP_BAD_GATEWAY, send default page",
+                        __func__, error);
+                    break;
+                }
+
                 return ngx_http_send_error_page(r, &err_page[i]);
             }
         }

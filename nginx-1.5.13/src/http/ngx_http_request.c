@@ -2260,6 +2260,10 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug5(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http finalize request: %d, \"%V?%V\" a:%d, c:%d",
                    rc, &r->uri, &r->args, r == c->data, r->main->count);
+#if DEBUG_GETFILE
+    ngx_log_stderr(NGX_OK, "****** %s rc = %i", __func__, rc);
+#endif
+
 
     if (rc == NGX_DONE) {
         ngx_http_finalize_connection(r);
