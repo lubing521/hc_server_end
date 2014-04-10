@@ -533,7 +533,8 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
 
     if (r->args.len) {
 
-        if (ngx_http_arg(r, (u_char *) "start", 5, &value) == NGX_OK) {
+        if (ngx_http_arg(r, (u_char *) "start", 5, &value) == NGX_OK ||
+            ngx_http_arg(r, (u_char *) "ts_start", 8, &value) == NGX_OK) {
 
             /*
              * A Flash player may send start value with a lot of digits
@@ -549,7 +550,8 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
             }
         }
 
-        if (ngx_http_arg(r, (u_char *) "end", 3, &value) == NGX_OK) {
+        if (ngx_http_arg(r, (u_char *) "end", 3, &value) == NGX_OK ||
+            ngx_http_arg(r, (u_char *) "ts_end", 6, &value) == NGX_OK) {
 
             ngx_set_errno(0);
             end = (int) (strtod((char *) value.data, NULL) * 1000);
