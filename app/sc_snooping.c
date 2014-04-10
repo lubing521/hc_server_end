@@ -266,7 +266,7 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         err = -1;
         goto out;
     }
-    fprintf(stdout, "%s url: %s\n", __func__, req->usr_data);
+    fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
 //    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
 
     memset(buf, 0, sizeof(buf));
@@ -288,7 +288,6 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     }
 
     if (res->status == HTTP_SP_STATUS_OK) {
-        fprintf(stdout, "%s OK\n", __func__);
         sc_res_set_notify(ri);
     } else {
         fprintf(stderr, "%s ERROR: response status is failed %u\n", __func__, res->status);
