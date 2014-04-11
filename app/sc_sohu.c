@@ -148,18 +148,6 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
         return -1;
     }
 
-    /*
-     * zhaoyao XXX TODO: should not call this directly, generate local path should be
-     *                   done in sc_res_info_add_parsed.
-     *                   In re-downloading, localpath need not re-generating.
-     */
-    ret = sc_res_info_gen_active_local_path(parsed);
-    if (ret != 0) {
-        fprintf(stderr, "%s ERROR: generate local_path failed, file_url:\n\t%s\n",
-                            __func__, parsed->common.url);
-        return -1;
-    }
-
 #if DEBUG
     fprintf(stdout, "%s file_url: %s\n", __func__, parsed->common.url);
     fprintf(stdout, "%s local_path: %s\n", __func__, parsed->localpath);

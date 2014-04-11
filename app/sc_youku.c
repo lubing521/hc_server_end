@@ -222,16 +222,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                      */
                     continue;
                 }
-                /*
-                 * zhaoyao XXX TODO: should not call this directly, generate local path should be
-                 *                   done in sc_res_info_add_parsed.
-                 */
-                ret = sc_res_info_gen_active_local_path(parsed);
-                if (ret != 0) {
-                    fprintf(stderr, "%s ERROR: generate local_path failed, url %s\n", __func__, real_url);
-                    err = -1;
-                    goto out;
-                }
                 ret = sc_ngx_download(real_url, parsed->localpath);
                 if (ret < 0) {
                     /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */

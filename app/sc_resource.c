@@ -315,7 +315,7 @@ int sc_res_url_to_local_path_default(char *url, char *local_path, int len)
     return 0;
 }
 
-int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
+static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
 {
     int ret = -1;
 
@@ -406,7 +406,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
 
     ret = sc_res_info_gen_active_local_path(normal);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_info_gen_active_local_path failed, url %s\n", __func__, normal->common.url);
+        fprintf(stderr, "%s ERROR: generate local_path failed, url %s\n", __func__, normal->common.url);
         goto error;
     }
 
@@ -478,7 +478,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
                            char *url,
                            sc_res_info_active_t **ptr_ret)
 {
-    int len;
+    int len, ret;
     sc_res_info_active_t *parsed;
     sc_res_ctnt_t content_type;
 
@@ -507,9 +507,17 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, parsed->common.url);
 #endif
+    /* zhaoyao XXX: inherit site at very first time */
     sc_res_inherit_site(origin, parsed);
     content_type = sc_res_content_type_obtain(url);
     sc_res_set_content_t(&parsed->common, content_type);
+
+    ret = sc_res_info_gen_active_local_path(parsed);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: generate local_path failed, file_url:\n\t%s\n",
+                            __func__, parsed->common.url);
+        goto error;
+    }
 
     if (origin->child_cnt == 0) {  /* First derivative is come */
         origin->child = parsed;
@@ -525,6 +533,10 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     }
 
     return 0;
+
+error:
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)parsed);
+    return -1;
 }
 
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
