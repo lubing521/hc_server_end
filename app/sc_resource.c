@@ -152,7 +152,7 @@ int sc_res_list_destroy_and_uninit(int shmid)
 
 static sc_res_info_origin_t *sc_res_info_get_origin(sc_res_list_t *rl)
 {
-    sc_res_info_origin_t *ri;
+    sc_res_info_origin_t *origin;
 
     if (rl == NULL) {
         return NULL;
@@ -164,21 +164,21 @@ static sc_res_info_origin_t *sc_res_info_get_origin(sc_res_list_t *rl)
         return NULL;
     }
 
-    ri = rl->origin_free;
-    rl->origin_free = (sc_res_info_origin_t *)(ri->common.id);
+    origin = rl->origin_free;
+    rl->origin_free = (sc_res_info_origin_t *)(origin->common.id);
     rl->origin_cnt++;
 
-    memset(ri, 0, sizeof(sc_res_info_origin_t));
-    ri->common.id = ((unsigned long)ri - (unsigned long)(rl->origin)) / sizeof(sc_res_info_origin_t);
+    memset(origin, 0, sizeof(sc_res_info_origin_t));
+    origin->common.id = ((unsigned long)origin - (unsigned long)(rl->origin)) / sizeof(sc_res_info_origin_t);
 
-    sc_res_set_origin(&ri->common);
+    sc_res_set_origin(&origin->common);
 
-    return ri;
+    return origin;
 }
 
 static sc_res_info_active_t *sc_res_info_get_active(sc_res_list_t *rl)
 {
-    sc_res_info_active_t *ri;
+    sc_res_info_active_t *active;
 
     if (rl == NULL) {
         return NULL;
@@ -190,14 +190,38 @@ static sc_res_info_active_t *sc_res_info_get_active(sc_res_list_t *rl)
         return NULL;
     }
 
-    ri = rl->active_free;
-    rl->active_free = (sc_res_info_active_t *)(ri->common.id);
+    active = rl->active_free;
+    rl->active_free = (sc_res_info_active_t *)(active->common.id);
     rl->active_cnt++;
 
-    memset(ri, 0, sizeof(sc_res_info_active_t));
-    ri->common.id = ((unsigned long)ri - (unsigned long)(rl->active)) / sizeof(sc_res_info_active_t);
+    memset(active, 0, sizeof(sc_res_info_active_t));
+    active->common.id = ((unsigned long)active - (unsigned long)(rl->active)) / sizeof(sc_res_info_active_t);
 
-    return ri;
+    return active;
+}
+
+static sc_res_info_active_t *sc_res_info_get_active_normal(sc_res_list_t *rl)
+{
+    sc_res_info_active_t *normal;
+
+    normal = sc_res_info_get_active(rl);
+    if (normal != NULL) {
+        sc_res_set_normal(&normal->common);
+    }
+
+    return normal;
+}
+
+static sc_res_info_active_t *sc_res_info_get_active_parsed(sc_res_list_t *rl)
+{
+    sc_res_info_active_t *parsed;
+
+    parsed = sc_res_info_get_active(rl);
+    if (parsed != NULL) {
+        sc_res_set_parsed(&parsed->common);
+    }
+
+    return parsed;
 }
 
 static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
@@ -238,7 +262,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
 }
 
 /*
- * zhaoyao XXX: Snooping module Client's private simple check.
+ * zhaoyao XXX: 检查url能否添加到资源列表，掌管蓝天门，若通过他的检查，起码该url能被SC识别。
  */
 static int sc_res_info_permit_adding(char *url)
 {
@@ -311,10 +335,36 @@ static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
     return ret;
 }
 
-int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **normal)
+static int sc_res_info_mark_site(sc_res_info_t *ri)
+{
+    int ret = -1;
+
+    if (ri == NULL) {
+        return ret;
+    }
+
+    if (!sc_res_is_normal(ri) && !sc_res_is_origin(ri)) {
+        fprintf(stderr, "%s ERROR: can not mark non-normal nor non-origin ri's site directly\n", __func__);
+        return ret;
+    }
+
+    if (sc_url_is_yk(ri->url)) {
+        sc_res_set_youku(ri);
+        ret = 0;
+    } else if (sc_url_is_sohu(ri->url)) {
+        sc_res_set_sohu(ri);
+        ret = 0;
+    } else {
+        fprintf(stderr, "%s ERROR: unknown site: %s\n", __func__, ri->url);
+    }
+
+    return ret;
+}
+
+int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **ptr_ret)
 {
     int len, ret;
-    sc_res_info_active_t *active;
+    sc_res_info_active_t *normal;
     sc_res_ctnt_t content_type;
 
     if (rl == NULL || url == NULL) {
@@ -333,41 +383,47 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
         return -1;
     }
 
-    active = sc_res_info_get_active(rl);
-    if (active == NULL) {
+    normal = sc_res_info_get_active_normal(rl);
+    if (normal == NULL) {
         fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
         return -1;
     }
 
-    sc_res_set_normal(&active->common);
-    sc_res_copy_url(active->common.url, url, SC_RES_URL_MAX_LEN, 1);
+    sc_res_copy_url(normal->common.url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, active->common.url);
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, normal->common.url);
 #endif
-    content_type = sc_res_content_type_obtain(url);
-    sc_res_set_content_t(&active->common, content_type);
-
-    ret = sc_res_info_gen_active_local_path(active);
+    /* zhaoyao: mark site should be very early. */
+    ret = sc_res_info_mark_site(&normal->common);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_info_gen_active_local_path failed, url %s\n", __func__, active->common.url);
+        fprintf(stderr, "%s ERROR: sc_res_info_mark_site failed, url %s\n", __func__, normal->common.url);
         goto error;
     }
 
-    if (normal != NULL) {
-        *normal = active;
+    content_type = sc_res_content_type_obtain(url);
+    sc_res_set_content_t(&normal->common, content_type);
+
+    ret = sc_res_info_gen_active_local_path(normal);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: sc_res_info_gen_active_local_path failed, url %s\n", __func__, normal->common.url);
+        goto error;
+    }
+
+    if (ptr_ret != NULL) {
+        *ptr_ret = normal;
     }
 
     return 0;
 
 error:
-    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)active);
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)normal);
     return -1;
 }
 
-int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **origin)
+int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **ptr_ret)
 {
-    int len;
-    sc_res_info_origin_t *ri;
+    int len, ret;
+    sc_res_info_origin_t *origin;
     sc_res_ctnt_t content_type;
 
     if (rl == NULL || url == NULL) {
@@ -385,34 +441,44 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
         return -1;
     }
 
-    ri = sc_res_info_get_origin(rl);
-    if (ri == NULL) {
+    origin = sc_res_info_get_origin(rl);
+    if (origin == NULL) {
         fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
         return -1;
     }
 
-    sc_res_copy_url(ri->common.url, url, SC_RES_URL_MAX_LEN, 1);
+    sc_res_copy_url(origin->common.url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ri->common.url);
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, origin->common.url);
 #endif
+    /* zhaoyao: mark site should be very early. */
+    ret = sc_res_info_mark_site(&origin->common);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: sc_res_info_mark_site failed, url %s\n", __func__, origin->common.url);
+        goto error;
+    }
 
     content_type = sc_res_content_type_obtain(url);
-    sc_res_set_content_t(&ri->common, content_type);
+    sc_res_set_content_t(&origin->common, content_type);
 
-    if (origin != NULL) {
-        *origin = ri;
+    if (ptr_ret != NULL) {
+        *ptr_ret = origin;
     }
 
     return 0;
+
+error:
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)origin);
+    return -1;
 }
 
 int sc_res_info_add_parsed(sc_res_list_t *rl,
                            sc_res_info_origin_t *origin,
                            char *url,
-                           sc_res_info_active_t **parsed)
+                           sc_res_info_active_t **ptr_ret)
 {
     int len;
-    sc_res_info_active_t *active;
+    sc_res_info_active_t *parsed;
     sc_res_ctnt_t content_type;
 
     if (rl == NULL || origin == NULL || url == NULL) {
@@ -430,31 +496,31 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
         return -1;
     }
 
-    active = sc_res_info_get_active(rl);
-    if (active == NULL) {
+    parsed = sc_res_info_get_active_parsed(rl);
+    if (parsed == NULL) {
         fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
         return -1;
     }
 
-    sc_res_set_parsed(&active->common);
-    sc_res_copy_url(active->common.url, url, SC_RES_URL_MAX_LEN, 1);
+    sc_res_copy_url(parsed->common.url, url, SC_RES_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, active->common.url);
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, parsed->common.url);
 #endif
+    sc_res_inherit_site(origin, parsed);
     content_type = sc_res_content_type_obtain(url);
-    sc_res_set_content_t(&active->common, content_type);
+    sc_res_set_content_t(&parsed->common, content_type);
 
     if (origin->child_cnt == 0) {  /* First derivative is come */
-        origin->child = active;
+        origin->child = parsed;
     } else {
-        active->siblings = origin->child;
-        origin->child = active;
+        parsed->siblings = origin->child;
+        origin->child = parsed;
     }
     origin->child_cnt++;
-    active->parent = origin;
+    parsed->parent = origin;
 
-    if (parsed != NULL) {
-        *parsed = active;
+    if (ptr_ret != NULL) {
+        *ptr_ret = parsed;
     }
 
     return 0;

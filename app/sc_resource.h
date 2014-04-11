@@ -47,19 +47,19 @@ typedef enum sc_res_gen_e {
         }                                           \
     } while (0)
 
-#define SC_RES_WEBSITE_SHIFT  24
-#define SC_RES_WEBSITE_MASK   0x1F
-typedef enum sc_res_website_e {
-    SC_RES_WEBSITE_YOUKU = 0,       /* www.youku.com */
-    SC_RES_WEBSITE_SOHU,            /* www.sohu.com */
+#define SC_RES_SITE_SHIFT  24
+#define SC_RES_SITE_MASK   0x1F
+typedef enum sc_res_site_e {
+    SC_RES_SITE_YOUKU = 0,       /* www.youku.com */
+    SC_RES_SITE_SOHU,            /* www.sohu.com */
 
-    SC_RES_WEBSITE_MAX,             /* MUST <= 31 */
-} sc_res_website_t;
-#define sc_res_set_website(ri, type)                       \
+    SC_RES_SITE_MAX,             /* MUST <= 31 */
+} sc_res_site_t;
+#define sc_res_set_site(ri, type)                       \
     do {                                            \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ (SC_RES_WEBSITE_MASK << SC_RES_WEBSITE_SHIFT)); \
-            (ri)->flag |= (((type) & SC_RES_WEBSITE_MASK) << SC_RES_WEBSITE_SHIFT); \
+            (ri)->flag &= ((~0UL) ^ (SC_RES_SITE_MASK << SC_RES_SITE_SHIFT)); \
+            (ri)->flag |= (((type) & SC_RES_SITE_MASK) << SC_RES_SITE_SHIFT); \
         }                                           \
     } while (0)
 
@@ -178,12 +178,12 @@ typedef struct sc_res_info_active_s {
 
 #define sc_res_set_youku(ri)                       \
     do {                                            \
-        sc_res_set_website((ri), SC_RES_WEBSITE_YOUKU);  \
+        sc_res_set_site((ri), SC_RES_SITE_YOUKU);  \
     } while (0)
 
 #define sc_res_set_sohu(ri)                       \
     do {                                            \
-        sc_res_set_website((ri), SC_RES_WEBSITE_SOHU);  \
+        sc_res_set_site((ri), SC_RES_SITE_SOHU);  \
     } while (0)
 
 #define sc_res_is_kf_crt(ri)    ((ri)->flag & SC_RES_F_CTRL_KF_CRT)
@@ -225,27 +225,32 @@ static inline int sc_res_is_parsed(sc_res_info_t *ri)
     return 0;
 }
 
-static inline int sc_res_is_youku(sc_res_info_t *ri)
+static inline sc_res_site_t sc_res_obtain_site(sc_res_info_t *ri)
 {
-    int website;
+    int site;
 
     if (ri != NULL) {
-        website = (ri->flag >> SC_RES_WEBSITE_SHIFT) & SC_RES_WEBSITE_MASK;
-        return (website == SC_RES_WEBSITE_YOUKU);
+        site = (ri->flag >> SC_RES_SITE_SHIFT) & SC_RES_SITE_MASK;
+        return site;
     }
 
-    return 0;
+    return SC_RES_SITE_MAX;
+}
+static inline int sc_res_is_youku(sc_res_info_t *ri)
+{
+    return (sc_res_obtain_site(ri) == SC_RES_SITE_YOUKU);
 }
 static inline int sc_res_is_sohu(sc_res_info_t *ri)
 {
-    int website;
+    return (sc_res_obtain_site(ri) == SC_RES_SITE_SOHU);
+}
+static inline void sc_res_inherit_site(sc_res_info_origin_t *origin, sc_res_info_active_t *parsed)
+{
+    sc_res_site_t site;
 
-    if (ri != NULL) {
-        website = (ri->flag >> SC_RES_WEBSITE_SHIFT) & SC_RES_WEBSITE_MASK;
-        return (website == SC_RES_WEBSITE_SOHU);
-    }
+    site = sc_res_obtain_site((sc_res_info_t *)origin);
 
-    return 0;
+    sc_res_set_site((sc_res_info_t *)parsed, site);
 }
 
 static inline int sc_res_is_flv(sc_res_info_t *ri)
