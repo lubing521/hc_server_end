@@ -156,8 +156,8 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
 
     ret = sc_ngx_download(real_url, parsed->localpath);
     if (ret < 0) {
-        /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
         fprintf(stderr, "%s ERROR: url %s inform Nginx failed\n", __func__, real_url);
+        sc_res_set_i_fail(&parsed->common);
     }
 
     return ret;
@@ -229,7 +229,6 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
         ret = sc_sohu_download(parsed);
         if (ret != 0) {
             fprintf(stderr, "%s ERROR: sc_sohu_download %s failed\n", __func__, parsed->common.url);
-            /* zhaoyao XXX TODO: re-download should in schedule */
             continue;
         }
     }

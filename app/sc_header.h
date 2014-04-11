@@ -50,7 +50,6 @@ static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
     unsigned int index;
     unsigned int i;
 
-    /* zhaoyao TODO: performance should be optimized */
     for (i = 1 ; i < key_num; i++) {
         if (keyframe[i].time > targetTime) {
             break;

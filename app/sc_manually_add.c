@@ -50,12 +50,9 @@ int main(int argc, char *argv[])
         goto out;
     }
     fprintf(stdout, "%s url: %s\n", __func__, req->usr_data);
-//    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
 
     memset(buf, 0, sizeof(buf));
     nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, NULL, NULL);
-//    fprintf(stdout, "%s recvfrom %d\n", __func__, nrecv);
-    /* zhaoyao TODO XXX: timeout */
     if (nrecv < 0) {
         fprintf(stderr, "%s ERROR recvfrom %d, is not valid to %d: %s\n",
                             __func__, nrecv, sizeof(http_c2sp_res_pkt_t), strerror(errno));

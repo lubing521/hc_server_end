@@ -84,8 +84,9 @@ typedef enum sc_res_ctnt_e {
 /* ri control flag */
 #define SC_RES_F_CTRL_STORED    (0x00000100UL)   /* Resource is stored, can ONLY set by Nginx */
 #define SC_RES_F_CTRL_D_FAIL    (0x00000200UL)   /* Resource download failed, set by Nginx, unset by SC */
-#define SC_RES_F_CTRL_NOTIFY    (0x00000400UL)   /* Stored resource URL is notified to Snooping Module */
-#define SC_RES_F_CTRL_KF_CRT    (0x00000800UL)   /* Resource's key frame information is created */
+#define SC_RES_F_CTRL_I_FAIL    (0x00000400UL)   /* Inform Nginx to download failed, set and unset by SC */
+#define SC_RES_F_CTRL_NOTIFY    (0x00000800UL)   /* Stored resource URL is notified to Snooping Module */
+#define SC_RES_F_CTRL_KF_CRT    (0x00001000UL)   /* Resource's key frame information is created */
 
 typedef struct sc_res_info_s {
     unsigned long id;
@@ -140,6 +141,13 @@ typedef struct sc_res_info_active_s {
         }                                           \
     } while (0)
 
+#define sc_res_set_i_fail(ri)                       \
+    do {						                    \
+        if ((ri) != NULL) {                         \
+            (ri)->flag |= SC_RES_F_CTRL_I_FAIL;  \
+        }                                           \
+    } while (0)
+
 #define sc_res_set_stored(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
@@ -158,6 +166,13 @@ typedef struct sc_res_info_active_s {
     do {						                    \
         if ((ri) != NULL) {                         \
             (ri)->flag &= ((~0UL) ^ SC_RES_F_CTRL_D_FAIL);  \
+        }                                           \
+    } while (0)
+
+#define sc_res_unset_i_fail(ri)                       \
+    do {						                    \
+        if ((ri) != NULL) {                         \
+            (ri)->flag &= ((~0UL) ^ SC_RES_F_CTRL_I_FAIL);  \
         }                                           \
     } while (0)
 
@@ -188,6 +203,7 @@ typedef struct sc_res_info_active_s {
 
 #define sc_res_is_kf_crt(ri)    ((ri)->flag & SC_RES_F_CTRL_KF_CRT)
 #define sc_res_is_d_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_D_FAIL)
+#define sc_res_is_i_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_I_FAIL)
 #define sc_res_is_stored(ri)    ((ri)->flag & SC_RES_F_CTRL_STORED)
 #define sc_res_is_notify(ri)    ((ri)->flag & SC_RES_F_CTRL_NOTIFY)
 

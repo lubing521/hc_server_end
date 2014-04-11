@@ -651,10 +651,12 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     sc_res_info_active_t *active;
 
     if (ri == NULL) {
+        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
         return -1;
     }
 
     if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
+        fprintf(stderr, "%s ERROR: only for active normal and parsed\n", __func__);
         return -1;
     }
 
@@ -668,6 +670,9 @@ static int sc_res_retry_download(sc_res_info_t *ri)
         fprintf(stdout, "%s WARNING: unknown site file:\nreal_url: %s\nlocal_path: %s\n",
                             __func__, ri->url, active->localpath);
         ret = sc_ngx_download(ri->url, active->localpath);
+        if (ret != 0) {
+            sc_res_set_i_fail(ri);
+        }
     }
 
     if (ret != 0) {
@@ -711,20 +716,29 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
 
         if (!sc_res_is_stored(ri)) {
             /*
-             * zhaoyao XXX TODO: add active success, but inform Nginx to download failed, how to
-             *                   re-download in this situation.
+             * zhaoyao XXX: add active success, but inform Nginx to download failed,
+             *              re-download in this situation.
              */
-            if (sc_res_is_d_fail(ri)) {   /* Nginx tell us to re-download it */
+            if (sc_res_is_i_fail(ri)) {
                 ret = sc_res_retry_download(ri);
-                if (ret != 0) {
+                if (ret == 0) {
+                    fprintf(stdout, "%s inform Nginx re-download %s success\n", __func__, ri->url);
+                    sc_res_unset_i_fail(ri);
+                } else {
                     fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);
                     err++;
-                } else {
+                }
+            } else if (sc_res_is_d_fail(ri)) {
+                sc_res_unset_d_fail(ri);    /* zhaoyao: SC已经接管，可将d_fail置0 */
+                ret = sc_res_retry_download(ri);
+                if (ret == 0) {
                     fprintf(stdout, "%s inform Nginx re-download %s success\n", __func__, ri->url);
-                    sc_res_unset_d_fail(ri);
+                } else {
+                    fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);
+                    err++;
                 }
             } else {
-                /* zhaoyao XXX TODO */
+                /* zhaoyao XXX: 文件正在下载中 */
             }
             continue;
         }

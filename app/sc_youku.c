@@ -99,6 +99,9 @@ int sc_youku_download(sc_res_info_active_t *parsed)
     }
 
     ret = sc_ngx_download(parsed->common.url, parsed->localpath);
+    if (ret != 0) {
+        sc_res_set_i_fail(&parsed->common);
+    }
 
     return ret;
 }
@@ -223,10 +226,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 /*
                  * Step 3 - using real URL to download.
                  */
-                /*
-                 * zhaoyao XXX TODO: need remembering segments total count in origin, help checking
-                 *                   downloaded all segments or not.
-                 */
                 ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
                 if (ret != 0) {
                     fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
@@ -239,7 +238,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 }
                 ret = sc_youku_download(parsed);
                 if (ret < 0) {
-                    /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {

@@ -88,6 +88,8 @@ static void sc_snooping_do_parse(int sockfd,
      *                         parsing origin url maybe fail, we should make sure that all segments
      *                         are added in rl.
      *                         sc_get_xxx_video的行为需要明确的定义，才能知道在出错时如何处理origin.
+     *                         错误最可能是添加parsed失败、同服务器通信失败，这都需要对origin进行容错
+     *                         处理。
      */
     if (sc_res_is_youku(&origin->common)) {
         ret = sc_get_yk_video(origin);
@@ -146,9 +148,9 @@ static void sc_snooping_do_down(int sockfd,
     if (ret != 0) {
         fprintf(stderr, "%s: download %s failed\n", __func__, normal->common.url);
         /*
-         * zhaoyao XXX TODO FIXME: 同parsed，当ri添加成功，但download失败时，如何处置已添加的ri，
-         *                         亦或尝试重复下载，多次未果后才删除。
+         * zhaoyao XXX: 同parsed，当ri添加成功，但download失败时，尝试重复下载。
          */
+        sc_res_set_i_fail(&normal->common);
         goto reply;
     }
 
@@ -270,12 +272,9 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         goto out;
     }
     fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
-//    fprintf(stdout, "%s sendto %d success\n", __func__, nsend);
 
     memset(buf, 0, sizeof(buf));
     nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, NULL, NULL);
-//    fprintf(stdout, "%s recvfrom %d\n", __func__, nrecv);
-    /* zhaoyao TODO XXX: timeout */
     if (nrecv < 0) {
         fprintf(stderr, "%s ERROR recvfrom %d, is not valid to %d: %s\n",
                             __func__, nrecv, sizeof(http_c2sp_res_pkt_t), strerror(errno));
