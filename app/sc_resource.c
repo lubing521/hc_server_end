@@ -541,22 +541,29 @@ error:
 
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
 {
+    sc_res_info_origin_t *origin;
+    sc_res_info_active_t *parsed;
+
     if (rl == NULL || ri == NULL) {
         return;
     }
 
     if (sc_res_is_origin(ri)) {
-        /* zhaoyao XXX TODO FIXME: huge parsed URL stuff need to be done before put it */
+        origin = (sc_res_info_origin_t *)ri;
+        if (origin->child_cnt != 0) {
+            fprintf(stderr, "%s ERROR: delete origin who has %lu children is not supported now\n",
+                                __func__, origin->child_cnt);
+        }
         sc_res_info_put(rl, ri);
         return;
     }
 
     if (sc_res_is_stored(ri)) {
-        fprintf(stderr, "%s WARNING: \n%s\n\tstored local file is not deleted\n", __func__, ri->url);
+        fprintf(stderr, "%s ERROR: \n%s\n\tstored local file is not deleted\n", __func__, ri->url);
     }
 
     if (sc_res_is_notify(ri)) {
-        fprintf(stderr, "%s WARNING: \n%s\n\thas notified snooping module\n", __func__, ri->url);
+        fprintf(stderr, "%s ERROR: \n%s\n\thas notified snooping module\n", __func__, ri->url);
     }
 
     if (sc_res_is_normal(ri)) {
@@ -565,10 +572,15 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
     }
 
     if (sc_res_is_parsed(ri)) {
-        /*
-         * zhaoyao XXX TODO FIXME: huge origin URL stuff need to be done before put it,
-         *                         should tell its parent.
-         */
+        parsed = (sc_res_info_active_t *)ri;
+        if (parsed->parent != NULL) {
+            fprintf(stderr, "%s ERROR: %s has parent\n", __func__, ri->url);
+            origin = parsed->parent;
+            if (origin->child_cnt > 1) {
+                fprintf(stderr, "%s ERROR: %s's parent %s has more than one child\n",
+                                    __func__, ri->url, origin->common.url);
+            }
+        }
         sc_res_info_put(rl, ri);
         return;
     }

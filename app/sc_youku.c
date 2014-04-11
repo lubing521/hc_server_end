@@ -132,7 +132,6 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
      * Step 1 - getPlaylist and get flvpath URL.
      */
     memset(pl_url, 0, BUFFER_LEN);
-    /* zhaoyao FIXME TODO: yk_url_to_playlist has no string length control, overflow may occur */
     if (yk_url_to_playlist(yk_url, pl_url) != true) {
         fprintf(stderr, "yk_url_to_playlist failed, url is:\n%s\n", yk_url);
         err = -1;
@@ -224,7 +223,10 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 /*
                  * Step 3 - using real URL to download.
                  */
-                /* zhaoyao XXX TODO: need remembering segments count in origin */
+                /*
+                 * zhaoyao XXX TODO: need remembering segments total count in origin, help checking
+                 *                   downloaded all segments or not.
+                 */
                 ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
                 if (ret != 0) {
                     fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",

@@ -34,9 +34,8 @@ int yk_build_request(char *host, char *uri, char *referer, char *buf)
     if (buf == NULL) {
         return -1;
     }
-    
-    /* zhaoyao TODO: checking request line ,header and length */
-    len = strlen(host) + strlen(uri) + strlen(referer) + strlen(yk_request_pattern) - 3;
+
+    len = strlen(host) + strlen(uri) + strlen(referer) + strlen(yk_request_pattern) - 6;
     if (len >= BUFFER_LEN) {
         fprintf(stderr, "%s request length (%d) exceed limit %d\n", __func__, len, BUFFER_LEN);
         return -1;
