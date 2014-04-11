@@ -323,9 +323,9 @@ static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
         return -1;
     }
 
-    if (sc_url_is_yk(active->common.url)) {
+    if (sc_res_is_youku(&active->common)) {
         ret = sc_yk_url_to_local_path(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
-    } else if (sc_url_is_sohu_file_url(active->common.url)) {
+    } else if (sc_res_is_sohu(&active->common)) {
         ret = sc_sohu_file_url_to_local_path(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
     } else {
         fprintf(stdout, "%s DEBUG: using sc_res_url_to_local_path_default, url %s\n", __func__, active->common.url);
@@ -635,7 +635,7 @@ static int sc_res_retry_download(sc_res_info_t *ri)
 
     active = (sc_res_info_active_t *)ri;
 
-    if (sc_url_is_sohu_file_url(ri->url)) {
+    if (sc_res_is_sohu(ri)) {
         /* zhaoyao XXX: sohu video should generate real_url based on ri->url */
         ret = sc_sohu_download(active);
     } else {

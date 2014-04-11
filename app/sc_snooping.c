@@ -89,9 +89,9 @@ static void sc_snooping_do_parse(int sockfd,
      *                         are added in rl.
      *                         sc_get_xxx_video的行为需要明确的定义，才能知道在出错时如何处理origin.
      */
-    if (sc_url_is_yk(origin->common.url)) {
+    if (sc_res_is_youku(&origin->common)) {
         ret = sc_get_yk_video(origin);
-    } else if (sc_url_is_sohu(origin->common.url)) {
+    } else if (sc_res_is_sohu(&origin->common)) {
         ret = sc_get_sohu_video(origin);
     } else {
         fprintf(stderr, "%s: URL not support\n", __func__);
