@@ -281,7 +281,7 @@ static int sc_res_info_permit_adding(char *url)
     return 0;
 }
 
-static int sc_res_url_to_local_path_default(char *url, char *local_path, int len)
+int sc_res_url_to_local_path_default(char *url, char *local_path, int len)
 {
     char *p, *q;
     int first_slash = 1;
@@ -315,7 +315,7 @@ static int sc_res_url_to_local_path_default(char *url, char *local_path, int len
     return 0;
 }
 
-static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
+int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
 {
     int ret = -1;
 
@@ -323,6 +323,7 @@ static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
         return -1;
     }
 
+    bzero(active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
     if (sc_res_is_youku(&active->common)) {
         ret = sc_yk_url_to_local_path(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
     } else if (sc_res_is_sohu(&active->common)) {

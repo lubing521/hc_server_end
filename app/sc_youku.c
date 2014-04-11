@@ -17,43 +17,11 @@ int sc_url_is_yk(char *url)
 
 /*
  * ri->url: 101.226.245.141/youku/657F3DA0E044A84268416F5901/030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
- * local_path: 101_226_245_141/030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
+ * local_path: 101_226_245_141/youku_657F3DA0E044A84268416F5901_030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
  */
 int sc_yk_url_to_local_path(char *url, char *local_path, int len)
 {
-    char *p, *q;
-
-    if (url == NULL || local_path == NULL) {
-        return -1;
-    }
-
-    if (!sc_url_is_yk(url)) {
-        return -1;
-    }
-
-    if (len <= strlen(url)) {
-        return -1;
-    }
-
-    for (p = url, q = local_path; *p != '/'; p++, q++) {
-        if (*p == '.') {
-            *q = '_';
-            continue;
-        }
-        *q = *p;
-    }
-
-    for (p = url + strlen(url) - 1; *p != '/'; p--) {
-        ;
-    }
-
-    for ( ; *p != '\0' && *p != '?'; p++, q++ ) {
-        *q = *p;
-    }
-
-    *q = '\0';
-
-    return 0;
+    return sc_res_url_to_local_path_default(url, local_path, len);
 }
 
 int sc_yk_gen_origin_url(char *req_url, char *origin_url)
@@ -258,10 +226,9 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                  * zhaoyao XXX TODO: should not call this directly, generate local path should be
                  *                   done in sc_res_info_add_parsed.
                  */
-                bzero(parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
-                ret = sc_yk_url_to_local_path(real_url, parsed->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+                ret = sc_res_info_gen_active_local_path(parsed);
                 if (ret != 0) {
-                    fprintf(stderr, "%s ERROR: sc_yk_url_to_local_path failed, url %s\n", __func__, real_url);
+                    fprintf(stderr, "%s ERROR: generate local_path failed, url %s\n", __func__, real_url);
                     err = -1;
                     goto out;
                 }

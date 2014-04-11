@@ -342,6 +342,8 @@ sc_res_info_active_t *sc_res_info_find_active(sc_res_list_t *rl, const char *url
 sc_res_info_origin_t *sc_res_info_find_origin(sc_res_list_t *rl, const char *url);
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 int sc_res_gen_origin_url(char *req_url, char *origin_url);
+int sc_res_info_gen_active_local_path(sc_res_info_active_t *active);
+int sc_res_url_to_local_path_default(char *url, char *local_path, int len);
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
 
 #endif /* __SC_RESOURCE_H__ */
