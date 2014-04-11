@@ -649,11 +649,12 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     active = (sc_res_info_active_t *)ri;
 
     if (sc_res_is_sohu(ri)) {
-        /* zhaoyao XXX: sohu video should generate real_url based on ri->url */
         ret = sc_sohu_download(active);
+    } else if (sc_res_is_youku(ri)) {
+        ret = sc_youku_download(active);
     } else {
-        /* zhaoyao: Youku and normal ri using sc_ngx_download to directly download */
-        /* zhaoyao TODO: support sc_youku_download */
+        fprintf(stdout, "%s WARNING: unknown site file:\nreal_url: %s\nlocal_path: %s\n",
+                            __func__, ri->url, active->localpath);
         ret = sc_ngx_download(ri->url, active->localpath);
     }
 

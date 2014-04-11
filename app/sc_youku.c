@@ -90,6 +90,19 @@ out:
     return ret;
 }
 
+int sc_youku_download(sc_res_info_active_t *parsed)
+{
+    int ret;
+
+    if (parsed == NULL) {
+        return -1;
+    }
+
+    ret = sc_ngx_download(parsed->common.url, parsed->localpath);
+
+    return ret;
+}
+
 /*
  * Full path: .html -> getPlaylist -> getFlvpath -> real_url
  */
@@ -222,7 +235,7 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                      */
                     continue;
                 }
-                ret = sc_ngx_download(real_url, parsed->localpath);
+                ret = sc_youku_download(parsed);
                 if (ret < 0) {
                     /* zhaoyao XXX TODO FIXME: paresd ri has added succesfully, we should make sure Nginx to download */
                     fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);

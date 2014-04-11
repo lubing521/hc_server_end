@@ -70,6 +70,7 @@ int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);
 int sc_yk_url_to_local_path(char *url, char *local_path, int len);
 int sc_yk_gen_origin_url(char *req_url, char *origin_url);
+int sc_youku_download(sc_res_info_active_t *parsed);
 
 int sc_get_sohu_video(sc_res_info_origin_t *origin);
 int sc_url_is_sohu(char * url);
