@@ -46,7 +46,7 @@ static void sc_snooping_do_parse(int sockfd,
     sc_res_info_origin_t *origin;
     
 #if 1
-    fprintf(stdout, "%s DEBUG: req url:\n\t%s\n", __func__, req->url_data);
+    fprintf(stdout, "%s DEBUG: req url: %s\n", __func__, req->url_data);
 #endif
 
     req_url = (char *)req->url_data;

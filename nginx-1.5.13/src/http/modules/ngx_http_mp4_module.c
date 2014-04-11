@@ -531,7 +531,11 @@ ngx_http_mp4_handler(ngx_http_request_t *r)
     mp4 = NULL;
     b = NULL;
 
-    if (r->args.len) {
+    if (r->args.len && (ngx_strstr(r->uri.data, "ipad_file=_") == NULL)) {
+        /*
+         * zhaoyao XXX FIXME: 搜狐视频虽以mp4结尾，但实为ts文件，遇到关键字"ipad_file=_"时
+         *                    不做参数解析。
+         */
 
         if (ngx_http_arg(r, (u_char *) "start", 5, &value) == NGX_OK ||
             ngx_http_arg(r, (u_char *) "ts_start", 8, &value) == NGX_OK) {
