@@ -333,7 +333,6 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
                            sc_res_info_origin_t *origin,
                            char *url,
                            sc_res_info_active_t **parsed);
-sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url);
 sc_res_info_active_t *sc_res_info_find_active(sc_res_list_t *rl, const char *url);
 sc_res_info_origin_t *sc_res_info_find_origin(sc_res_list_t *rl, const char *url);
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);

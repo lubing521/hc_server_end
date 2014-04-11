@@ -13,10 +13,8 @@ static int randomB()
     int _loc1_[256];
     int _loc2_ = 1;
     int _loc3_ = 0;
-    #if 0
 	time_t t;
-	struct tm *area;
-    #endif
+	struct tm area;
 
 	while(_loc3_ < 256)
 	{
@@ -39,14 +37,9 @@ static int randomB()
 		_loc3_++;
 	}
 
-#if 0
-	tzset(); /*tzset()*/
-	t = time32();
-	/* 所在时区的本地时间 */
-	localtime_r(&t, area);
-	_loc2_ = area->tm_year + 1900;  /* TODO */
-#endif
-    _loc2_ = 2014;
+    t = time(NULL);
+    localtime_r(&t, &area);
+    _loc2_ = area.tm_year + 1900;
 	return _loc2_;
 }
 
@@ -60,10 +53,6 @@ static int randomFT()
     int _loc1_[256];
     int _loc2_ = 1;
     int _loc3_ = 0;
-    #if 0
-	time_t t;
-	struct tm *area;
-    #endif
 
 	while(_loc3_ < 256)
 	{
@@ -84,12 +73,6 @@ static int randomFT()
         _loc1_[_loc3_] = _loc7_;
 		_loc3_++;
 	}
-    #if 0
-	tzset(); /*tzset()*/
-	t = time32();
-	/* 所在时区的本地时间 */
-	localtime_r(&t, area);	    /* TODO */
-    #endif
     
 	return _loc2_;
 }

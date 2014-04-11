@@ -51,7 +51,7 @@ static void sc_snooping_do_parse(int sockfd,
 
     req_url = (char *)req->url_data;
 
-    /* zhaoyao XXX FIXME TODO: 如果参数不一样，url也将被视为不一样，如何配合snooping做好过滤? */
+    /* zhaoyao XXX: 使用固定的pattern生成原始url */
     bzero(origin_url, SC_RES_URL_MAX_LEN);
     ret = sc_res_gen_origin_url(req_url, origin_url);
     if (ret != 0) {
@@ -87,6 +87,7 @@ static void sc_snooping_do_parse(int sockfd,
      * zhaoyao XXX TODO FIXME: if failure occured below, added origin ri should be deleted ???
      *                         parsing origin url maybe fail, we should make sure that all segments
      *                         are added in rl.
+     *                         sc_get_xxx_video的行为需要明确的定义，才能知道在出错时如何处理origin.
      */
     if (sc_url_is_yk(origin->common.url)) {
         ret = sc_get_yk_video(origin);
@@ -96,7 +97,6 @@ static void sc_snooping_do_parse(int sockfd,
         fprintf(stderr, "%s: URL not support\n", __func__);
         goto reply;
     }
-
 
     if (ret < 0) {
         fprintf(stderr, "%s: parse or down %s failed\n", __func__, origin->common.url);
@@ -145,7 +145,10 @@ static void sc_snooping_do_down(int sockfd,
     ret = sc_ngx_download(normal->common.url, normal->localpath);
     if (ret != 0) {
         fprintf(stderr, "%s: download %s failed\n", __func__, normal->common.url);
-        /* zhaoyao XXX TODO FIXME: do we need sc_res_info_del_normal() now ??? */
+        /*
+         * zhaoyao XXX TODO FIXME: 同parsed，当ri添加成功，但download失败时，如何处置已添加的ri，
+         *                         亦或尝试重复下载，多次未果后才删除。
+         */
         goto reply;
     }
 

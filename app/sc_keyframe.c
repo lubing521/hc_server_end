@@ -319,11 +319,9 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
 static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *key_info, u32 *key_num)
 {
     u32 temp_ki_num;
-    /*
-     * zhaoyao XXX FIXME TODO: key frame's quantity may be huge, e.g. single .flv video;
-     *                         allocate it in heap, not in stack.
-     */
-    sc_kf_flv_info_t temp_ki[SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM];
+    sc_kf_flv_info_t *temp_ki;
+    int mem_size;
+    void *p;
 
     int delta, i, drop = 0;
     u32 div;
@@ -337,6 +335,14 @@ static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *
         return -1;
     }
 
+    mem_size = sizeof(sc_kf_flv_info_t) * SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM;
+    p = malloc(mem_size);
+    if (p == NULL) {
+        fprintf(stderr, "%s ERROR: allocate %d bytes memory failed\n", __func__, mem_size);
+        return -1;
+    }
+
+    temp_ki = (sc_kf_flv_info_t *)p;
     if (sc_kf_flv_create_info_do(fp, temp_ki, &temp_ki_num) != true) {
         return -1;
     }

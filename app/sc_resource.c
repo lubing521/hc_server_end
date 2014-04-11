@@ -535,27 +535,6 @@ sc_res_info_origin_t *sc_res_info_find_origin(sc_res_list_t *rl, const char *url
     return NULL;
 }
 
-/*
- * zhaoyao: exact matching, finding in all res_info, TODO XXX add fuzzy matching or pattern matching.
- */
-sc_res_info_t *sc_res_info_find(sc_res_list_t *rl, const char *url)
-{
-    sc_res_info_active_t *active;
-    sc_res_info_origin_t *origin;
-
-    active = sc_res_info_find_active(rl, url);
-    if (active != NULL) {
-        return (sc_res_info_t *)active;
-    }
-
-    origin = sc_res_info_find_origin(rl, url);
-    if (origin != NULL) {
-        return (sc_res_info_t *)origin;
-    }
-
-    return NULL;
-}
-
 int sc_res_gen_origin_url(char *req_url, char *origin_url)
 {
     int ret;
@@ -608,10 +587,6 @@ static int sc_res_retry_download(sc_res_info_t *ri)
 
 static int sc_res_list_process_origin(sc_res_list_t *rl)
 {
-    /*
-     * zhaoyao TODO: origin process
-     */
-     
     if (rl == NULL) {
         return -1;
     }
