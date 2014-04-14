@@ -274,3 +274,64 @@ int sc_get_yk_video(sc_res_info_origin_t *origin)
     return ret;
 }
 
+static int sc_yk_add_symlink(sc_res_info_t *ri)
+{
+    int ret = 0;
+    char shadow_url[SC_RES_URL_MAX_LEN];
+    char shadow_path[SC_RES_LOCAL_PATH_MAX_LEN];
+    char *p, *q;
+
+    if (ri == NULL) {
+        return -1;
+    }
+
+    return ret;
+
+    bzero(shadow_url, SC_RES_URL_MAX_LEN);
+    bzero(shadow_path, SC_RES_LOCAL_PATH_MAX_LEN);
+    if (sc_url_is_yk(ri->url)) {
+        for (p = ri->url, q = shadow_url; *p != '/'; p++, q++) {
+            *q = *p;
+        }
+        for (p = p + 1; *p != '/'; p++) {
+            ;
+        }
+        for (; *p != '\0'; p++, q++) {
+            *q = *p;
+        }
+    } else {
+        for (p = ri->url, q = shadow_url; *p != '/'; p++, q++) {
+            /*zhaoyao TODO XXX: 临时延缓添加两条优酷url的工作*/
+            ;
+        }
+    }
+
+    /* zhaoyao TODO XXX: 创建软连接，添加url给Snooping模块 */
+
+    return 0;
+}
+
+int sc_yk_add_url_to_snooping(sc_res_info_active_t *active)
+{
+    int ret;
+    sc_res_info_t *ri;
+
+    if (active == NULL) {
+        return -1;
+    }
+    ri = &active->common;
+    if (!sc_res_is_youku(ri)) {
+        return -1;
+    }
+
+    ret = sc_yk_add_symlink(ri);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: add symbol link of cached Youku video file failed: %s\n",
+                            __func__, ri->url);
+    }
+
+    ret = sc_snooping_do_add(ri);
+
+    return ret;
+}
+

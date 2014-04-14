@@ -682,6 +682,26 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     return ret;
 }
 
+static int sc_res_add_url_to_snooping(sc_res_info_active_t *active)
+{
+    int ret;
+    sc_res_info_t *ri;
+
+    if (active == NULL) {
+        return -1;
+    }
+
+    ri = &active->common;
+    if (sc_res_is_youku(ri)) {
+        ret = sc_yk_add_url_to_snooping(active);
+    } else {
+        /* zhaoyao: default case */
+        ret = sc_snooping_do_add(ri);
+    }
+
+    return ret;
+}
+
 static int sc_res_list_process_origin(sc_res_list_t *rl)
 {
     if (rl == NULL) {
@@ -744,7 +764,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         }
 
         if (!sc_res_is_notify(ri)) {
-            ret = sc_snooping_do_add(ri);
+            ret = sc_res_add_url_to_snooping(curr);
             if (ret != 0) {
                 fprintf(stderr, "%s inform Snooping Module add URL failed\n", __func__);
                 err++;
