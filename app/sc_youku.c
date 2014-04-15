@@ -15,6 +15,16 @@ int sc_url_is_yk(char *url)
     }
 }
 
+/* zhaoyao XXX: sc's private simple check */
+int sc_yk_is_local_path(char *local_path)
+{
+    if (strstr(local_path, "youku_") != NULL) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 /*
  * ri->url: 101.226.245.141/youku/657F3DA0E044A84268416F5901/030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
  * local_path: 101_226_245_141/youku_657F3DA0E044A84268416F5901_030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4

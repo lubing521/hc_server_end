@@ -43,6 +43,9 @@
 #define HTTP_URL_PRE_LEN        7       /* strlen("http://") */
 #define HTTP_URL_MAX_LEN        512
 
+#define YOUKU_WEBSITE_URL      "www.youku.com"
+#define SOHU_WEBSITE_URL       "www.sohu.com"
+
 #define TEXT_HTML_SUFFIX       "html"
 #define TEXT_HTML_SUFFIX_LEN    4
 #define TEXT_M3U8_SUFFIX       "m3u8"

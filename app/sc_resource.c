@@ -8,10 +8,14 @@ int sc_res_share_mem_shmid = -1;
 /*
  * zhaoyao XXX: content type suffix MUST be at the end of str.
  */
-sc_res_ctnt_t sc_res_content_type_obtain(char *str)
+sc_res_ctnt_t sc_res_content_type_obtain(char *str, int care_type)
 {
     char *p;
     int len;
+
+    if (!care_type) {
+        return SC_RES_CTNT_NOT_CARE;
+    }
 
     if (str == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
@@ -224,6 +228,18 @@ static sc_res_info_active_t *sc_res_info_get_active_parsed(sc_res_list_t *rl)
     return parsed;
 }
 
+static sc_res_info_active_t *sc_res_info_get_active_loaded(sc_res_list_t *rl)
+{
+    sc_res_info_active_t *loaded;
+
+    loaded = sc_res_info_get_active(rl);
+    if (loaded != NULL) {
+        sc_res_set_loaded(&loaded->common);
+    }
+
+    return loaded;
+}
+
 static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     sc_res_info_origin_t *origin;
@@ -233,7 +249,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_origin(ri)) {
+    if (sc_res_is_origin(ri) || sc_res_is_ctl_ld(ri)) {
         if (rl->origin_cnt == 0) {
             fprintf(stderr, "%s ERROR: rl->origin_cnt = 0, can not put\n", __func__);
             return;
@@ -336,6 +352,49 @@ static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
     return ret;
 }
 
+static int sc_res_recover_url_from_local_path(char *local_path, char *url)
+{
+    int lp_len, meet_slash = 0;
+    char *p, *q;
+    char *sohu_file_tag = "ipad/file=/", *sohu_tag_p;
+
+    if (local_path == NULL || url == NULL) {
+        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    lp_len = strlen(local_path);
+    if (lp_len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: local path %d, longer than limit %d\n", __func__, lp_len, HTTP_URL_MAX_LEN);
+        return -1;
+    }
+
+    for (p = local_path, q = url; *p != '\0'; p++, q++) {
+        if (*p == '/') {
+            meet_slash = 1;
+            *q = '/';
+            continue;
+        }
+        if (*p == '_') {
+            if (!meet_slash) {
+                *q = '.';
+            } else {
+                *q = '/';
+            }
+            continue;
+        }
+        *q = *p;
+    }
+    *q = '\0';
+
+    sohu_tag_p = strstr(url, sohu_file_tag);
+    if (sohu_tag_p != NULL) {
+        sohu_tag_p[4] = '?';
+    }
+
+    return 0;
+}
+
 static int sc_res_info_mark_site(sc_res_info_t *ri)
 {
     int ret = -1;
@@ -344,8 +403,8 @@ static int sc_res_info_mark_site(sc_res_info_t *ri)
         return ret;
     }
 
-    if (!sc_res_is_normal(ri) && !sc_res_is_origin(ri)) {
-        fprintf(stderr, "%s ERROR: can not mark non-normal nor non-origin ri's site directly\n", __func__);
+    if (!sc_res_is_normal(ri) && !sc_res_is_origin(ri) && !sc_res_is_ctl_ld(ri)) {
+        fprintf(stderr, "%s ERROR: can not mark non-normal, non-origin nor non-ctl_ld ri's site directly\n", __func__);
         return ret;
     }
 
@@ -401,7 +460,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
         goto error;
     }
 
-    content_type = sc_res_content_type_obtain(url);
+    content_type = sc_res_content_type_obtain(url, 1);
     sc_res_set_content_t(&normal->common, content_type);
 
     ret = sc_res_info_gen_active_local_path(normal);
@@ -459,7 +518,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
         goto error;
     }
 
-    content_type = sc_res_content_type_obtain(url);
+    content_type = sc_res_content_type_obtain(url, 1);
     sc_res_set_content_t(&origin->common, content_type);
 
     if (ptr_ret != NULL) {
@@ -470,6 +529,62 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
 
 error:
     sc_res_info_del(sc_res_info_list, (sc_res_info_t *)origin);
+    return -1;
+}
+
+/*
+ * zhaoyao XXX: url是视频网站的主页地址
+ */
+int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_origin_t **ptr_ret)
+{
+    int len, ret;
+    sc_res_info_origin_t *ctl_ld;
+    sc_res_ctnt_t content_type;
+
+    if (rl == NULL || url == NULL) {
+        return -1;
+    }
+
+    if (!sc_res_info_permit_adding(url)) {
+        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        return -1;
+    }
+
+    len = strlen(url);
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        return -1;
+    }
+
+    ctl_ld = sc_res_info_get_origin(rl);
+    if (ctl_ld == NULL) {
+        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        return -1;
+    }
+    sc_res_set_ctl_ld(&ctl_ld->common);
+
+    sc_res_copy_url(ctl_ld->common.url, url, HTTP_URL_MAX_LEN, 1);
+#if DEBUG
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ctl_ld->common.url);
+#endif
+    /* zhaoyao: mark site should be very early. */
+    ret = sc_res_info_mark_site(&ctl_ld->common);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: sc_res_info_mark_site failed, url %s\n", __func__, ctl_ld->common.url);
+        goto error;
+    }
+
+    content_type = sc_res_content_type_obtain(url, 0);
+    sc_res_set_content_t(&ctl_ld->common, content_type);
+
+    if (ptr_ret != NULL) {
+        *ptr_ret = ctl_ld;
+    }
+
+    return 0;
+
+error:
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)ctl_ld);
     return -1;
 }
 
@@ -509,7 +624,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
 #endif
     /* zhaoyao XXX: inherit site at very first time */
     sc_res_inherit_site(origin, parsed);
-    content_type = sc_res_content_type_obtain(url);
+    content_type = sc_res_content_type_obtain(url, 1);
     sc_res_set_content_t(&parsed->common, content_type);
 
     ret = sc_res_info_gen_active_local_path(parsed);
@@ -539,6 +654,86 @@ error:
     return -1;
 }
 
+int sc_res_info_add_loaded(sc_res_list_t *rl,
+                           sc_res_info_origin_t *ctl_ld,
+                           const char *fpath,
+                           sc_res_info_active_t **ptr_ret)
+{
+    int len, ret;
+    sc_res_info_active_t *loaded;
+    sc_res_ctnt_t content_type;
+    char old_url[HTTP_URL_MAX_LEN], *lp;
+
+    if (rl == NULL || ctl_ld == NULL || fpath == NULL) {
+        return -1;
+    }
+
+    lp = strstr(fpath, SC_NGX_ROOT_PATH);
+    if (lp == NULL) {
+        fprintf(stderr, "%s ERROR: invalid fpath %s\n", __func__, fpath);
+        return -1;
+    }
+    lp = lp + SC_NGX_ROOT_PATH_LEN;
+
+    bzero(old_url, HTTP_URL_MAX_LEN);
+    ret = sc_res_recover_url_from_local_path(lp, old_url);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: recover old url from local path failed, %s\n", __func__, lp);
+        return -1;
+    }
+
+    if (!sc_res_info_permit_adding(old_url)) {
+        fprintf(stderr, "%s: unknown url %s\n", __func__, old_url);
+        return -1;
+    }
+
+    len = strlen(old_url);
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        return -1;
+    }
+
+    loaded = sc_res_info_get_active_loaded(rl);
+    if (loaded == NULL) {
+        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        return -1;
+    }
+
+    sc_res_copy_url(loaded->common.url, old_url, HTTP_URL_MAX_LEN, 1);
+#if DEBUG
+    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, loaded->common.url);
+#endif
+    /* zhaoyao XXX: inherit site at very first time */
+    sc_res_inherit_site(ctl_ld, loaded);
+    content_type = sc_res_content_type_obtain(old_url, 1);
+    sc_res_set_content_t(&loaded->common, content_type);
+
+    /* zhaoyao XXX: 本地文件当然是已经stored了。 */
+    sc_res_set_stored(&loaded->common);
+
+    /* zhaoyao: 为loaded装填local path，当然很简单。。。 */
+    strcpy(loaded->localpath, lp);
+
+    if (ctl_ld->child_cnt == 0) {  /* First derivative is come */
+        ctl_ld->child = loaded;
+    } else {
+        loaded->siblings = ctl_ld->child;
+        ctl_ld->child = loaded;
+    }
+    ctl_ld->child_cnt++;
+    loaded->parent = ctl_ld;
+
+    if (ptr_ret != NULL) {
+        *ptr_ret = loaded;
+    }
+
+    return 0;
+
+//error:
+//    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)loaded);
+//    return -1;
+}
+
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     sc_res_info_origin_t *origin;
@@ -548,10 +743,10 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_origin(ri)) {
+    if (sc_res_is_origin(ri) || sc_res_is_ctl_ld(ri)) {
         origin = (sc_res_info_origin_t *)ri;
         if (origin->child_cnt != 0) {
-            fprintf(stderr, "%s ERROR: delete origin who has %lu children is not supported now\n",
+            fprintf(stderr, "%s ERROR: delete origin or ctl_ld who has %lu children is not supported now\n",
                                 __func__, origin->child_cnt);
         }
         sc_res_info_put(rl, ri);
@@ -571,7 +766,7 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_parsed(ri)) {
+    if (sc_res_is_parsed(ri) || sc_res_is_loaded(ri)) {
         parsed = (sc_res_info_active_t *)ri;
         if (parsed->parent != NULL) {
             fprintf(stderr, "%s ERROR: %s has parent\n", __func__, ri->url);
@@ -756,7 +951,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
             continue;
         }
 
-        if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
+        if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri) && !sc_res_is_loaded(ri)) {
             fprintf(stderr, "%s ERROR: active type check wrong, type: 0x%lx\n", __func__, ri->flag);
             continue;
         }

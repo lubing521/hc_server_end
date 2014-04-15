@@ -25,6 +25,15 @@ int sc_url_is_sohu_file_url(char *url)
     }
 }
 
+int sc_sohu_is_local_path(char *local_path)
+{
+    if (strstr(local_path, "_file=_") != NULL) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len)
 {
     char *p, *q;
