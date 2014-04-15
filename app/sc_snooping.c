@@ -270,7 +270,6 @@ static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
         err = -1;
         goto out;
     }
-    fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
 
     memset(buf, 0, sizeof(buf));
     nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, NULL, NULL);
@@ -306,6 +305,7 @@ int sc_snooping_do_add(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_ADD, sid, url);
+    fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
 
     return ret;
 }
@@ -315,6 +315,7 @@ int sc_snooping_do_del(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_DELETE, sid, url);
+    fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
 
     return ret;
 }
