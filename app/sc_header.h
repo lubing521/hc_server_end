@@ -67,6 +67,7 @@ int sc_snooping_do_add(u32 sid, char *url);
 int sc_snooping_do_del(u32 sid, char *url);
 
 int sc_ld_file_process(char *fpath);
+int sc_ld_init_and_load();
 
 int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);

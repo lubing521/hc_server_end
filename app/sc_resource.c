@@ -1036,6 +1036,11 @@ void *sc_res_list_process_thread(void *arg)
 {
     int ret;
 
+    ret = sc_ld_init_and_load();
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: load stored local resources failed\n", __func__);
+    }
+
     ret = sc_yk_init_vf_adv();
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: in Youku VF initial procedure\n", __func__);

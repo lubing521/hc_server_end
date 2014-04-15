@@ -31,7 +31,6 @@ int sc_ld_file_process(char *fpath)
     return 0;
 }
 
-
 int sc_ld_init_and_load()
 {
     int ret;
