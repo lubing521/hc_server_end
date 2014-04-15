@@ -27,7 +27,9 @@ int sock_conn_retry(int sockfd, const struct sockaddr *addr, socklen_t alen);
 int sock_init_server(int type, const struct sockaddr *addr, socklen_t alen, int qlen);
 
 int http_host_connect(const char *host);    /* Connect http 80 port */
-int http_parse_status_line(char *buf, int *status);
+int http_parse_status_line(char *buf, int len, int *status);
+
+int util_json_to_ascii_string(char *buf, int len);
 
 #endif /* __NET_UTIL_H__ */
 

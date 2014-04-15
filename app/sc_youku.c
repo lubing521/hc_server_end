@@ -111,10 +111,10 @@ int sc_youku_download(sc_res_info_active_t *parsed)
  */
 static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
 {
-    char yk_url[BUFFER_LEN];                /* Youku video public URL */
-    char pl_url[BUFFER_LEN];                /* getplaylist URL */
-    char fp_url[BUFFER_LEN];                /* getflvpath URL */
-    char real_url[BUFFER_LEN];              /* Youku video file's real URL */
+    char yk_url[HTTP_URL_MAX_LEN];                /* Youku video public URL */
+    char pl_url[HTTP_URL_MAX_LEN];                /* getplaylist URL */
+    char fp_url[HTTP_URL_MAX_LEN];                /* getflvpath URL */
+    char real_url[HTTP_URL_MAX_LEN];              /* Youku video file's real URL */
     char *response = NULL;
     int i, j;
     int err = 0, status, ret;
@@ -122,7 +122,7 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
     sc_res_info_active_t *parsed;
     int download_index;
 
-    sc_res_copy_url(yk_url, origin->common.url, BUFFER_LEN, 0); /* zhaoyao: do not care para in traditional way */
+    sc_res_copy_url(yk_url, origin->common.url, HTTP_URL_MAX_LEN, 0); /* zhaoyao: do not care para in traditional way */
 
     response = malloc(RESP_BUF_LEN);
     if (response == NULL) {
@@ -134,20 +134,20 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
     /*
      * Step 1 - getPlaylist and get flvpath URL.
      */
-    memset(pl_url, 0, BUFFER_LEN);
+    memset(pl_url, 0, HTTP_URL_MAX_LEN);
     if (yk_url_to_playlist(yk_url, pl_url) != true) {
         fprintf(stderr, "yk_url_to_playlist failed, url is:\n%s\n", yk_url);
         err = -1;
         goto out;
     }
 
-    if (yk_http_session(pl_url, yk_url, response) < 0) {
+    if (yk_http_session(pl_url, yk_url, response, RESP_BUF_LEN) < 0) {
         fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
         err = -1;
         goto out;
     }
 
-    if (http_parse_status_line(response, &status) < 0) {
+    if (http_parse_status_line(response, strlen(response), &status) < 0) {
         fprintf(stderr, "Parse status line failed:\n%s", response);
         err = -1;
         goto out;
@@ -202,13 +202,13 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 continue;
             }
 
-            if (yk_http_session(fp_url, yk_url, response) < 0) {
+            if (yk_http_session(fp_url, yk_url, response, RESP_BUF_LEN) < 0) {
                 fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
                 err = -1;
                 goto out;
             }
 
-            if (http_parse_status_line(response, &status) < 0) {
+            if (http_parse_status_line(response, strlen(response), &status) < 0) {
                 fprintf(stderr, "Parse status line failed:\n%s", response);
                 err = -1;
                 goto out;
@@ -277,7 +277,7 @@ int sc_get_yk_video(sc_res_info_origin_t *origin)
 static int sc_yk_add_symlink(sc_res_info_t *ri)
 {
     int ret = 0;
-    char shadow_url[SC_RES_URL_MAX_LEN];
+    char shadow_url[HTTP_URL_MAX_LEN];
     char shadow_path[SC_RES_LOCAL_PATH_MAX_LEN];
     char *p, *q;
 
@@ -287,7 +287,7 @@ static int sc_yk_add_symlink(sc_res_info_t *ri)
 
     return ret;
 
-    bzero(shadow_url, SC_RES_URL_MAX_LEN);
+    bzero(shadow_url, HTTP_URL_MAX_LEN);
     bzero(shadow_path, SC_RES_LOCAL_PATH_MAX_LEN);
     if (sc_url_is_yk(ri->url)) {
         for (p = ri->url, q = shadow_url; *p != '/'; p++, q++) {
@@ -311,7 +311,7 @@ static int sc_yk_add_symlink(sc_res_info_t *ri)
     return 0;
 }
 
-int sc_yk_add_url_to_snooping(sc_res_info_active_t *active)
+int sc_yk_add_active_url(sc_res_info_active_t *active)
 {
     int ret;
     sc_res_info_t *ri;
@@ -330,8 +330,108 @@ int sc_yk_add_url_to_snooping(sc_res_info_active_t *active)
                             __func__, ri->url);
     }
 
-    ret = sc_snooping_do_add(ri);
+    ret = sc_res_add_ri_url(ri);
 
     return ret;
+}
+
+int sc_yk_get_vf(char *vf_url, char *referer)
+{
+    int ret, status;
+    char resp[RESP_BUF_LEN], resp2[BUFFER_LEN];
+    char fp_url[HTTP_URL_MAX_LEN], *curr;
+    char real_url[HTTP_URL_MAX_LEN];
+    char vf_no_para_url[HTTP_URL_MAX_LEN];
+
+    if (vf_url == NULL || referer == NULL) {
+        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
+        return -1;
+    }
+
+    bzero(resp, RESP_BUF_LEN);
+    ret = yk_http_session(vf_url, referer, resp, RESP_BUF_LEN);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: url %s, referer %s, http session failed\n", __func__, vf_url, referer);
+        return -1;
+    }
+
+    if (http_parse_status_line(resp, strlen(resp), &status) < 0) {
+        fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, resp);
+        return -1;
+    }
+
+    if (status == 200) {
+    } else {
+        fprintf(stderr, "%s ERROR: status %d failed:\n%s", __func__, status, resp);
+        return -1;
+    }
+
+    ret = util_json_to_ascii_string(resp, strlen(resp));
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: transfer json to ascii failed\n", __func__);
+        return -1;
+    }
+
+    for (curr = resp; curr != NULL; ) {
+        bzero(fp_url, HTTP_URL_MAX_LEN);
+        curr = yk_parse_vf_response(curr, fp_url);
+
+        /*
+         * zhaoyao TODO:在后面的操作中，即使错误也继续，这需要改进。
+         */
+
+        bzero(resp2, BUFFER_LEN);
+        if (yk_http_session(fp_url, referer, resp2, BUFFER_LEN) < 0) {
+            fprintf(stderr, "%s ERROR: yk_http_session faild, URL: %s\n", __func__, fp_url);
+            continue;
+        }
+
+        if (http_parse_status_line(resp2, strlen(resp2), &status) < 0) {
+            fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, resp2);
+            continue;
+        }
+
+        if (status != 200 && status != 302) {
+            fprintf(stderr, "%s ERROR: server return %d\n", __func__, status);
+            continue;
+        }
+
+        if (yk_parse_flvpath(resp2, real_url) != 0) {
+            fprintf(stderr, "%s ERROR: parse getFlvpath response failed: %s\n", __func__, resp2);
+            continue;
+        }
+
+        fprintf(stderr, "%s: real_url %120s\n", __func__, real_url);
+        ret = sc_snooping_do_add(-1, real_url);
+        if (ret != 0) {
+            fprintf(stderr, "%s ERROR: add advertisement url to snooping failed\n", __func__);
+            continue;
+        }
+    }
+
+    sc_res_copy_url(vf_no_para_url, vf_url, HTTP_URL_MAX_LEN, 0);
+    fprintf(stderr, "%s: vf_url   %120s\n", __func__, vf_no_para_url);
+    ret = sc_snooping_do_add(-1, vf_no_para_url);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: add vf url to snooping failed\n", __func__);
+        return -1;
+    }
+
+    return 0;
+}
+
+int sc_yk_init_vf_adv()
+{
+    int ret;
+    char *vf_url = "valf.atm.youku.com/vf?vip=0&site=1&rt=MHwxMzk3NDQ0MzA3ODI1fFhOamd5TURrNU1qTXk=&p=1&vl=5272&fu=0&ct=c&cs=2034&paid=0&s=177092&td=0&sid=739744430145310e7d997&v=170524808&wintype=interior&u=97454045&vs=1.0&rst=flv&partnerid=null&dq=mp4&k=%u6536%u8D39&os=Windows%207&d=0&ti=%E5%A4%A7%E8%AF%9D%E5%A4%A9%E4%BB%99";
+    char *referer = "http://v.youku.com/v_show/id_XNjgyMDk5MjMy.html";
+
+    ret = sc_yk_get_vf(vf_url, referer);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR\n", __func__);
+        return -1;
+    }
+
+    return 0;
 }
 

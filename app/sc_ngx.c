@@ -31,13 +31,18 @@ static int sc_ngx_build_get(const char *ip,
                             char *buf,
                             unsigned int len)
 {
-    char lp[SC_RES_URL_MAX_LEN];
+    char lp[SC_RES_LOCAL_PATH_MAX_LEN];
 
     if (buf == NULL || uri == NULL || local_path == NULL || ip == NULL) {
         return -1;
     }
 
-    bzero(lp, SC_RES_URL_MAX_LEN);
+    bzero(lp, SC_RES_LOCAL_PATH_MAX_LEN);
+    if (strlen(local_path) >= SC_RES_LOCAL_PATH_MAX_LEN - 11) {
+        /* zhaoyao XXX TODO: 本地路径名长度 */
+        fprintf(stderr, "%s ERROR: local_path too long\n", __func__);
+        return -1;
+    }
     if (strchr(uri, '?')) {
         sprintf(lp, "&localpath=%s", local_path);
     } else {
@@ -129,7 +134,7 @@ int sc_ngx_download(char *url, char *local_path)
         goto out;
     }
 
-    if (http_parse_status_line(buffer, &status) < 0) {
+    if (http_parse_status_line(buffer, nrecv, &status) < 0) {
         fprintf(stderr, "Parse status line failed:\n%s", buffer);
         err = -1;
         goto out;

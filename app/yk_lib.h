@@ -120,7 +120,8 @@ int yk_parse_playlist(char *data, yk_stream_info_t *streams[]);
 int yk_parse_flvpath(char *data, char *real_url);
 void yk_destroy_streams_all(yk_stream_info_t *streams[]);
 void yk_debug_streams_all(yk_stream_info_t *streams[]);
-int yk_http_session(char *url, char *referer, char *response);
+int yk_http_session(char *url, char *referer, char *response, unsigned long resp_len);
+char *yk_parse_vf_response(char *curr, char *fp_url);
 
 #endif /* __YK_LIB_H__ */
 

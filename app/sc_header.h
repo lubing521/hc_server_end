@@ -63,14 +63,16 @@ static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
 int sc_ngx_download(char *url, char *local_path);
 
 void sc_snooping_serve(int sockfd);
-int sc_snooping_do_add(sc_res_info_t *ri);
+int sc_snooping_do_add(u32 sid, char *url);
 
 int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);
 int sc_yk_url_to_local_path(char *url, char *local_path, int len);
 int sc_yk_gen_origin_url(char *req_url, char *origin_url);
 int sc_youku_download(sc_res_info_active_t *parsed);
-int sc_yk_add_url_to_snooping(sc_res_info_active_t *active);
+int sc_yk_add_active_url(sc_res_info_active_t *active);
+int sc_yk_get_vf(char *vf_url, char *referer);
+int sc_yk_init_vf_adv();
 
 int sc_get_sohu_video(sc_res_info_origin_t *origin);
 int sc_url_is_sohu(char * url);

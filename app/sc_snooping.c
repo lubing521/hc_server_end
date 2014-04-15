@@ -42,7 +42,7 @@ static void sc_snooping_do_parse(int sockfd,
 {
     int ret;
     u8 status;
-    char *req_url, origin_url[SC_RES_URL_MAX_LEN];
+    char *req_url, origin_url[HTTP_URL_MAX_LEN];
     sc_res_info_origin_t *origin;
     
 #if 1
@@ -52,7 +52,7 @@ static void sc_snooping_do_parse(int sockfd,
     req_url = (char *)req->url_data;
 
     /* zhaoyao XXX: 使用固定的pattern生成原始url */
-    bzero(origin_url, SC_RES_URL_MAX_LEN);
+    bzero(origin_url, HTTP_URL_MAX_LEN);
     ret = sc_res_gen_origin_url(req_url, origin_url);
     if (ret != 0) {
         fprintf(stderr, "%s: generate origin url failed, req_url: %s...\n", __func__, req_url);
@@ -202,9 +202,9 @@ void sc_snooping_serve(int sockfd)
 #endif
         sp2c_req = (http_sp2c_req_pkt_t *)buf;
         sp2c_req->url_len = ntohs(sp2c_req->url_len);
-        if (sp2c_req->url_len >= SC_RES_URL_MAX_LEN) {
+        if (sp2c_req->url_len >= HTTP_URL_MAX_LEN) {
             fprintf(stderr, "%s WARNING: sp2c_req's url (%u) is longer than %d\n",
-                                __func__, sp2c_req->url_len, SC_RES_URL_MAX_LEN);
+                                __func__, sp2c_req->url_len, HTTP_URL_MAX_LEN);
             continue;
         }
 
@@ -224,7 +224,7 @@ void sc_snooping_serve(int sockfd)
     }
 }
 
-int sc_snooping_do_add(sc_res_info_t *ri)
+int sc_snooping_do_add(u32 sid, char *url)
 {
     int err = 0, nsend, nrecv;
     int sockfd;
@@ -234,14 +234,8 @@ int sc_snooping_do_add(sc_res_info_t *ri)
     http_c2sp_req_pkt_t *req;
     http_c2sp_res_pkt_t *res;
 
-    if (ri == NULL) {
+    if (url == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
-        return -1;
-    }
-
-    if (!sc_res_is_stored(ri) || sc_res_is_notify(ri)) {
-        fprintf(stderr, "%s ERROR: ri URL:\n\t%s\nflag:%lu can not be added\n",
-                            __func__, ri->url, ri->flag);
         return -1;
     }
 
@@ -261,10 +255,10 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         return -1;
     }
     req = (http_c2sp_req_pkt_t *)buf;
-    req->session_id = ri->id;
+    req->session_id = sid;
     req->c2sp_action = HTTP_C2SP_ACTION_ADD;
-    req->url_len = htons(strlen(ri->url));
-    sc_res_copy_url((char *)req->usr_data, ri->url, HTTP_SP_URL_LEN_MAX, 1);
+    req->url_len = htons(strlen(url));
+    sc_res_copy_url((char *)req->usr_data, url, HTTP_SP_URL_LEN_MAX, 1);
 
     if ((nsend = sendto(sockfd, req, sizeof(http_c2sp_req_pkt_t), 0, (struct sockaddr *)&sa, salen)) < 0) {
         fprintf(stderr, "%s ERROR sendto failed: %s\n", __func__, strerror(errno));
@@ -282,15 +276,15 @@ int sc_snooping_do_add(sc_res_info_t *ri)
         goto out;
     }
     res = (http_c2sp_res_pkt_t *)buf;
-    if (res->session_id != ri->id) {
-        fprintf(stderr, "%s ERROR: send id %lu, not the same as response id %u\n",
-                            __func__, ri->id, res->session_id);
+    if (res->session_id != sid) {
+        fprintf(stderr, "%s ERROR: send id %u, not the same as response id %u\n",
+                            __func__, sid, res->session_id);
         err = -1;
         goto out;
     }
 
     if (res->status == HTTP_SP_STATUS_OK) {
-        sc_res_set_notify(ri);
+        ;
     } else {
         fprintf(stderr, "%s ERROR: response status is failed %u\n", __func__, res->status);
         err = -1;

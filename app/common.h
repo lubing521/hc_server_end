@@ -31,30 +31,31 @@
 
 #include <pthread.h>
 
-#define DEBUG               0
+#define DEBUG                   0
 
-#define BUFFER_LEN          1024
+#define BUFFER_LEN              1024
 
-#define RESP_BUF_LEN            (0x1 << 15)         /* 32KB */
+#define RESP_BUF_LEN           (0x1 << 15)         /* 32KB */
 
-#define MAX_HOST_NAME_LEN   32
+#define MAX_HOST_NAME_LEN       32
 
-#define HTTP_URL_PREFIX     "http://"
-#define HTTP_URL_PRE_LEN    7       /* strlen("http://") */
+#define HTTP_URL_PREFIX        "http://"
+#define HTTP_URL_PRE_LEN        7       /* strlen("http://") */
+#define HTTP_URL_MAX_LEN        512
 
-#define TEXT_HTML_SUFFIX             "html"
-#define TEXT_HTML_SUFFIX_LEN         4
-#define TEXT_M3U8_SUFFIX             "m3u8"
-#define TEXT_M3U8_SUFFIX_LEN         4
-#define VIDEO_FLV_SUFFIX             "flv"
-#define VIDEO_FLV_SUFFIX_LEN         3
-#define VIDEO_MP4_SUFFIX             "mp4"
-#define VIDEO_MP4_SUFFIX_LEN         3
+#define TEXT_HTML_SUFFIX       "html"
+#define TEXT_HTML_SUFFIX_LEN    4
+#define TEXT_M3U8_SUFFIX       "m3u8"
+#define TEXT_M3U8_SUFFIX_LEN    4
+#define VIDEO_FLV_SUFFIX       "flv"
+#define VIDEO_FLV_SUFFIX_LEN    3
+#define VIDEO_MP4_SUFFIX       "mp4"
+#define VIDEO_MP4_SUFFIX_LEN    3
 
-#define INVALID_PTR         ((void *) -1)
+#define INVALID_PTR             ((void *) -1)
 
-#define true                1
-#define false               0
+#define true                    1
+#define false                   0
 typedef int bool;
 
 typedef uint8_t  u8;

@@ -379,8 +379,8 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
     }
 
     len = strlen(url);
-    if (len >= SC_RES_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
         return -1;
     }
 
@@ -390,7 +390,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
         return -1;
     }
 
-    sc_res_copy_url(normal->common.url, url, SC_RES_URL_MAX_LEN, 1);
+    sc_res_copy_url(normal->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, normal->common.url);
 #endif
@@ -437,8 +437,8 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
     }
 
     len = strlen(url);
-    if (len >= SC_RES_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
         return -1;
     }
 
@@ -448,7 +448,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
         return -1;
     }
 
-    sc_res_copy_url(origin->common.url, url, SC_RES_URL_MAX_LEN, 1);
+    sc_res_copy_url(origin->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, origin->common.url);
 #endif
@@ -492,8 +492,8 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     }
 
     len = strlen(url);
-    if (len >= SC_RES_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, SC_RES_URL_MAX_LEN);
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
         return -1;
     }
 
@@ -503,7 +503,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
         return -1;
     }
 
-    sc_res_copy_url(parsed->common.url, url, SC_RES_URL_MAX_LEN, 1);
+    sc_res_copy_url(parsed->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
     fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, parsed->common.url);
 #endif
@@ -682,7 +682,34 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     return ret;
 }
 
-static int sc_res_add_url_to_snooping(sc_res_info_active_t *active)
+int sc_res_add_ri_url(sc_res_info_t *ri)
+{
+    int ret;
+
+    if (ri == NULL) {
+        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    if (!sc_res_is_stored(ri) || sc_res_is_notify(ri)) {
+        fprintf(stderr, "%s ERROR: ri URL:\n\t%s\nflag:%lu can not be added\n",
+                            __func__, ri->url, ri->flag);
+        return -1;
+    }
+
+    ret = sc_snooping_do_add(ri->id, ri->url);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: add res info url is failed\n", __func__);
+        return -1;
+    }
+
+    sc_res_set_notify(ri);
+
+    return 0;
+}
+
+
+static int sc_res_add_active_url(sc_res_info_active_t *active)
 {
     int ret;
     sc_res_info_t *ri;
@@ -693,10 +720,10 @@ static int sc_res_add_url_to_snooping(sc_res_info_active_t *active)
 
     ri = &active->common;
     if (sc_res_is_youku(ri)) {
-        ret = sc_yk_add_url_to_snooping(active);
+        ret = sc_yk_add_active_url(active);
     } else {
         /* zhaoyao: default case */
-        ret = sc_snooping_do_add(ri);
+        ret = sc_res_add_ri_url(ri);
     }
 
     return ret;
@@ -764,7 +791,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         }
 
         if (!sc_res_is_notify(ri)) {
-            ret = sc_res_add_url_to_snooping(curr);
+            ret = sc_res_add_active_url(curr);
             if (ret != 0) {
                 fprintf(stderr, "%s inform Snooping Module add URL failed\n", __func__);
                 err++;
@@ -813,6 +840,11 @@ int sc_res_list_process_func(sc_res_list_t *rl)
 void *sc_res_list_process_thread(void *arg)
 {
     int ret;
+
+    ret = sc_yk_init_vf_adv();
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: in Youku VF initial procedure\n", __func__);
+    }
 
     while (1) {
         ret = sc_res_list_process_func(sc_res_info_list);

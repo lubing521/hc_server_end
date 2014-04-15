@@ -69,7 +69,7 @@ int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len)
 
 int sc_sohu_gen_origin_url(char *req_url, char *origin_url)
 {
-    char buf[SC_RES_URL_MAX_LEN];
+    char buf[HTTP_URL_MAX_LEN];
     char tag1[] = "hot.vrs.sohu.com/ipad";
     char tag2[] = "my.tv.sohu.com/ipad/";
     char suffix[] = ".m3u8";
@@ -117,7 +117,7 @@ int sc_sohu_gen_origin_url(char *req_url, char *origin_url)
 int sc_sohu_download(sc_res_info_active_t *parsed)
 {
     char response[BUFFER_LEN];
-    char real_url[SC_RES_URL_MAX_LEN];
+    char real_url[HTTP_URL_MAX_LEN];
     int status, ret;
 
     if (parsed == NULL) {
@@ -129,7 +129,7 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
         return -1;
     }
 
-    if (http_parse_status_line(response, &status) < 0) {
+    if (http_parse_status_line(response, strlen(response), &status) < 0) {
         fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response);
         return -1;
     }
@@ -141,7 +141,7 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
         return -1;
     }
 
-    bzero(real_url, SC_RES_URL_MAX_LEN);
+    bzero(real_url, HTTP_URL_MAX_LEN);
     ret = sohu_parse_file_url_response(response, real_url);
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: parse real_url failed, response is\n%s", __func__, response);
@@ -175,13 +175,13 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
 static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
 {
     int err = 0, status, ret;
-    char m3u8_url[SC_RES_URL_MAX_LEN];
-    char file_url[SC_RES_URL_MAX_LEN];
+    char m3u8_url[HTTP_URL_MAX_LEN];
+    char file_url[HTTP_URL_MAX_LEN];
     sc_res_info_active_t *parsed;
     char *response = NULL, *curr;
 
     /* zhaoyao: do not care para in m3u8 way */
-    sc_res_copy_url(m3u8_url, origin->common.url, SC_RES_URL_MAX_LEN, 0);
+    sc_res_copy_url(m3u8_url, origin->common.url, HTTP_URL_MAX_LEN, 0);
 
     response = malloc(RESP_BUF_LEN);
     if (response == NULL) {
@@ -196,7 +196,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
         goto out;
     }
 
-    if (http_parse_status_line(response, &status) < 0) {
+    if (http_parse_status_line(response, strlen(response), &status) < 0) {
         fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response);
         err = -1;
         goto out;
@@ -211,7 +211,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
     }
 
     for (curr = response; curr != NULL; ) {
-        bzero(file_url, SC_RES_URL_MAX_LEN);
+        bzero(file_url, HTTP_URL_MAX_LEN);
         curr = sohu_parse_m3u8_response(curr, file_url);
 
         /* zhaoyao XXX: for Sohu, file_url is not the final url to download data */

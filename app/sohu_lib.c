@@ -47,6 +47,12 @@ int sohu_http_session(char *url, char *response, unsigned long resp_len)
         return -1;
     }
 
+    if (resp_len < BUFFER_LEN) {
+        fprintf(stderr, "%s ERROR: buffer too small(%lu), minimum should be %d\n",
+                            __func__, resp_len, BUFFER_LEN);
+        return -1;
+    }
+
     memset(host, 0, MAX_HOST_NAME_LEN);
     for (i = 0; (*(url + i) != '/') && (*(url + i) != '\0'); i++) {
         host[i] = *(url + i);
@@ -156,8 +162,8 @@ char *sohu_parse_m3u8_response(char *curr, char *file_url)
         ;
     }
     len = (unsigned long)p - (unsigned long)curr;
-    if (len >= SC_RES_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: parsed url len %lu, exceed limit %u\n", __func__, len, SC_RES_URL_MAX_LEN);
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: parsed url len %lu, exceed limit %u\n", __func__, len, HTTP_URL_MAX_LEN);
     } else {
         strncpy(file_url, curr, len);
     }
@@ -189,7 +195,7 @@ int sohu_parse_file_url_response(char *response, char *real_url)
 
     p = p + HTTP_URL_PRE_LEN;
     len = strlen(p);
-    if (len >= SC_RES_URL_MAX_LEN) {
+    if (len >= HTTP_URL_MAX_LEN) {
         fprintf(stderr, "%s ERROR: real url is too long:\n%s\n", __func__, p);
         return -1;
     }

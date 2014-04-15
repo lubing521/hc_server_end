@@ -18,6 +18,7 @@
 
 #include <string.h>
 
+#include "common.h"
 #include "sc_header.h"
 
 #define SC_RES_SHARE_MEM_ID        65513
@@ -27,7 +28,6 @@
 #define SC_RES_INFO_NUM_MAX_ORGIIN (0x1 << 8)
 #define SC_RES_INFO_NUM_MAX_ACTIVE (0x1 << 10)
 
-#define SC_RES_URL_MAX_LEN         512
 #define SC_RES_LOCAL_PATH_MAX_LEN  256
 
 #define SC_RES_GEN_T_SHIFT  29
@@ -99,7 +99,7 @@ typedef struct sc_res_info_s {
      *              url还会通知Snooping模块做重定向；
      *              注意: 对于sohu视频，parsed的URL仍然不是最终的资源URL。
      */
-    char url[SC_RES_URL_MAX_LEN];
+    char url[HTTP_URL_MAX_LEN];
 } sc_res_info_t;
 
 typedef struct sc_res_info_origin_s {
@@ -360,6 +360,7 @@ void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 int sc_res_gen_origin_url(char *req_url, char *origin_url);
 int sc_res_url_to_local_path_default(char *url, char *local_path, int len);
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
+int sc_res_add_ri_url(sc_res_info_t *ri);
 
 #endif /* __SC_RESOURCE_H__ */
 

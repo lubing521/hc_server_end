@@ -162,7 +162,7 @@ int http_host_connect(const char *host)
 
 #endif
 
-int http_parse_status_line(char *buf, int *status)
+int http_parse_status_line(char *buf, int len, int *status)
 {
     char ch;
     char *p;
@@ -183,14 +183,14 @@ int http_parse_status_line(char *buf, int *status)
         sw_almost_done
     } state;
 
-    if (buf == NULL || status == NULL) {
+    if (buf == NULL || status == NULL || len <= 0) {
         return -1;
     }
 
     state = sw_start;
     *status = 0;
 
-    for (p = buf; p < buf + BUFFER_LEN; p++) {
+    for (p = buf; p < buf + len; p++) {
         ch = *p;
 
         switch (state) {
@@ -350,6 +350,38 @@ int http_parse_status_line(char *buf, int *status)
     return -1;
 
 done:
+
+    return 0;
+}
+
+/*
+ * zhaoyao:将"http\u003a//k\u002eyouku\u002ecom/"的json格式转换为
+ *           "http://k.youku.com/"的ascii格式
+ */
+int util_json_to_ascii_string(char *buf, int len)
+{
+    char *p, *q, *end;
+    char temp[3];
+
+    if (buf == NULL || len <= 0) {
+        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    end = buf + len;
+    for (p = buf, q = buf; *p != '\0' && p < end; p++, q++) {
+        if (*p == '\\') {
+            p = p + 4;
+            bzero(temp, sizeof(temp));
+            temp[0] = p[0];
+            temp[1] = p[1];
+            *q = (char)strtol(temp, NULL, 16);
+            p++;
+            continue;
+        }
+        *q = *p;
+    }
+    *q = '\0';
 
     return 0;
 }

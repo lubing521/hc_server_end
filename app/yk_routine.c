@@ -399,7 +399,7 @@ int yk_parse_flvpath(char *data, char *real_url)
         return -1;
     }
 
-    memset(real_url, 0, BUFFER_LEN);
+    memset(real_url, 0, HTTP_URL_MAX_LEN);
 
     p = strstr(data, tag1);
     if (p != NULL) {
@@ -423,8 +423,8 @@ int yk_parse_flvpath(char *data, char *real_url)
     }
 
 end:
-    if (q >= real_url + BUFFER_LEN) {
-        fprintf(stderr, "WARNING: real_url is exceeding buffer length %d\n", BUFFER_LEN);
+    if (q >= real_url + HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "WARNING: real_url is exceeding buffer length %d\n", HTTP_URL_MAX_LEN);
         return -1;
     }
 

@@ -17,14 +17,16 @@
 #include "net_util.h"
 
 static char yk_request_pattern[] = 
-    "GET %s HTTP/1.1\r\n"
+//    "GET %s HTTP/1.1\r\n"
+    "GET %s HTTP/1.0\r\n"
     "Host: %s\r\n"
     "Connection: close\r\n"
     "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/33.0.1750.117 Safari/537.36\r\n"
     "Accept: */*\r\n"
     "Referer: http://%s\r\n"
-    "Accept-Encoding: gzip,deflate,sdch\r\n"
+//    "Accept-Encoding: gzip,deflate,sdch\r\n"
+    "Accept-Encoding:\r\n"
     "Accept-Language: en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4\r\n\r\n";
 
 int yk_build_request(char *host, char *uri, char *referer, char *buf)
@@ -108,7 +110,7 @@ int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
 	memcpy(seg_data.fileId, fileids, strlen(fileids));
 	memcpy(seg_data.key, seg->k, strlen(seg->k));
 
-    memset(fp_url, 0, BUFFER_LEN);
+    memset(fp_url, 0, HTTP_URL_MAX_LEN);
     if (yk_get_fileurl(0, &play_list, &seg_data, false, 0, fp_url) != true) {
         fprintf(stderr, "yk_get_fileurl failed\n");
         return -1;
@@ -117,7 +119,7 @@ int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
     return 0;
 }
 
-int yk_http_session(char *url, char *referer, char *response)
+int yk_http_session(char *url, char *referer, char *response, unsigned long resp_len)
 {
     int sockfd = -1, err = 0;
     char host[MAX_HOST_NAME_LEN], *uri_start;
@@ -126,6 +128,12 @@ int yk_http_session(char *url, char *referer, char *response)
 
     if (url == NULL || referer == NULL || response == NULL) {
         fprintf(stderr, "Input is invalid\n");
+        return -1;
+    }
+
+    if (resp_len < BUFFER_LEN) {
+        fprintf(stderr, "%s ERROR: buffer too small(%lu), minimum should be %d\n",
+                            __func__, resp_len, BUFFER_LEN);
         return -1;
     }
 
@@ -170,12 +178,15 @@ int yk_http_session(char *url, char *referer, char *response)
         goto out;
     }
 
-    memset(response, 0, RESP_BUF_LEN);
-    nrecv = recv(sockfd, response, RESP_BUF_LEN, MSG_WAITALL);
+    memset(response, 0, resp_len);
+    nrecv = recv(sockfd, response, resp_len, MSG_WAITALL);
     if (nrecv <= 0) {
         perror("Recv failed or meet EOF");
         err = -1;
         goto out;
+    }
+    if (nrecv == resp_len) {
+        fprintf(stderr, "%s WARNING: receive %d bytes, response buffer is full!!!\n", __func__, nrecv);
     }
 
 out:
@@ -183,4 +194,45 @@ out:
 
     return err;
 }
+
+char *yk_parse_vf_response(char *curr, char *fp_url)
+{
+    char *ret = NULL, *p;
+    char *tag = "\"RS\"";
+    unsigned long len;
+
+    if (curr == NULL || fp_url == NULL) {
+        fprintf(stderr, "%s ERROR: Invalid input, curr is NULL\n", __func__);
+        return ret;
+    }
+
+    p = strstr(curr, tag);
+    if (p == NULL) {
+        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, tag);
+        return ret;
+    }
+
+    p = strstr(p, HTTP_URL_PREFIX);
+    if (p == NULL) {
+        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, HTTP_URL_PREFIX);
+        return ret;
+    }
+    p = p + HTTP_URL_PRE_LEN;
+    curr = p;
+
+    for ( ; *p != '"' && *p != '\0'; p++) {
+        ;
+    }
+    len = (unsigned long)p - (unsigned long)curr;
+    if (len >= HTTP_URL_MAX_LEN) {
+        fprintf(stderr, "%s ERROR: parsed url len %lu, exceed limit %u\n", __func__, len, HTTP_URL_MAX_LEN);
+    } else {
+        strncpy(fp_url, curr, len);
+    }
+
+    ret = strstr(curr, tag);
+
+    return ret;
+}
+
 
