@@ -19,6 +19,9 @@ int sc_url_is_yk(char *url)
 int sc_yk_is_local_path(char *local_path)
 {
     if (strstr(local_path, "youku_") != NULL) {
+        if (strstr(local_path, "valf") != NULL) {   /* zhaoyao XXX: ¹ã¸æÔÝ²»¿¼ÂÇ */
+            return 0;
+        }
         return 1;
     } else {
         return 0;
