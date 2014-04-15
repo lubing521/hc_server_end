@@ -375,12 +375,6 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         return -1;
     }
 
-    ret = util_json_to_ascii_string(resp, resp_len);
-    if (ret != 0) {
-        fprintf(stderr, "%s ERROR: transfer json to ascii failed\n", __func__);
-        return -1;
-    }
-
     bzero(vf_local_path, sizeof(vf_local_path));
     strcat(vf_local_path, SC_NGX_ROOT_PATH);
     for (p = vf_no_para_url, q = vf_local_path + SC_NGX_ROOT_PATH_LEN; *p != '\0'; p++, q++) {
@@ -404,6 +398,13 @@ int sc_yk_get_vf(char *vf_url, char *referer)
     if (fclose(fp) == EOF) {
         fprintf(stderr, "%s ERROR: close %s failed\n", __func__, vf_local_path);
     }
+
+    ret = util_json_to_ascii_string(resp, resp_len);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: transfer json to ascii failed\n", __func__);
+        return -1;
+    }
+    resp_len = strlen(resp);    /* zhaoyao XXX:由于转码，更新响应的长度 */
 
     for (curr = resp; curr != NULL; ) {
         bzero(fp_url, HTTP_URL_MAX_LEN);
@@ -434,7 +435,7 @@ int sc_yk_get_vf(char *vf_url, char *referer)
             continue;
         }
 
-        fprintf(stderr, "%s: real_url %120s\n", __func__, real_url);
+        fprintf(stderr, "%s: real_url: %120s\n", __func__, real_url);
         ret = sc_snooping_do_add(-1, real_url);
         if (ret != 0) {
             fprintf(stderr, "%s ERROR: add advertisement url to snooping failed\n", __func__);
@@ -442,7 +443,6 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         }
     }
 
-    fprintf(stderr, "%s: vf_url   %120s\n", __func__, vf_no_para_url);
     ret = sc_snooping_do_add(-1, vf_no_para_url);
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: add vf url to snooping failed\n", __func__);
