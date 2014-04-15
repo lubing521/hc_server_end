@@ -64,6 +64,7 @@ int sc_ngx_download(char *url, char *local_path);
 
 void sc_snooping_serve(int sockfd);
 int sc_snooping_do_add(u32 sid, char *url);
+int sc_snooping_do_del(u32 sid, char *url);
 
 int sc_get_yk_video(sc_res_info_origin_t *origin);
 int sc_url_is_yk(char *url);

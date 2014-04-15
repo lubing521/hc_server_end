@@ -224,7 +224,7 @@ void sc_snooping_serve(int sockfd)
     }
 }
 
-int sc_snooping_do_add(u32 sid, char *url)
+static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
 {
     int err = 0, nsend, nrecv;
     int sockfd;
@@ -236,6 +236,11 @@ int sc_snooping_do_add(u32 sid, char *url)
 
     if (url == NULL) {
         fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    if (act != HTTP_C2SP_ACTION_ADD && act != HTTP_C2SP_ACTION_DELETE) {
+        fprintf(stderr, "%s ERROR: non-support action %u\n", __func__, act);
         return -1;
     }
 
@@ -256,7 +261,7 @@ int sc_snooping_do_add(u32 sid, char *url)
     }
     req = (http_c2sp_req_pkt_t *)buf;
     req->session_id = sid;
-    req->c2sp_action = HTTP_C2SP_ACTION_ADD;
+    req->c2sp_action = act;
     req->url_len = htons(strlen(url));
     sc_res_copy_url((char *)req->usr_data, url, HTTP_SP_URL_LEN_MAX, 1);
 
@@ -295,4 +300,23 @@ out:
     close(sockfd);
     return err;
 }
+
+int sc_snooping_do_add(u32 sid, char *url)
+{
+    int ret;
+
+    ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_ADD, sid, url);
+
+    return ret;
+}
+
+int sc_snooping_do_del(u32 sid, char *url)
+{
+    int ret;
+
+    ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_DELETE, sid, url);
+
+    return ret;
+}
+
 

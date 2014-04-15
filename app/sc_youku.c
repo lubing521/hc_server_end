@@ -356,6 +356,11 @@ int sc_yk_get_vf(char *vf_url, char *referer)
     bzero(vf_no_para_url, HTTP_URL_MAX_LEN);
     sc_res_copy_url(vf_no_para_url, vf_url, HTTP_URL_MAX_LEN, 0);
 
+    ret = sc_snooping_do_del(-1, vf_no_para_url);
+    if (ret != 0) {
+        fprintf(stdout, "%s WARNING: delete url in snooping failed: %s\n", __func__, vf_no_para_url);
+    }
+
     bzero(resp, RESP_BUF_LEN);
     ret = yk_http_session(vf_url, referer, resp, RESP_BUF_LEN);
     if (ret != 0) {
@@ -398,9 +403,9 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         return -1;
     }
     /* zhaoyao TODO XXX:代码写的很简陋，需改进 */
-    wlen = fwrite(body, 1, body_len + 1, fp);
-    if (wlen < body_len + 1) {
-        fprintf(stderr, "%s ERROR: write %d, but vf is %d\n", __func__, wlen, body_len + 1);
+    wlen = fwrite(body, 1, body_len, fp);
+    if (wlen < body_len) {
+        fprintf(stderr, "%s ERROR: write %d, but vf is %d\n", __func__, wlen, body_len);
     }
     if (fclose(fp) == EOF) {
         fprintf(stderr, "%s ERROR: close %s failed\n", __func__, vf_local_path);
