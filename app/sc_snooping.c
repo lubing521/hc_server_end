@@ -305,7 +305,7 @@ int sc_snooping_do_add(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_ADD, sid, url);
-    fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
+    fprintf(stdout, "%s url: %120s\n", __func__, url);
 
     return ret;
 }
@@ -315,7 +315,7 @@ int sc_snooping_do_del(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_DELETE, sid, url);
-    fprintf(stdout, "%s url: %120s\n", __func__, req->usr_data);
+    fprintf(stdout, "%s url: %120s\n", __func__, url);
 
     return ret;
 }
