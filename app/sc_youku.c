@@ -342,11 +342,19 @@ int sc_yk_get_vf(char *vf_url, char *referer)
     char fp_url[HTTP_URL_MAX_LEN], *curr;
     char real_url[HTTP_URL_MAX_LEN];
     char vf_no_para_url[HTTP_URL_MAX_LEN];
+    char vf_local_path[SC_RES_LOCAL_PATH_MAX_LEN];
+    char *p, *q;
+
+    FILE *fp;
+    int resp_len, wlen;
 
     if (vf_url == NULL || referer == NULL) {
         fprintf(stderr, "%s ERROR: input invalid\n", __func__);
         return -1;
     }
+
+    bzero(vf_no_para_url, HTTP_URL_MAX_LEN);
+    sc_res_copy_url(vf_no_para_url, vf_url, HTTP_URL_MAX_LEN, 0);
 
     bzero(resp, RESP_BUF_LEN);
     ret = yk_http_session(vf_url, referer, resp, RESP_BUF_LEN);
@@ -355,7 +363,8 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         return -1;
     }
 
-    if (http_parse_status_line(resp, strlen(resp), &status) < 0) {
+    resp_len = strlen(resp);
+    if (http_parse_status_line(resp, resp_len, &status) < 0) {
         fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, resp);
         return -1;
     }
@@ -366,10 +375,34 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         return -1;
     }
 
-    ret = util_json_to_ascii_string(resp, strlen(resp));
+    ret = util_json_to_ascii_string(resp, resp_len);
     if (ret != 0) {
         fprintf(stderr, "%s ERROR: transfer json to ascii failed\n", __func__);
         return -1;
+    }
+
+    bzero(vf_local_path, sizeof(vf_local_path));
+    strcat(vf_local_path, SC_NGX_ROOT_PATH);
+    for (p = vf_no_para_url, q = vf_local_path + SC_NGX_ROOT_PATH_LEN; *p != '\0'; p++, q++) {
+        if (*p == '.') {
+            *q = '_';
+        } else {
+            *q = *p;
+        }
+    }
+    fprintf(stderr, "%s: vf local path: %s\n", __func__, vf_local_path);
+    fp = fopen(vf_local_path, "w");
+    if (fp == NULL) {
+        fprintf(stderr, "%s: open vf local file failed\n", __func__);
+        return -1;
+    }
+    /* zhaoyao TODO XXX:代码写的很简陋，需改进 */
+    wlen = fwrite(resp, 1, resp_len + 1, fp);
+    if (wlen < resp_len + 1) {
+        fprintf(stderr, "%s ERROR: write %d, but vf is %d\n", __func__, wlen, resp_len + 1);
+    }
+    if (fclose(fp) == EOF) {
+        fprintf(stderr, "%s ERROR: close %s failed\n", __func__, vf_local_path);
     }
 
     for (curr = resp; curr != NULL; ) {
@@ -409,7 +442,6 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         }
     }
 
-    sc_res_copy_url(vf_no_para_url, vf_url, HTTP_URL_MAX_LEN, 0);
     fprintf(stderr, "%s: vf_url   %120s\n", __func__, vf_no_para_url);
     ret = sc_snooping_do_add(-1, vf_no_para_url);
     if (ret != 0) {
