@@ -343,10 +343,10 @@ int sc_yk_get_vf(char *vf_url, char *referer)
     char real_url[HTTP_URL_MAX_LEN];
     char vf_no_para_url[HTTP_URL_MAX_LEN];
     char vf_local_path[SC_RES_LOCAL_PATH_MAX_LEN];
-    char *p, *q;
+    char *p, *q, *body;
 
     FILE *fp;
-    int resp_len, wlen;
+    int resp_len, body_len, wlen;
 
     if (vf_url == NULL || referer == NULL) {
         fprintf(stderr, "%s ERROR: input invalid\n", __func__);
@@ -375,6 +375,13 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         return -1;
     }
 
+    body = strstr(resp, "{\"N\":"); /* zhaoyao XXX:去掉http头部，取到响应体 */
+    if (body == NULL) {
+        fprintf(stderr, "%s ERROR: invalid response: %s\n", __func__, resp);
+        return -1;
+    }
+    body_len = strlen(body);
+
     bzero(vf_local_path, sizeof(vf_local_path));
     strcat(vf_local_path, SC_NGX_ROOT_PATH);
     for (p = vf_no_para_url, q = vf_local_path + SC_NGX_ROOT_PATH_LEN; *p != '\0'; p++, q++) {
@@ -391,9 +398,9 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         return -1;
     }
     /* zhaoyao TODO XXX:代码写的很简陋，需改进 */
-    wlen = fwrite(resp, 1, resp_len + 1, fp);
-    if (wlen < resp_len + 1) {
-        fprintf(stderr, "%s ERROR: write %d, but vf is %d\n", __func__, wlen, resp_len + 1);
+    wlen = fwrite(body, 1, body_len + 1, fp);
+    if (wlen < body_len + 1) {
+        fprintf(stderr, "%s ERROR: write %d, but vf is %d\n", __func__, wlen, body_len + 1);
     }
     if (fclose(fp) == EOF) {
         fprintf(stderr, "%s ERROR: close %s failed\n", __func__, vf_local_path);
