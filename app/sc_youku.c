@@ -396,7 +396,9 @@ int sc_yk_get_vf(char *vf_url, char *referer)
             *q = *p;
         }
     }
+#if DEBUG
     fprintf(stderr, "%s: vf local path: %s\n", __func__, vf_local_path);
+#endif
     fp = fopen(vf_local_path, "w");
     if (fp == NULL) {
         fprintf(stderr, "%s: open vf local file failed\n", __func__);
@@ -446,8 +448,9 @@ int sc_yk_get_vf(char *vf_url, char *referer)
             fprintf(stderr, "%s ERROR: parse getFlvpath response failed: %s\n", __func__, resp2);
             continue;
         }
-
+#if DEBUG
         fprintf(stderr, "%s: real_url: %120s\n", __func__, real_url);
+#endif
         ret = sc_snooping_do_add(-1, real_url);
         if (ret != 0) {
             fprintf(stderr, "%s ERROR: add advertisement url to snooping failed\n", __func__);
