@@ -34,10 +34,10 @@ static int sc_ld_is_duplicate_file(sc_res_info_origin_t *ctl_ld, char *fpath)
     }
 
     len = strlen(fpath);
-    for (p = fpath + len - 1; *p != '/' && p >= fpath; p--) {
+    for (p = fpath + len - 1; *p != '_' && p >= fpath; p--) {
         ;
     }
-    if (*p != '/') {
+    if (*p != '_') {
         return 0;
     }
     vid = p + 1;
