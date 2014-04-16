@@ -54,6 +54,12 @@ int main(int argc, char *argv[])
         goto out2;
     }
 
+    /*
+     * zhaoyao XXX TODO FIXME: 由于snooping serve线程和资源列表处理线程都会对res_info_list操作，需要
+     *                         使用互斥锁保护临界资源，目前仅仅采用延迟snooping serve的方法。
+     */
+    sleep(10);
+
     sc_snooping_serve(sockfd);
 
 out2:
