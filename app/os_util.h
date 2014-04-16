@@ -23,6 +23,8 @@
 #define OS_DIR_WALK_OPEN_FD_MAX_NO 1000     /* zhaoyao: 在遍历目录时，同时打开文件的最大量 */
 
 int os_dir_walk(const char *dirpath);
+int os_file_rename(const char *oldname, const char *newname);
+int os_file_remove(const char *pathname);
 
 #endif /* __OS_UTIL_H__ */
 

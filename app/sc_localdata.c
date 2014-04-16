@@ -23,6 +23,34 @@ sc_res_info_origin_t *sc_ld_obtain_ctl_ld_sohu()
     return sohu_ctl_ld_origin;
 }
 
+static int sc_ld_is_duplicate_file(sc_res_info_origin_t *ctl_ld, char *fpath)
+{
+    char *vid, *p;
+    int len;
+    sc_res_info_active_t *loaded;
+
+    if (ctl_ld == NULL || fpath == NULL) {
+        return 0;
+    }
+
+    len = strlen(fpath);
+    for (p = fpath + len - 1; *p != '/' && p >= fpath; p--) {
+        ;
+    }
+    if (*p != '/') {
+        return 0;
+    }
+    vid = p + 1;
+
+    for (loaded = ctl_ld->child; loaded != NULL; loaded = loaded->siblings) {
+        if (strstr(loaded->common.url, vid) != NULL) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int sc_ld_file_process(char *fpath)
 {
     int ret;
@@ -41,7 +69,7 @@ int sc_ld_file_process(char *fpath)
             /* zhaoyao XXX: 继续遍历 */
             return 0;
         }
-        if (rename(fpath, yk_std_fpath) != 0) {
+        if (os_file_rename(fpath, yk_std_fpath) != 0) {
             fprintf(stderr, "%s ERROR: rename youku vid path to standard path failed\n", __func__);
             /* zhaoyao XXX: 继续遍历 */
             return 0;
@@ -51,6 +79,17 @@ int sc_ld_file_process(char *fpath)
         ctl_ld = sc_ld_obtain_ctl_ld_sohu();
     } else {
         fprintf(stderr, "%s ERROR: unknown file %s\n", __func__, fpath);
+        /* zhaoyao XXX: 继续遍历 */
+        return 0;
+    }
+
+    if (sc_ld_is_duplicate_file(ctl_ld, fpath)) {
+        ret = os_file_remove(fpath);
+        if (ret != 0) {
+            fprintf(stderr, "%s ERROR: remove duplicate file failed: %s\n", __func__, fpath);
+        } else {
+            fprintf(stdout, "%s: remove dup file: %s\n", __func__, fpath);
+        }
         /* zhaoyao XXX: 继续遍历 */
         return 0;
     }

@@ -26,3 +26,14 @@ int os_dir_walk(const char *dirpath)
     return ret;
 }
 
+int os_file_rename(const char *oldname, const char *newname)
+{
+    return rename(oldname, newname);
+}
+
+int os_file_remove(const char *pathname)
+{
+    return remove(pathname);
+}
+
+
