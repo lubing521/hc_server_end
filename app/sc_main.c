@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[])
 {
-    int err = 0;
+    int err = 0, ret;
     int sockfd;
     struct sockaddr_in sa;
     socklen_t salen;
@@ -28,6 +28,18 @@ int main(int argc, char *argv[])
     if (shmid < 0) {
         fprintf(stderr, "sc_res_list_alloc_and_init failed\n");
         return -1;
+    }
+
+    /* zhaoyao XXX: 初始化本地已有资源 */
+    ret = sc_ld_init_and_load();
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: load stored local resources failed\n", __func__);
+    }
+
+    /* zhaoyao XXX: 初始化优酷广告 */
+    ret = sc_yk_init_vf_adv();
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: in Youku VF initial procedure\n", __func__);
     }
 
     sa.sin_family = AF_INET;
@@ -58,7 +70,7 @@ int main(int argc, char *argv[])
      * zhaoyao XXX TODO FIXME: 由于snooping serve线程和资源列表处理线程都会对res_info_list操作，需要
      *                         使用互斥锁保护临界资源，目前仅仅采用延迟snooping serve的方法。
      */
-    sleep(10);
+    sleep(5);
 
     sc_snooping_serve(sockfd);
 
