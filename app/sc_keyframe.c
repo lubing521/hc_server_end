@@ -415,7 +415,7 @@ int sc_kf_flv_create_info(sc_res_info_active_t *active)
     }
 
     ri = &active->common;
-    fprintf(stdout, "%s: %s\n", __func__, ri->url);
+    fprintf(stdout, "%s:  %120s\n", __func__, ri->url);
 
     if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri) && !sc_res_is_loaded(ri)) {
         fprintf(stderr, "%s ERROR: only normal or parsed (active) can create flv keyframe info\n",

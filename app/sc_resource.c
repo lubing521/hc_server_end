@@ -940,6 +940,8 @@ static int sc_res_retry_download(sc_res_info_t *ri)
         return -1;
     }
 
+    fprintf(stdout, "%s: %120s\n", __func__, ri->url);
+
     if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
         fprintf(stderr, "%s ERROR: only for active normal and parsed\n", __func__);
         return -1;
@@ -1054,7 +1056,6 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
             if (sc_res_is_i_fail(ri)) {
                 ret = sc_res_retry_download(ri);
                 if (ret == 0) {
-                    fprintf(stdout, "%s inform Nginx re-download %s success\n", __func__, ri->url);
                     sc_res_unset_i_fail(ri);
                 } else {
                     fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);
@@ -1064,7 +1065,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
                 sc_res_unset_d_fail(ri);    /* zhaoyao: SC已经接管，可将d_fail置0 */
                 ret = sc_res_retry_download(ri);
                 if (ret == 0) {
-                    fprintf(stdout, "%s inform Nginx re-download %s success\n", __func__, ri->url);
+                    ;
                 } else {
                     fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);
                     err++;
