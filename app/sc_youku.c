@@ -28,6 +28,86 @@ int sc_yk_is_local_path(char *local_path)
     }
 }
 
+/* zhaoyao XXX: sc's private simple check */
+int sc_yk_is_local_path_pure_vid(char *local_path)
+{
+    int len, slash_num = 0;
+    char *vid, *p, *uri_start;
+
+    if (strstr(local_path, SC_NGX_ROOT_PATH) != NULL) {
+        uri_start = local_path + SC_NGX_ROOT_PATH_LEN;
+    } else {
+        uri_start = local_path;
+    }
+
+    len = strlen(uri_start);
+    if (len < 70 + 8) {
+        return 0;
+    }
+
+    for (p = uri_start + len -1; *p != '/' && p >= uri_start; p--) {
+        ;
+    }
+    if (*p != '/') {
+        return 0;
+    }
+
+    vid = p + 1;
+    len = strlen(vid);
+    if (len != 70) {
+        return 0;
+    }
+
+    for (p = uri_start; p < vid; p++) {
+        if (*p == '/') {
+            slash_num++;
+        }
+    }
+    if (slash_num != 1) {
+        return 0;
+    }
+
+    return 1;
+}
+
+int sc_yk_trans_vid_to_std_path(char *vid_path, char *std_path, unsigned int path_len)
+{
+    char *uri_start, *vid, *p;
+    char *youku_tag = "youku_67731242A093F822806A633329_";
+
+    if (vid_path == NULL || std_path == NULL) {
+        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    if (!sc_yk_is_local_path_pure_vid(vid_path)) {
+        fprintf(stderr, "%s ERROR: invalid vid_path: %s\n", __func__, vid_path);
+        return -1;
+    }
+
+    if (strlen(vid_path) + strlen(youku_tag) >= path_len) {
+        fprintf(stderr, "%s ERROR: allow len %u, vid_path: %s\n", __func__, path_len, vid_path);
+        return -1;
+    }
+
+    if (strstr(vid_path, SC_NGX_ROOT_PATH) != NULL) {
+        uri_start = vid_path + SC_NGX_ROOT_PATH_LEN;
+        strcat(std_path, SC_NGX_ROOT_PATH);
+        p = std_path + SC_NGX_ROOT_PATH_LEN;
+    } else {
+        uri_start = vid_path;
+        p = std_path;
+    }
+
+    vid = strchr(uri_start, '/') + 1;
+    strncpy(p, uri_start, (unsigned long)vid - (unsigned long)uri_start);
+    strcat(std_path, youku_tag);
+    strcat(std_path, vid);
+
+    return 0;
+}
+
+
 /*
  * ri->url: 101.226.245.141/youku/657F3DA0E044A84268416F5901/030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4
  * local_path: 101_226_245_141/youku_657F3DA0E044A84268416F5901_030008120C5315B40E04A805CF07DDC55D635C-F0F8-8F9D-F095-A049DF9C59DA.mp4

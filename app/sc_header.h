@@ -78,6 +78,8 @@ int sc_yk_add_active_url(sc_res_info_active_t *active);
 int sc_yk_get_vf(char *vf_url, char *referer);
 int sc_yk_init_vf_adv();
 int sc_yk_is_local_path(char *local_path);
+int sc_yk_is_local_path_pure_vid(char *local_path);
+int sc_yk_trans_vid_to_std_path(char *vid_path, char *std_path, unsigned int path_len);
 
 int sc_get_sohu_video(sc_res_info_origin_t *origin);
 int sc_url_is_sohu(char * url);

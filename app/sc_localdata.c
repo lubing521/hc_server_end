@@ -10,9 +10,25 @@ int sc_ld_file_process(char *fpath)
     int ret;
     sc_res_info_active_t *loaded;
     sc_res_info_origin_t *ctl_ld;
+    char yk_std_fpath[SC_RES_LOCAL_PATH_MAX_LEN];
 
     if (sc_yk_is_local_path(fpath)) {
         ctl_ld = youku_ctl_ld_origin;
+    } else if (sc_yk_is_local_path_pure_vid(fpath)) {
+        ctl_ld = youku_ctl_ld_origin;
+        bzero(yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
+        ret = sc_yk_trans_vid_to_std_path(fpath, yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
+        if (ret != 0) {
+            fprintf(stderr, "%s ERROR: get youku standard path failed\n", __func__);
+            /* zhaoyao XXX: 继续遍历 */
+            return 0;
+        }
+        if (rename(fpath, yk_std_fpath) != 0) {
+            fprintf(stderr, "%s ERROR: rename youku vid path to standard path failed\n", __func__);
+            /* zhaoyao XXX: 继续遍历 */
+            return 0;
+        }
+        fpath = yk_std_fpath;
     } else if (sc_sohu_is_local_path(fpath)) {
         ctl_ld = sohu_ctl_ld_origin;
     } else {
