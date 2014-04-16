@@ -260,7 +260,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         rl->origin_free = origin;
         rl->origin_cnt--;
         return;
-    } else if (sc_res_is_normal(ri) || sc_res_is_parsed(ri)) {
+    } else if (sc_res_is_normal(ri) || sc_res_is_parsed(ri) || sc_res_is_loaded(ri)) {
         if (rl->active_cnt == 0) {
             fprintf(stderr, "%s ERROR: rl->active_cnt = 0, can not put\n", __func__);
             return;
