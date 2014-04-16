@@ -183,6 +183,67 @@ out:
     return ret;
 }
 
+/*
+ * zhaoyao XXX TODO: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
+ */
+static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
+{
+    sc_res_info_origin_t *yk_ctl_ld;
+    sc_res_info_active_t *ld, *pre_ld;
+    char *vid, *p, *url;
+    int url_len, ret;
+
+    if (parsed == NULL) {
+        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        return -1;
+    }
+
+    yk_ctl_ld = sc_ld_obtain_ctl_ld_youku();
+    if (yk_ctl_ld == NULL) {
+        fprintf(stderr, "%s ERROR: miss youku ctl_ld\n", __func__);
+        return -1;
+    }
+
+    url = parsed->common.url;
+    url_len = strlen(url);
+    for (p = url + url_len - 1; *p != '/' && p > url; p--) {
+        ;
+    }
+    if (*p != '/') {
+        fprintf(stderr, "%s ERROR: invalid url: %s", __func__, url);
+        return -1;
+    }
+
+    vid = p + 1;
+
+    for (pre_ld = NULL, ld = yk_ctl_ld->child; ld != NULL; ) {
+        if (strstr(ld->common.url, vid) != NULL) {
+            break;
+        }
+        pre_ld = ld;
+        ld = ld->siblings;
+    }
+    if (ld == NULL) {
+        /* zhaoyao XXX: 这种情况比较特殊，可能是设备运行很长时间，且服务器中途删除过资源并重启过。 */
+        fprintf(stderr, "%s ERROR: do not find corresponding loaded ri, url: %s\n", __func__, url);
+        return -1;
+    }
+
+    ret = sc_res_dup_loaded_to_parsed(ld, parsed);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: copy information from loaded to parsed failed, url: %s\n", __func__, url);
+        return -1;
+    }
+
+    ret = sc_res_remove_loaded(pre_ld, ld);
+    if (ret != 0) {
+        fprintf(stderr, "%s ERROR: remove loaded failed, url: %s\n", __func__, url);
+        return -1;
+    }
+
+    return 0;
+}
+
 int sc_youku_download(sc_res_info_active_t *parsed)
 {
     int ret;
@@ -192,6 +253,12 @@ int sc_youku_download(sc_res_info_active_t *parsed)
     }
 
     ret = sc_ngx_download(parsed->common.url, parsed->localpath);
+
+    if (ret == -2) {
+        /* zhaoyao XXX TODO: 错误代码需要改进 */
+        ret = sc_yk_handle_cached(parsed);
+    }
+    
     if (ret != 0) {
         sc_res_set_i_fail(&parsed->common);
     }

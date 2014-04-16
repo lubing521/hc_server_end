@@ -5,6 +5,24 @@
 static sc_res_info_origin_t *youku_ctl_ld_origin = NULL;
 static sc_res_info_origin_t *sohu_ctl_ld_origin = NULL;
 
+sc_res_info_origin_t *sc_ld_obtain_ctl_ld_youku()
+{
+    if (youku_ctl_ld_origin == NULL) {
+        fprintf(stderr, "%s ERROR: loaded controller of Youku is NULL\n", __func__);
+    }
+
+    return youku_ctl_ld_origin;
+}
+
+sc_res_info_origin_t *sc_ld_obtain_ctl_ld_sohu()
+{
+    if (sohu_ctl_ld_origin == NULL) {
+        fprintf(stderr, "%s ERROR: loaded controller of Sohu is NULL\n", __func__);
+    }
+
+    return sohu_ctl_ld_origin;
+}
+
 int sc_ld_file_process(char *fpath)
 {
     int ret;
@@ -13,9 +31,9 @@ int sc_ld_file_process(char *fpath)
     char yk_std_fpath[SC_RES_LOCAL_PATH_MAX_LEN];
 
     if (sc_yk_is_local_path(fpath)) {
-        ctl_ld = youku_ctl_ld_origin;
+        ctl_ld = sc_ld_obtain_ctl_ld_youku();
     } else if (sc_yk_is_local_path_pure_vid(fpath)) {
-        ctl_ld = youku_ctl_ld_origin;
+        ctl_ld = sc_ld_obtain_ctl_ld_youku();
         bzero(yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
         ret = sc_yk_trans_vid_to_std_path(fpath, yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
         if (ret != 0) {
@@ -30,7 +48,7 @@ int sc_ld_file_process(char *fpath)
         }
         fpath = yk_std_fpath;
     } else if (sc_sohu_is_local_path(fpath)) {
-        ctl_ld = sohu_ctl_ld_origin;
+        ctl_ld = sc_ld_obtain_ctl_ld_sohu();
     } else {
         fprintf(stderr, "%s ERROR: unknown file %s\n", __func__, fpath);
         /* zhaoyao XXX: ¼ÌÐø±éÀú */

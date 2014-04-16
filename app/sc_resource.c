@@ -734,6 +734,75 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
 //    return -1;
 }
 
+int sc_res_dup_loaded_to_parsed(sc_res_info_active_t *loaded, sc_res_info_active_t *parsed)
+{
+    if (loaded == NULL || parsed == NULL) {
+        return -1;
+    }
+
+#if 1
+    fprintf(stdout, "%s:\n\tloaded: %s\n\tparsed: %s\n", __func__, loaded->common.url, parsed->common.url);
+#endif
+
+    /* zhaoyao XXX TODO: 再一次检查 */
+
+    memcpy(parsed->common.url, loaded->common.url, HTTP_URL_MAX_LEN);
+    if (sc_res_is_kf_crt(&loaded->common)) {
+        memcpy(parsed->kf_info, loaded->kf_info, sizeof(parsed->kf_info));
+        parsed->kf_num = loaded->kf_num;
+    }
+    memcpy(parsed->localpath, loaded->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+
+    if (sc_res_is_stored(&loaded->common)) {
+        sc_res_set_stored(&parsed->common);
+    }
+    if (sc_res_is_notify(&loaded->common)) {
+        sc_res_set_stored(&parsed->common);
+    }
+
+    return 0;
+}
+
+int sc_res_remove_loaded(sc_res_info_active_t *pre, sc_res_info_active_t *ld)
+{
+    sc_res_info_origin_t *ctl_ld;
+
+    if (ld == NULL) {
+        return -1;
+    }
+
+    ctl_ld = ld->parent;
+    if (ctl_ld == NULL) {
+        fprintf(stderr, "%s ERROR: loaded has no parent\n", __func__);
+        return -1;
+    }
+
+    if (pre == NULL) {
+        if (ctl_ld->child_cnt != 1) {
+            fprintf(stderr, "%s ERROR: invalid pre, ctl_ld has %lu child(ren)\n", __func__, ctl_ld->child_cnt);
+            return -1;
+        }
+
+        ctl_ld->child = NULL;
+        ctl_ld->child_cnt = 0;
+        sc_res_info_del(sc_res_info_list, &ld->common);
+
+        return 0;
+    }
+
+    if (ctl_ld->child_cnt < 2) {
+        fprintf(stderr, "%s ERROR: ctl_ld has %lu child(ren), whild pre is not NULL\n", __func__, ctl_ld->child_cnt);
+        return -1;
+    }
+
+    pre->siblings = ld->siblings;
+    ctl_ld->child_cnt--;
+    sc_res_info_del(sc_res_info_list, &ld->common);
+
+    return 0;
+}
+
+
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     sc_res_info_origin_t *origin;
@@ -742,6 +811,22 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
     if (rl == NULL || ri == NULL) {
         return;
     }
+
+    fprintf(stderr, "%s ", __func__);
+    if (sc_res_is_origin(ri)) {
+        fprintf(stderr, "origin: ");
+    } else if (sc_res_is_ctl_ld(ri)) {
+        fprintf(stderr, "ctl_ld: ");
+    } else if (sc_res_is_parsed(ri)) {
+        fprintf(stderr, "parsed: ");
+    } else if (sc_res_is_loaded(ri)) {
+        fprintf(stderr, "loaded: ");
+    } else if (sc_res_is_normal(ri)) {
+        fprintf(stderr, "normal: ");
+    } else {
+        fprintf(stderr, "unknown: ");
+    }
+    fprintf(stderr, "%s\n", ri->url);
 
     if (sc_res_is_origin(ri) || sc_res_is_ctl_ld(ri)) {
         origin = (sc_res_info_origin_t *)ri;
@@ -753,11 +838,11 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_stored(ri)) {
+    if (sc_res_is_stored(ri) && !sc_res_is_loaded(ri)) {
         fprintf(stderr, "%s ERROR: \n%s\n\tstored local file is not deleted\n", __func__, ri->url);
     }
 
-    if (sc_res_is_notify(ri)) {
+    if (sc_res_is_notify(ri) && !sc_res_is_loaded(ri)) {
         fprintf(stderr, "%s ERROR: \n%s\n\thas notified snooping module\n", __func__, ri->url);
     }
 
@@ -766,7 +851,7 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_parsed(ri) || sc_res_is_loaded(ri)) {
+    if (sc_res_is_parsed(ri)) {
         parsed = (sc_res_info_active_t *)ri;
         if (parsed->parent != NULL) {
             fprintf(stderr, "%s ERROR: %s has parent\n", __func__, ri->url);
@@ -776,6 +861,11 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
                                     __func__, ri->url, origin->common.url);
             }
         }
+        sc_res_info_put(rl, ri);
+        return;
+    }
+
+    if (sc_res_is_loaded(ri)) {
         sc_res_info_put(rl, ri);
         return;
     }

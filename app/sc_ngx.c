@@ -72,7 +72,7 @@ static int sc_ngx_build_get(const char *ip,
  * @url:        -IN 资源真实的URL，注意是去掉"http://"的，例如58.211.22.175/youku/x/xxx.flv
  * @local_path: -IN 资源保存在本地的路径
  *
- * RETURN: -1表示失败，0表示成功。
+ * RETURN: -2表示资源已存在，-1表示失败，0表示成功。
  */
 int sc_ngx_download(char *url, char *local_path)
 {
@@ -143,7 +143,15 @@ int sc_ngx_download(char *url, char *local_path)
     if (status == 200) {
         //fprintf(stdout, "Getfile success!!! Response status code %d\n", status);
     } else {
-        fprintf(stderr, "Getfile failed, response status code %d:%s", status, buffer);
+        if (status == 302) {
+            if (strstr(buffer, "Location: http://20.0.0.99:8080") != NULL) {
+                /* zhaoyao XXX TODO: 这不是错误，资源已被缓存且被设备成功重定向 */
+                fprintf(stdout, "%s WARNING: resource already cached: %s\n", __func__, url);
+                err = -2;   /* zhaoyao XXX TODO: 返回-2不代表失败，乃告知调用者资源不需要下载了 */
+                goto out;
+            }
+        }
+        fprintf(stderr, "%s ERROR: response status code %d:\n%s", status, buffer);
         err = -1;
         goto out;
     }
