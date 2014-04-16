@@ -6,16 +6,19 @@
 /* 返回所在时区的本地时间中的年份 */
 static int randomB() 
 {
+#if 0
     bool _loc9_  = false;
     bool _loc10_ = true;
     int _loc7_ = 0;
     int _loc8_ = 0;
     int _loc1_[256];
-    int _loc2_ = 1;
     int _loc3_ = 0;
+#endif
+    int _loc2_ = 1;
 	time_t t;
 	struct tm area;
 
+#if 0
 	while(_loc3_ < 256)
 	{
 		_loc7_ = _loc3_;
@@ -36,24 +39,29 @@ static int randomB()
 		_loc2_ = 0;
 		_loc3_++;
 	}
+#endif
 
     t = time(NULL);
     localtime_r(&t, &area);
     _loc2_ = area.tm_year + 1900;
+
 	return _loc2_;
 }
 
 /* 该函数的返回值为2 */
 static int randomFT()
 {
-    bool _loc9_  = false;
-    bool _loc10_ = true;
+#if 0
+//    bool _loc9_  = false;
+//    bool _loc10_ = true;
     int _loc7_ = 0;
     int _loc8_ = 0;
-    int _loc1_[256];
-    int _loc2_ = 1;
+//    int _loc1_[256];
     int _loc3_ = 0;
+#endif
+    int _loc2_ = 1;
 
+#if 0
 	while(_loc3_ < 256)
 	{
 		_loc7_ = _loc3_;
@@ -70,18 +78,20 @@ static int randomFT()
 		   }
 		}
 		_loc2_ = _loc7_ >> 1 & 10;
-        _loc1_[_loc3_] = _loc7_;
+//        _loc1_[_loc3_] = _loc7_;
 		_loc3_++;
 	}
-    
+#endif
+    /* zhaoyao XXX TODO: 强制返回2 */
+    _loc2_ = 2;
 	return _loc2_;
 }
 
 /* 计算dt,具体含义不知道 */
 static double zf(int *dt)
 {
-    bool _loc1_ = true;
-    bool _loc2_ = false;
+//    bool _loc1_ = true;
+//    bool _loc2_ = false;
 	double ret;
     *dt = (*dt * 211 + 30031) % 65536;
 	ret = *dt;
@@ -94,8 +104,8 @@ static double zf(int *dt)
 /* @output_str: 返回提取的字符串, 注意还不是最终的fileids */
 static bool cg_fun(char *streamfileids, char *processed_str, char *output_str) 
 {    
-    bool _loc5_ = true;
-    bool _loc6_ = false;
+//    bool _loc5_ = true;
+//    bool _loc6_ = false;
     int _loc2_[YK_FILEID_LEN];
     int _loc4_;
     char *delim = "*";
@@ -159,8 +169,8 @@ static void del_key_in_str(char *input, char key) {
 /* 返回 output_str */
 static bool ranom8T(char *output_str, int seed)
 {
-    bool _loc8_ = false;
-    bool _loc9_ = true;
+//    bool _loc8_ = false;
+//    bool _loc9_ = true;
     char _loc2_[YK_FILEID_LEN + 3];
     int _loc1_;
     int _loc4_;
@@ -169,7 +179,7 @@ static bool ranom8T(char *output_str, int seed)
     int _loc7_;
     char *alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     char *symbol_number = "/\\:._-1234567890";
-    char *tp_str;
+//    char *tp_str;
 
     if (output_str == NULL) {
         return false;

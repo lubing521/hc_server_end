@@ -151,7 +151,7 @@ int sc_ngx_download(char *url, char *local_path)
                 goto out;
             }
         }
-        fprintf(stderr, "%s ERROR: response status code %d:\n%s", status, buffer);
+        fprintf(stderr, "%s ERROR: response status code %d:\n%s", __func__, status, buffer);
         err = -1;
         goto out;
     }
