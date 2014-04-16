@@ -994,7 +994,6 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         }
 
         if (sc_res_is_flv(ri) && !sc_res_is_kf_crt(ri)) {
-            fprintf(stderr, "%s use sc_kf_flv_create_info %s\n", __func__, ri->url);
             ret = sc_kf_flv_create_info(curr);
             if (ret != 0) {
                 fprintf(stderr, "%s create FLV key frame information failed\n", __func__);
