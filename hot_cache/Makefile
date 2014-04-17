@@ -2,7 +2,7 @@ export MAKEROOT := $(shell pwd)
 TARGET_DIRS := snooping_client util youku sohu
 include ./env.mk
 
-.PHONY : all clean
+.PHONY : all clean install uninstall
 
 all :
 	@if ! [ -d $(MAKEROOT)/objs ]; then \
@@ -22,3 +22,9 @@ all :
 clean :
 	-rm $(MAKEROOT)/objs/*.o $(MAKEROOT)/SnoopingClient
 	rmdir $(MAKEROOT)/objs
+
+install:
+	cp $(MAKEROOT)/SnoopingClient $(MAKEROOT)/../app/SnoopingClient
+
+uninstall:
+	-rm $(MAKEROOT)/../app/SnoopingClient
