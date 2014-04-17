@@ -140,6 +140,7 @@ int sc_yk_gen_origin_url(char *req_url, char *origin_url)
     for (i = 0; tag[i] != NULL; i++) {
         start = strstr(req_url, tag[i]);
         if (start == NULL) {
+again:
             continue;
         }
         start = start + strlen(tag[i]);
@@ -149,12 +150,11 @@ int sc_yk_gen_origin_url(char *req_url, char *origin_url)
         goto generate;
     }
 
-error:
     return -1;
 
 generate:
     if (len != 13) {
-        goto error;
+        goto again;
     }
     bzero(buf, sizeof(buf));
     strncpy(buf, start, len);

@@ -79,7 +79,7 @@ static void sc_snooping_do_parse(int sockfd,
         goto reply;
     } else {
         /* zhaoyao XXX: return OK if add origin-type ri success anyway */
-        hc_log_error("add origin url success: %s", origin->common.url);
+        hc_log_info("add origin url: %s", origin->common.url);
         status = HTTP_SP_STATUS_OK;
     }
 
