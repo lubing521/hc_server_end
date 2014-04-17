@@ -15,10 +15,10 @@ int main(int argc, char *argv[])
 
     if (argc == 2) {
         ip_addr = argv[1];
-        printf("Using IP address %s", ip_addr);
+        printf("Using IP address %s\n", ip_addr);
     } else if (argc == 1) {
         ip_addr = default_ip;
-        printf("Using default IP address %s", ip_addr);
+        printf("Using default IP address %s\n", ip_addr);
     } else {
         printf("Usage: %s [bind IP address]\n", argv[0]);
         return -1;

@@ -33,6 +33,13 @@ static int sc_ld_is_duplicate_file(sc_res_info_origin_t *ctl_ld, char *fpath)
         return 0;
     }
 
+    /* zhaoyao XXX TODO: 目前只有local path文件才检验是否重复 */
+    if (!sc_yk_is_local_path(fpath) &&
+        !sc_sohu_is_local_path(fpath) &&
+        !sc_yk_is_local_path_pure_vid(fpath)) {
+        return 0;
+    }
+
     len = strlen(fpath);
     for (p = fpath + len - 1; *p != '_' && p >= fpath; p--) {
         ;

@@ -19,9 +19,13 @@ int sc_url_is_yk(char *url)
 int sc_yk_is_local_path(char *local_path)
 {
     if (strstr(local_path, "youku_") != NULL) {
-        if (strstr(local_path, "valf") != NULL) {   /* zhaoyao XXX: 广告暂不考虑 */
+        if (strstr(local_path, "valf") != NULL) {       /* zhaoyao XXX: 广告暂不考虑 */
             return 0;
         }
+        if (strstr(local_path, "ad_api_") != NULL) {    /* zhaoyao XXX: 广告暂不考虑 */
+            return 0;
+        }
+
         return 1;
     } else {
         return 0;
