@@ -63,7 +63,7 @@ typedef int bool;
 
 #define hc_log_info(fmt, arg...) \
     do { \
-        fprintf(stdout, "*INFO* %-21s: " fmt "\n", __func__, ##arg); \
+        fprintf(stdout, "*INFO*  %-21s: " fmt "\n", __func__, ##arg); \
     } while (0)
 
 #define hc_log_debug(fmt, arg...) \

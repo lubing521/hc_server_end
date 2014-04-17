@@ -312,7 +312,7 @@ int sc_snooping_do_del(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_DELETE, sid, url);
-    hc_log_error("%120s", url);
+    hc_log_error("%s", url);
 
     return ret;
 }
