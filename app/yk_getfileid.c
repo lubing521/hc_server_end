@@ -251,8 +251,7 @@ bool yk_get_fileid(char *streamfileids, int video_num, int seed, char *fileids)
 		output_str[8] = vnum_str[0];
 		output_str[9] = vnum_str[1];
         if (strlen(output_str) > YK_FILEID_LEN) {
-            fprintf(stderr, "%s-%d: ERROR output_str length is larger than YK_FILEID_LEN %d\n",
-                        __func__, __LINE__, YK_FILEID_LEN);
+            hc_log_error("output_str length is larger than YK_FILEID_LEN %d", YK_FILEID_LEN);
             return false;
         }
 		memcpy(fileids, output_str, strlen(output_str));

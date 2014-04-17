@@ -40,7 +40,7 @@ static int sc_ngx_build_get(const char *ip,
     bzero(lp, SC_RES_LOCAL_PATH_MAX_LEN);
     if (strlen(local_path) >= SC_RES_LOCAL_PATH_MAX_LEN - 11) {
         /* zhaoyao XXX TODO: 本地路径名长度 */
-        fprintf(stderr, "%s ERROR: local_path too long\n", __func__);
+        hc_log_error("local_path too long");
         return -1;
     }
     if (strchr(uri, '?')) {
@@ -56,7 +56,7 @@ static int sc_ngx_build_get(const char *ip,
     sprintf(buf, sc_ngx_get_pattern, uri, lp, ip);
 
 #if DEBUG
-    fprintf(stdout, "%s DEBUG request:\n%s\n", __func__, buf);
+    hc_log_debug("request: %s", buf);
 #endif
 
     return 0;
@@ -87,12 +87,12 @@ int sc_ngx_download(char *url, char *local_path)
     ip_addr = sc_ngx_default_ip_addr;
 
     if (url == NULL || local_path == NULL) {
-        fprintf(stderr, "%s invalid argument\n", __func__);
+        hc_log_error("Invalid argument");
         return -1;
     }
 
     if (memcmp(url, HTTP_URL_PREFIX, HTTP_URL_PRE_LEN) == 0) {
-        fprintf(stderr, "%s WARNING: input url should not begin with \"http://\"\n", __func__);
+        hc_log_debug("Input url should not begin with \"http://\"");
         url = url + HTTP_URL_PRE_LEN;
     }
 
@@ -113,7 +113,7 @@ int sc_ngx_download(char *url, char *local_path)
 
     memset(buffer, 0, BUFFER_LEN);
     if (sc_ngx_build_get(ip_addr, url, local_path, buffer, BUFFER_LEN) < 0) {
-        fprintf(stderr, "%s ERROR: sc_ngx_build_get failed\n", __func__);
+        hc_log_error("sc_ngx_build_get failed");
         err = -1;
         goto out;
     }
@@ -135,23 +135,23 @@ int sc_ngx_download(char *url, char *local_path)
     }
 
     if (http_parse_status_line(buffer, nrecv, &status) < 0) {
-        fprintf(stderr, "Parse status line failed:\n%s", buffer);
+        hc_log_error("Parse status line failed:\n%s", buffer);
         err = -1;
         goto out;
     }
 
     if (status == 200) {
-        //fprintf(stdout, "Getfile success!!! Response status code %d\n", status);
+        ;
     } else {
         if (status == 302) {
             if (strstr(buffer, "Location: http://20.0.0.99:8080") != NULL) {
                 /* zhaoyao XXX TODO: 这不是错误，资源已被缓存且被设备成功重定向 */
-                fprintf(stdout, "%s WARNING: resource already cached: %s\n", __func__, url);
+                hc_log_info("WARNING: resource already cached: %s", url);
                 err = -2;   /* zhaoyao XXX TODO: 返回-2不代表失败，乃告知调用者资源不需要下载了 */
                 goto out;
             }
         }
-        fprintf(stderr, "%s ERROR: response status code %d:\n%s", __func__, status, buffer);
+        hc_log_error("Response status code %d:\n%s", status, buffer);
         err = -1;
         goto out;
     }

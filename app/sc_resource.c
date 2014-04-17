@@ -18,13 +18,13 @@ sc_res_ctnt_t sc_res_content_type_obtain(char *str, int care_type)
     }
 
     if (str == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("Invalid input");
         return SC_RES_CTNT_TYPE_MAX;
     }
 
     len = strlen(str);
     if (len < 3) {
-        fprintf(stderr, "%s ERROR: invalid input %s\n", __func__, str);
+        hc_log_error("Invalid input: %s", str);
         return SC_RES_CTNT_TYPE_MAX;
     }
 
@@ -47,7 +47,7 @@ sc_res_ctnt_t sc_res_content_type_obtain(char *str, int care_type)
         return SC_RES_CTNT_TEXT_M3U8;
     }
 
-    fprintf(stderr, "%s: unknown content type: %s\n", __func__, str);
+    hc_log_error("Unknown content type: %s", str);
 
     return SC_RES_CTNT_TYPE_MAX;
 }
@@ -78,7 +78,7 @@ void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para)
     }
 
     if (url + len < p) {
-        fprintf(stderr, "%s ERROR overflow, buffer len %u, but copied %u\n", __func__, len, (unsigned int)p - (unsigned int)url);
+        hc_log_error("Overflow, buffer len %u, but copied %u", len, (unsigned int)p - (unsigned int)url);
     }
 }
 
@@ -94,12 +94,12 @@ static int sc_res_list_alloc_share_mem(sc_res_list_t **prl)
 
     mem_size = SC_RES_SHARE_MEM_SIZE;
     if ((shmid = shmget(SC_RES_SHARE_MEM_ID, mem_size, SC_RES_SHARE_MEM_MODE | IPC_CREAT)) < 0) {
-        fprintf(stderr, "%s shmget failed, memory size %d: %s", __func__, mem_size, strerror(errno));
+        hc_log_error("shmget failed, memory size %d: %s", mem_size, strerror(errno));
         return -1;
     }
 
     if ((shmptr = shmat(shmid, 0, 0)) == (void *)-1) {
-        fprintf(stderr, "%s shmat failed: %s", __func__, strerror(errno));
+        hc_log_error("shmat failed: %s", strerror(errno));
         sc_res_list_destroy_and_uninit(shmid);
         return -1;
     }
@@ -121,7 +121,7 @@ int sc_res_list_alloc_and_init(sc_res_list_t **prl)
 
     ret = sc_res_list_alloc_share_mem(&rl);
     if (ret < 0) {
-        fprintf(stderr, "%s allocate failed\n", __func__);
+        hc_log_error("allocate failed");
         return -1;
     }
 
@@ -145,7 +145,7 @@ int sc_res_list_alloc_and_init(sc_res_list_t **prl)
 int sc_res_list_destroy_and_uninit(int shmid)
 {
     if (shmctl(shmid, IPC_RMID, NULL) < 0) {
-        fprintf(stderr, "%s shmctl remove %d failed: %s", __func__, shmid, strerror(errno));
+        hc_log_error("shmctl remove %d failed: %s", shmid, strerror(errno));
         return -1;
     }
 
@@ -163,8 +163,7 @@ static sc_res_info_origin_t *sc_res_info_get_origin(sc_res_list_t *rl)
     }
 
     if (rl->origin_free == INVALID_PTR) {
-        fprintf(stderr, "%s ERROR: resource info totally ran out, already used %d\n",
-                            __func__, rl->origin_cnt);
+        hc_log_error("resource info totally ran out, already used %d", rl->origin_cnt);
         return NULL;
     }
 
@@ -189,8 +188,7 @@ static sc_res_info_active_t *sc_res_info_get_active(sc_res_list_t *rl)
     }
 
     if (rl->active_free == INVALID_PTR) {
-        fprintf(stderr, "%s ERROR: resource info totally ran out, already used %d\n",
-                            __func__, rl->active_cnt);
+        hc_log_error("resource info totally ran out, already used %d", rl->active_cnt);
         return NULL;
     }
 
@@ -251,7 +249,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
 
     if (sc_res_is_origin(ri) || sc_res_is_ctl_ld(ri)) {
         if (rl->origin_cnt == 0) {
-            fprintf(stderr, "%s ERROR: rl->origin_cnt = 0, can not put\n", __func__);
+            hc_log_error("rl->origin_cnt = 0, can not put");
             return;
         }
         origin = (sc_res_info_origin_t *)ri;
@@ -262,7 +260,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     } else if (sc_res_is_normal(ri) || sc_res_is_parsed(ri) || sc_res_is_loaded(ri)) {
         if (rl->active_cnt == 0) {
-            fprintf(stderr, "%s ERROR: rl->active_cnt = 0, can not put\n", __func__);
+            hc_log_error("rl->active_cnt = 0, can not put");
             return;
         }
         active = (sc_res_info_active_t *)ri;
@@ -272,7 +270,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         rl->active_cnt--;
         return;
     } else {
-        fprintf(stderr, "%s ERROR: unknown type 0x%lx\n", __func__, ri->flag);
+        hc_log_error("unknown type 0x%lx", ri->flag);
         return;
     }
 }
@@ -292,7 +290,7 @@ static int sc_res_info_permit_adding(char *url)
         return 1;
     }
 
-    fprintf(stderr, "%s is forbidden, URL: %s\n", __func__, url);
+    hc_log_error("is forbidden, URL: %s", url);
 
     return 0;
 }
@@ -345,7 +343,7 @@ static int sc_res_info_gen_active_local_path(sc_res_info_active_t *active)
     } else if (sc_res_is_sohu(&active->common)) {
         ret = sc_sohu_file_url_to_local_path(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
     } else {
-        fprintf(stdout, "%s DEBUG: using sc_res_url_to_local_path_default, url %s\n", __func__, active->common.url);
+        hc_log_debug("using sc_res_url_to_local_path_default, url %s", active->common.url);
         ret = sc_res_url_to_local_path_default(active->common.url, active->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
     }
 
@@ -359,13 +357,13 @@ static int sc_res_recover_url_from_local_path(char *local_path, char *url)
     char *sohu_file_tag = "ipad/file=/", *sohu_tag_p;
 
     if (local_path == NULL || url == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("invalid input");
         return -1;
     }
 
     lp_len = strlen(local_path);
     if (lp_len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: local path %d, longer than limit %d\n", __func__, lp_len, HTTP_URL_MAX_LEN);
+        hc_log_error("local path %d, longer than limit %d", lp_len, HTTP_URL_MAX_LEN);
         return -1;
     }
 
@@ -404,7 +402,7 @@ static int sc_res_info_mark_site(sc_res_info_t *ri)
     }
 
     if (!sc_res_is_normal(ri) && !sc_res_is_origin(ri) && !sc_res_is_ctl_ld(ri)) {
-        fprintf(stderr, "%s ERROR: can not mark non-normal, non-origin nor non-ctl_ld ri's site directly\n", __func__);
+        hc_log_error("can not mark non-normal, non-origin nor non-ctl_ld ri's site directly");
         return ret;
     }
 
@@ -415,7 +413,7 @@ static int sc_res_info_mark_site(sc_res_info_t *ri)
         sc_res_set_sohu(ri);
         ret = 0;
     } else {
-        fprintf(stderr, "%s ERROR: unknown site: %s\n", __func__, ri->url);
+        hc_log_error("unknown site: %s", ri->url);
     }
 
     return ret;
@@ -428,35 +426,35 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
     sc_res_ctnt_t content_type;
 
     if (rl == NULL || url == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("invalid input");
         return -1;
     }
 
     if (!sc_res_info_permit_adding(url)) {
-        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        hc_log_error("unknown url %s", url);
         return -1;
     }
 
     len = strlen(url);
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        hc_log_error("url is longer than MAX_LEN %d", HTTP_URL_MAX_LEN);
         return -1;
     }
 
     normal = sc_res_info_get_active_normal(rl);
     if (normal == NULL) {
-        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        hc_log_error("get free res_info failed");
         return -1;
     }
 
     sc_res_copy_url(normal->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, normal->common.url);
+    hc_log_debug("copied url with parameter: %s", normal->common.url);
 #endif
     /* zhaoyao: mark site should be very early. */
     ret = sc_res_info_mark_site(&normal->common);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_info_mark_site failed, url %s\n", __func__, normal->common.url);
+        hc_log_error("sc_res_info_mark_site failed, url %s", normal->common.url);
         goto error;
     }
 
@@ -465,7 +463,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_active_t **
 
     ret = sc_res_info_gen_active_local_path(normal);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: generate local_path failed, url %s\n", __func__, normal->common.url);
+        hc_log_error("generate local_path failed, url %s", normal->common.url);
         goto error;
     }
 
@@ -491,30 +489,30 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
     }
 
     if (!sc_res_info_permit_adding(url)) {
-        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        hc_log_error("unknown url %s", url);
         return -1;
     }
 
     len = strlen(url);
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        hc_log_error("url is longer than MAX_LEN %d", HTTP_URL_MAX_LEN);
         return -1;
     }
 
     origin = sc_res_info_get_origin(rl);
     if (origin == NULL) {
-        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        hc_log_error("get free res_info failed");
         return -1;
     }
 
     sc_res_copy_url(origin->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, origin->common.url);
+    hc_log_debug("copied url with parameter: %s", origin->common.url);
 #endif
     /* zhaoyao: mark site should be very early. */
     ret = sc_res_info_mark_site(&origin->common);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_info_mark_site failed, url %s\n", __func__, origin->common.url);
+        hc_log_error("sc_res_info_mark_site failed, url %s", origin->common.url);
         goto error;
     }
 
@@ -546,31 +544,31 @@ int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_origin_t **
     }
 
     if (!sc_res_info_permit_adding(url)) {
-        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        hc_log_error("unknown url %s", url);
         return -1;
     }
 
     len = strlen(url);
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        hc_log_error("url is longer than MAX_LEN %d", HTTP_URL_MAX_LEN);
         return -1;
     }
 
     ctl_ld = sc_res_info_get_origin(rl);
     if (ctl_ld == NULL) {
-        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        hc_log_error("get free res_info failed");
         return -1;
     }
     sc_res_set_ctl_ld(&ctl_ld->common);
 
     sc_res_copy_url(ctl_ld->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, ctl_ld->common.url);
+    hc_log_debug("copied url with parameter:%s", ctl_ld->common.url);
 #endif
     /* zhaoyao: mark site should be very early. */
     ret = sc_res_info_mark_site(&ctl_ld->common);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: sc_res_info_mark_site failed, url %s\n", __func__, ctl_ld->common.url);
+        hc_log_error("sc_res_info_mark_site failed, url %s", ctl_ld->common.url);
         goto error;
     }
 
@@ -602,25 +600,25 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     }
 
     if (!sc_res_info_permit_adding(url)) {
-        fprintf(stderr, "%s: unknown url %s\n", __func__, url);
+        hc_log_error("unknown url %s", url);
         return -1;
     }
 
     len = strlen(url);
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        hc_log_error("url is longer than MAX_LEN %d", HTTP_URL_MAX_LEN);
         return -1;
     }
 
     parsed = sc_res_info_get_active_parsed(rl);
     if (parsed == NULL) {
-        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        hc_log_error("get free res_info failed");
         return -1;
     }
 
     sc_res_copy_url(parsed->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, parsed->common.url);
+    hc_log_debug("copied url with parameter:%s", parsed->common.url);
 #endif
     /* zhaoyao XXX: inherit site at very first time */
     sc_res_inherit_site(origin, parsed);
@@ -629,8 +627,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
 
     ret = sc_res_info_gen_active_local_path(parsed);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: generate local_path failed, file_url:\n\t%s\n",
-                            __func__, parsed->common.url);
+        hc_log_error("generate local_path failed, file_url:\n\t%s", parsed->common.url);
         goto error;
     }
 
@@ -670,7 +667,7 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
 
     lp = strstr(fpath, SC_NGX_ROOT_PATH);
     if (lp == NULL) {
-        fprintf(stderr, "%s ERROR: invalid fpath %s\n", __func__, fpath);
+        hc_log_error("invalid fpath %s", fpath);
         return -1;
     }
     lp = lp + SC_NGX_ROOT_PATH_LEN;
@@ -678,30 +675,30 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
     bzero(old_url, HTTP_URL_MAX_LEN);
     ret = sc_res_recover_url_from_local_path(lp, old_url);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: recover old url from local path failed, %s\n", __func__, lp);
+        hc_log_error("recover old url from local path failed, %s", lp);
         return -1;
     }
 
     if (!sc_res_info_permit_adding(old_url)) {
-        fprintf(stderr, "%s: unknown url %s\n", __func__, old_url);
+        hc_log_error("unknown url %s", old_url);
         return -1;
     }
 
     len = strlen(old_url);
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: url is longer than MAX_LEN %d\n", __func__, HTTP_URL_MAX_LEN);
+        hc_log_error("url is longer than MAX_LEN %d", HTTP_URL_MAX_LEN);
         return -1;
     }
 
     loaded = sc_res_info_get_active_loaded(rl);
     if (loaded == NULL) {
-        fprintf(stderr, "%s ERROR: get free res_info failed\n", __func__);
+        hc_log_error("get free res_info failed");
         return -1;
     }
 
     sc_res_copy_url(loaded->common.url, old_url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    fprintf(stdout, "%s: copied url with parameter:%s\n", __func__, loaded->common.url);
+    hc_log_debug("copied url with parameter:%s", loaded->common.url);
 #endif
     /* zhaoyao XXX: inherit site at very first time */
     sc_res_inherit_site(ctl_ld, loaded);
@@ -740,8 +737,8 @@ int sc_res_dup_loaded_to_parsed(sc_res_info_active_t *loaded, sc_res_info_active
         return -1;
     }
 
-#if 1
-    fprintf(stdout, "%s:\n\tloaded: %s\n\tparsed: %s\n", __func__, loaded->common.url, parsed->common.url);
+#if DEBUG
+    hc_log_debug("\n\tloaded: %s\n\tparsed: %s", loaded->common.url, parsed->common.url);
 #endif
 
     /* zhaoyao XXX TODO: 再一次检查 */
@@ -773,13 +770,13 @@ int sc_res_remove_loaded(sc_res_info_active_t *pre, sc_res_info_active_t *ld)
 
     ctl_ld = ld->parent;
     if (ctl_ld == NULL) {
-        fprintf(stderr, "%s ERROR: loaded has no parent\n", __func__);
+        hc_log_error("loaded has no parent");
         return -1;
     }
 
     if (pre == NULL) {
         if (ctl_ld->child_cnt != 1) {
-            fprintf(stderr, "%s ERROR: invalid pre, ctl_ld has %lu child(ren)\n", __func__, ctl_ld->child_cnt);
+            hc_log_error("invalid pre, ctl_ld has %lu child(ren)", ctl_ld->child_cnt);
             return -1;
         }
 
@@ -791,7 +788,7 @@ int sc_res_remove_loaded(sc_res_info_active_t *pre, sc_res_info_active_t *ld)
     }
 
     if (ctl_ld->child_cnt < 2) {
-        fprintf(stderr, "%s ERROR: ctl_ld has %lu child(ren), whild pre is not NULL\n", __func__, ctl_ld->child_cnt);
+        hc_log_error("ctl_ld has %lu child(ren), whild pre is not NULL", ctl_ld->child_cnt);
         return -1;
     }
 
@@ -807,43 +804,45 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
 {
     sc_res_info_origin_t *origin;
     sc_res_info_active_t *parsed;
+    char print_buf[BUFFER_LEN];
 
     if (rl == NULL || ri == NULL) {
         return;
     }
 
-    fprintf(stderr, "%s ", __func__);
+    bzero(print_buf, BUFFER_LEN);
     if (sc_res_is_origin(ri)) {
-        fprintf(stderr, "origin: ");
+        strcat(print_buf, "origin: ");
     } else if (sc_res_is_ctl_ld(ri)) {
-        fprintf(stderr, "ctl_ld: ");
+        strcat(print_buf, "ctl_ld: ");
     } else if (sc_res_is_parsed(ri)) {
-        fprintf(stderr, "parsed: ");
+        strcat(print_buf, "parsed: ");
     } else if (sc_res_is_loaded(ri)) {
-        fprintf(stderr, "loaded: ");
+        strcat(print_buf, "loaded: ");
     } else if (sc_res_is_normal(ri)) {
-        fprintf(stderr, "normal: ");
+        strcat(print_buf, "normal: ");
     } else {
-        fprintf(stderr, "unknown: ");
+        strcat(print_buf, "unknown: ");
     }
-    fprintf(stderr, "%s\n", ri->url);
+    strcat(print_buf, ri->url);
+    hc_log_info("%s", print_buf);
 
     if (sc_res_is_origin(ri) || sc_res_is_ctl_ld(ri)) {
         origin = (sc_res_info_origin_t *)ri;
         if (origin->child_cnt != 0) {
-            fprintf(stderr, "%s ERROR: delete origin or ctl_ld who has %lu children is not supported now\n",
-                                __func__, origin->child_cnt);
+            hc_log_error("delete origin or ctl_ld who has %lu children is not supported now",
+                                origin->child_cnt);
         }
         sc_res_info_put(rl, ri);
         return;
     }
 
     if (sc_res_is_stored(ri) && !sc_res_is_loaded(ri)) {
-        fprintf(stderr, "%s ERROR: \n%s\n\tstored local file is not deleted\n", __func__, ri->url);
+        hc_log_error("\n%s\n\tstored local file is not deleted", ri->url);
     }
 
     if (sc_res_is_notify(ri) && !sc_res_is_loaded(ri)) {
-        fprintf(stderr, "%s ERROR: \n%s\n\thas notified snooping module\n", __func__, ri->url);
+        hc_log_error("\n%s\n\thas notified snooping module", ri->url);
     }
 
     if (sc_res_is_normal(ri)) {
@@ -854,11 +853,10 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
     if (sc_res_is_parsed(ri)) {
         parsed = (sc_res_info_active_t *)ri;
         if (parsed->parent != NULL) {
-            fprintf(stderr, "%s ERROR: %s has parent\n", __func__, ri->url);
+            hc_log_error("%s has parent\n", ri->url);
             origin = parsed->parent;
             if (origin->child_cnt > 1) {
-                fprintf(stderr, "%s ERROR: %s's parent %s has more than one child\n",
-                                    __func__, ri->url, origin->common.url);
+                hc_log_error("%s's parent %s has more than one child", ri->url, origin->common.url);
             }
         }
         sc_res_info_put(rl, ri);
@@ -870,7 +868,7 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    fprintf(stderr, "%s ERROR: unknown type 0x%lx\n", __func__, ri->flag);
+    hc_log_error("unknown type 0x%lx", ri->flag);
 }
 
 sc_res_info_active_t *sc_res_info_find_active(sc_res_list_t *rl, const char *url)
@@ -936,14 +934,14 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     sc_res_info_active_t *active;
 
     if (ri == NULL) {
-        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
+        hc_log_error("input invalid");
         return -1;
     }
 
-    fprintf(stdout, "%s: %120s\n", __func__, ri->url);
+    hc_log_info("%120s", ri->url);
 
     if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
-        fprintf(stderr, "%s ERROR: only for active normal and parsed\n", __func__);
+        hc_log_error("only for active normal and parsed");
         return -1;
     }
 
@@ -954,8 +952,7 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     } else if (sc_res_is_youku(ri)) {
         ret = sc_youku_download(active);
     } else {
-        fprintf(stdout, "%s WARNING: unknown site file:\nreal_url: %s\nlocal_path: %s\n",
-                            __func__, ri->url, active->localpath);
+        hc_log_error("unknown site file:\nreal_url: %s\nlocal_path: %s", ri->url, active->localpath);
         ret = sc_ngx_download(ri->url, active->localpath);
         if (ret != 0) {
             sc_res_set_i_fail(ri);
@@ -963,7 +960,7 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     }
 
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: %s failed\n", __func__, ri->url);
+        hc_log_error("%s failed\n", ri->url);
     }
 
     return ret;
@@ -974,19 +971,18 @@ int sc_res_add_ri_url(sc_res_info_t *ri)
     int ret;
 
     if (ri == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("invalid input");
         return -1;
     }
 
     if (!sc_res_is_stored(ri) || sc_res_is_notify(ri)) {
-        fprintf(stderr, "%s ERROR: ri URL:\n\t%s\nflag:%lu can not be added\n",
-                            __func__, ri->url, ri->flag);
+        hc_log_error("ri URL:\n\t%s\nflag:%lu can not be added", ri->url, ri->flag);
         return -1;
     }
 
     ret = sc_snooping_do_add(ri->id, ri->url);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: add res info url is failed\n", __func__);
+        hc_log_error("add res info url is failed");
         return -1;
     }
 
@@ -1044,7 +1040,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         }
 
         if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri) && !sc_res_is_loaded(ri)) {
-            fprintf(stderr, "%s ERROR: active type check wrong, type: 0x%lx\n", __func__, ri->flag);
+            hc_log_error("active type check wrong, type: 0x%lx", ri->flag);
             continue;
         }
 
@@ -1058,7 +1054,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
                 if (ret == 0) {
                     sc_res_unset_i_fail(ri);
                 } else {
-                    fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);
+                    hc_log_error("inform Nginx re-download %s failed", ri->url);
                     err++;
                 }
             } else if (sc_res_is_d_fail(ri)) {
@@ -1067,7 +1063,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
                 if (ret == 0) {
                     ;
                 } else {
-                    fprintf(stderr, "%s inform Nginx re-download %s failed\n", __func__, ri->url);
+                    hc_log_error("inform Nginx re-download %s failed", ri->url);
                     err++;
                 }
             } else {
@@ -1079,7 +1075,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         if (!sc_res_is_notify(ri)) {
             ret = sc_res_add_active_url(curr);
             if (ret != 0) {
-                fprintf(stderr, "%s inform Snooping Module add URL failed\n", __func__);
+                hc_log_error("inform Snooping Module add URL failed");
                 err++;
             }
         }
@@ -1087,7 +1083,7 @@ static int sc_res_list_process_active(sc_res_list_t *rl)
         if (sc_res_is_flv(ri) && !sc_res_is_kf_crt(ri)) {
             ret = sc_kf_flv_create_info(curr);
             if (ret != 0) {
-                fprintf(stderr, "%s create FLV key frame information failed\n", __func__);
+                hc_log_error("create FLV key frame information failed");
                 err++;
             }
         }
@@ -1106,14 +1102,14 @@ int sc_res_list_process_func(sc_res_list_t *rl)
 
     ret = sc_res_list_process_origin(rl);
     if (ret < 0) {
-        fprintf(stderr, "%s ERROR: sc_res_list_process_origin, return %d\n", __func__, ret);
+        hc_log_error("sc_res_list_process_origin, return %d", ret);
         return ret;
     }
 
     err = err + ret;
     ret = sc_res_list_process_active(rl);
     if (ret < 0) {
-        fprintf(stderr, "%s ERROR: sc_res_list_process_active, return %d\n", __func__, ret);
+        hc_log_error("sc_res_list_process_active, return %d", ret);
         return ret;
     }
 
@@ -1129,10 +1125,10 @@ void *sc_res_list_process_thread(void *arg)
     while (1) {
         ret = sc_res_list_process_func(sc_res_info_list);
         if (ret < 0) {
-            fprintf(stderr, "%s exit...\n", __func__);
+            hc_log_error("exit...");
             break;
         } else if (ret > 0) {
-            fprintf(stderr, "%s problem occured %d time(s)...\n", __func__, ret);
+            hc_log_error("problem occured %d time(s)...", ret);
         }
 
         sleep(3);

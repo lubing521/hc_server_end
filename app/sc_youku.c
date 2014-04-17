@@ -76,17 +76,17 @@ int sc_yk_trans_vid_to_std_path(char *vid_path, char *std_path, unsigned int pat
     char *youku_tag = "youku_67731242A093F822806A633329_";
 
     if (vid_path == NULL || std_path == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("invalid input");
         return -1;
     }
 
     if (!sc_yk_is_local_path_pure_vid(vid_path)) {
-        fprintf(stderr, "%s ERROR: invalid vid_path: %s\n", __func__, vid_path);
+        hc_log_error("invalid vid_path: %s", vid_path);
         return -1;
     }
 
     if (strlen(vid_path) + strlen(youku_tag) >= path_len) {
-        fprintf(stderr, "%s ERROR: allow len %u, vid_path: %s\n", __func__, path_len, vid_path);
+        hc_log_error("allow len %u, vid_path: %s", path_len, vid_path);
         return -1;
     }
 
@@ -194,13 +194,13 @@ static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
     int url_len, ret;
 
     if (parsed == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("invalid input");
         return -1;
     }
 
     yk_ctl_ld = sc_ld_obtain_ctl_ld_youku();
     if (yk_ctl_ld == NULL) {
-        fprintf(stderr, "%s ERROR: miss youku ctl_ld\n", __func__);
+        hc_log_error("miss youku ctl_ld");
         return -1;
     }
 
@@ -210,7 +210,7 @@ static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
         ;
     }
     if (*p != '/') {
-        fprintf(stderr, "%s ERROR: invalid url: %s", __func__, url);
+        hc_log_error("invalid url: %s", url);
         return -1;
     }
 
@@ -225,19 +225,19 @@ static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
     }
     if (ld == NULL) {
         /* zhaoyao XXX: 这种情况比较特殊，可能是设备运行很长时间，且服务器中途删除过资源并重启过。 */
-        fprintf(stderr, "%s ERROR: do not find corresponding loaded ri, url: %s\n", __func__, url);
+        hc_log_error("do not find corresponding loaded ri, url: %s", url);
         return -1;
     }
 
     ret = sc_res_dup_loaded_to_parsed(ld, parsed);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: copy information from loaded to parsed failed, url: %s\n", __func__, url);
+        hc_log_error("copy information from loaded to parsed failed, url: %s", url);
         return -1;
     }
 
     ret = sc_res_remove_loaded(pre_ld, ld);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: remove loaded failed, url: %s\n", __func__, url);
+        hc_log_error("remove loaded failed, url: %s", url);
         return -1;
     }
 
@@ -296,45 +296,44 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
      */
     memset(pl_url, 0, HTTP_URL_MAX_LEN);
     if (yk_url_to_playlist(yk_url, pl_url) != true) {
-        fprintf(stderr, "yk_url_to_playlist failed, url is:\n%s\n", yk_url);
+        hc_log_error("yk_url_to_playlist failed, url is:\n%s", yk_url);
         err = -1;
         goto out;
     }
 
     if (yk_http_session(pl_url, yk_url, response, RESP_BUF_LEN) < 0) {
-        fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
+        hc_log_error("yk_http_session faild, URL: %s\n", pl_url);
         err = -1;
         goto out;
     }
 
     if (http_parse_status_line(response, strlen(response), &status) < 0) {
-        fprintf(stderr, "Parse status line failed:\n%s", response);
+        hc_log_error("Parse status line failed:\n%s", response);
         err = -1;
         goto out;
     }
 
     if (status == 200) {
-//        fprintf(stdout, "getPlaylist success!!! Response status code %d\n%s\n", status, response);
+//        hc_log_info("getPlaylist success!!! Response status code %d\n%s\n", status, response);
     } else {
-        fprintf(stderr, "getPlaylist's response status code %d:%s", status, response);
+        hc_log_error("getPlaylist's response status code %d:%s", status, response);
         err = -1;
         goto out;
     }
 
     memset(streams, 0, sizeof(streams));
     if (yk_parse_playlist(response, streams) != 0) {
-        fprintf(stderr, "Parse getPlaylist response failed:\n%s\n", response);
+        hc_log_error("Parse getPlaylist response failed:\n%s\n", response);
         err = -1;
         goto out;
     } else {
-        //printf("Parse getPlaylist response success\n");
+        //hc_log_info("Parse getPlaylist response success");
         //yk_debug_streams_all(streams);
     }
 
     download_index = sc_get_yk_download_video_type(streams);
     if (download_index < 0 && download_index >= STREAM_TYPE_TOTAL) {
-        fprintf(stderr, "%s ERROR: sc_get_yk_download_video_type %d is invalid index\n",
-                            __func__, download_index);
+        hc_log_error("sc_get_yk_download_video_type %d is invalid index\n", download_index);
         err = -1;
         goto out;
     }
@@ -344,13 +343,13 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
         strm = streams[i];
 
         if (strm->segs == NULL) {   /* Has no segments info, innormal situation */
-            fprintf(stderr, "WARNING: stream %s has no segs\n", strm->type);
+            hc_log_error("WARNING: stream %s has no segs\n", strm->type);
             err = -1;
             goto out;   /* zhaoyao XXX: since we only download_index, any fail here should ERROR */
             //continue;
         }
 #if DEBUG
-        printf("Stream type: %s\n", strm->type);
+        hc_log_debug("Stream type: %s", strm->type);
 #endif
 
         for (j = 0; j < STREAM_SEGS_MAX && strm->segs[j] != NULL; j++) {
@@ -358,38 +357,38 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
              * Step 2 - getFlvpath and get real URL.
              */
             if (yk_seg_to_flvpath(strm->segs[j], fp_url) < 0) {
-                fprintf(stderr, "WARNING: yk_seg_to_flvpath failed\n");
+                hc_log_error("WARNING: yk_seg_to_flvpath failed\n");
                 continue;
             }
 
             if (yk_http_session(fp_url, yk_url, response, RESP_BUF_LEN) < 0) {
-                fprintf(stderr, "yk_http_session faild, URL: %s\n", pl_url);
+                hc_log_error("yk_http_session faild, URL: %s\n", pl_url);
                 err = -1;
                 goto out;
             }
 
             if (http_parse_status_line(response, strlen(response), &status) < 0) {
-                fprintf(stderr, "Parse status line failed:\n%s", response);
+                hc_log_error("Parse status line failed:\n%s", response);
                 err = -1;
                 goto out;
             }
 
             if (status == 200 || status == 302) {
                 if (yk_parse_flvpath(response, real_url) < 0) {
-                    fprintf(stderr, "Parse getFlvpath response and get real URL failed\n");
+                    hc_log_error("Parse getFlvpath response and get real URL failed\n");
                     err = -1;
                     goto out;
                 }
 #if DEBUG
-                printf("   Segment %-2d URL: %s\n", strm->segs[j]->no, real_url);
+                hc_log_debug("   Segment %-2d URL: %s", strm->segs[j]->no, real_url);
 #endif
                 /*
                  * Step 3 - using real URL to download.
                  */
                 ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
                 if (ret != 0) {
-                    fprintf(stderr, "%s ERROR: add real_url\n\t%s\nto resource list failed, give up downloading...\n",
-                                        __func__, real_url);
+                    hc_log_error("add real_url\n\t%s\nto resource list failed, give up downloading...",
+                                        real_url);
                     /*
                      * zhaoyao XXX: we can not using Nginx to download, without ri we can not track
                      *              downloaded resources.
@@ -398,10 +397,10 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
                 }
                 ret = sc_youku_download(parsed);
                 if (ret < 0) {
-                    fprintf(stderr, "   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
+                    hc_log_error("   Segment %-2d inform Nginx failed\n", strm->segs[j]->no);
                 }
             } else {
-                fprintf(stderr, "getFlvpath failed, status code %d:\n%s\n", status, response);
+                hc_log_error("getFlvpath failed, status code %d:\n%s\n", status, response);
                 err = -1;
                 goto out;
             }
@@ -420,14 +419,14 @@ int sc_get_yk_video(sc_res_info_origin_t *origin)
     int ret;
 
     if (origin == NULL) {
-        fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
+        hc_log_error("need origin URL to parse real URL");
         return -1;
     }
 
     if (yk_is_tradition_url(origin->common.url)) {
         ret = sc_get_yk_video_tradition(origin);
     } else {
-        fprintf(stderr, "%s ERROR: no support: %s\n", __func__, origin->common.url);
+        hc_log_error("no support: %s", origin->common.url);
         ret = -1;
     }
 
@@ -486,8 +485,7 @@ int sc_yk_add_active_url(sc_res_info_active_t *active)
 
     ret = sc_yk_add_symlink(ri);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: add symbol link of cached Youku video file failed: %s\n",
-                            __func__, ri->url);
+        hc_log_error("add symbol link of cached Youku video file failed: %s", ri->url);
     }
 
     ret = sc_res_add_ri_url(ri);
@@ -509,7 +507,7 @@ int sc_yk_get_vf(char *vf_url, char *referer)
     int resp_len, body_len, wlen;
 
     if (vf_url == NULL || referer == NULL) {
-        fprintf(stderr, "%s ERROR: input invalid\n", __func__);
+        hc_log_error("input invalid");
         return -1;
     }
 
@@ -518,31 +516,31 @@ int sc_yk_get_vf(char *vf_url, char *referer)
 
     ret = sc_snooping_do_del(-1, vf_no_para_url);
     if (ret != 0) {
-        fprintf(stdout, "%s WARNING: delete url in snooping failed: %s\n", __func__, vf_no_para_url);
+        hc_log_error("WARNING: delete url in snooping failed: %s", vf_no_para_url);
     }
 
     bzero(resp, RESP_BUF_LEN);
     ret = yk_http_session(vf_url, referer, resp, RESP_BUF_LEN);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: url %s, referer %s, http session failed\n", __func__, vf_url, referer);
+        hc_log_error("url %s, referer %s, http session failed", vf_url, referer);
         return -1;
     }
 
     resp_len = strlen(resp);
     if (http_parse_status_line(resp, resp_len, &status) < 0) {
-        fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, resp);
+        hc_log_error("parse status line failed:\n%s", resp);
         return -1;
     }
 
     if (status == 200) {
     } else {
-        fprintf(stderr, "%s ERROR: status %d failed:\n%s", __func__, status, resp);
+        hc_log_error("status %d failed:\n%s", status, resp);
         return -1;
     }
 
     body = strstr(resp, "{\"N\":"); /* zhaoyao XXX:去掉http头部，取到响应体 */
     if (body == NULL) {
-        fprintf(stderr, "%s ERROR: invalid response: %s\n", __func__, resp);
+        hc_log_error("invalid response: %s", resp);
         return -1;
     }
     body_len = strlen(body);
@@ -557,25 +555,25 @@ int sc_yk_get_vf(char *vf_url, char *referer)
         }
     }
 #if DEBUG
-    fprintf(stderr, "%s: vf local path: %s\n", __func__, vf_local_path);
+    hc_log_debug("vf local path: %s", vf_local_path);
 #endif
     fp = fopen(vf_local_path, "w");
     if (fp == NULL) {
-        fprintf(stderr, "%s: open vf local file failed\n", __func__);
+        hc_log_error("open vf local file failed");
         return -1;
     }
     /* zhaoyao TODO XXX:代码写的很简陋，需改进 */
     wlen = fwrite(body, 1, body_len, fp);
     if (wlen < body_len) {
-        fprintf(stderr, "%s ERROR: write %d, but vf is %d\n", __func__, wlen, body_len);
+        hc_log_error("write %d, but vf is %d", wlen, body_len);
     }
     if (fclose(fp) == EOF) {
-        fprintf(stderr, "%s ERROR: close %s failed\n", __func__, vf_local_path);
+        hc_log_error("close %s failed", vf_local_path);
     }
 
     ret = util_json_to_ascii_string(resp, resp_len);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: transfer json to ascii failed\n", __func__);
+        hc_log_error("transfer json to ascii failed");
         return -1;
     }
     resp_len = strlen(resp);    /* zhaoyao XXX:由于转码，更新响应的长度 */
@@ -590,37 +588,37 @@ int sc_yk_get_vf(char *vf_url, char *referer)
 
         bzero(resp2, BUFFER_LEN);
         if (yk_http_session(fp_url, referer, resp2, BUFFER_LEN) < 0) {
-            fprintf(stderr, "%s ERROR: yk_http_session faild, URL: %s\n", __func__, fp_url);
+            hc_log_error("yk_http_session faild, URL: %s", fp_url);
             continue;
         }
 
         if (http_parse_status_line(resp2, strlen(resp2), &status) < 0) {
-            fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, resp2);
+            hc_log_error("parse status line failed:\n%s", resp2);
             continue;
         }
 
         if (status != 200 && status != 302) {
-            fprintf(stderr, "%s ERROR: server return %d\n", __func__, status);
+            hc_log_error("server return %d", status);
             continue;
         }
 
         if (yk_parse_flvpath(resp2, real_url) != 0) {
-            fprintf(stderr, "%s ERROR: parse getFlvpath response failed: %s\n", __func__, resp2);
+            hc_log_error("parse getFlvpath response failed: %s", resp2);
             continue;
         }
 #if DEBUG
-        fprintf(stderr, "%s: real_url: %120s\n", __func__, real_url);
+        hc_log_debug("real_url: %120s", real_url);
 #endif
         ret = sc_snooping_do_add(-1, real_url);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: add advertisement url to snooping failed\n", __func__);
+            hc_log_error("add advertisement url to snooping failed");
             continue;
         }
     }
 
     ret = sc_snooping_do_add(-1, vf_no_para_url);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: add vf url to snooping failed\n", __func__);
+        hc_log_error("add vf url to snooping failed");
         return -1;
     }
 
@@ -635,7 +633,7 @@ int sc_yk_init_vf_adv()
 
     ret = sc_yk_get_vf(vf_url, referer);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR\n", __func__);
+        hc_log_error("get Youku vf file failed");
         return -1;
     }
 

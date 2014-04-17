@@ -96,13 +96,13 @@ int http_host_connect(const char *host)
         }
         if (sock_conn_retry(sockfd, aip->ai_addr, aip->ai_addrlen) < 0) {
             close(sockfd);
-            fprintf(stderr, "Sock_conn_retry failed, try again...\n");
+            hc_log_error("Sock_conn_retry failed, try again...");
             continue;
         }
         break;
     }
     if (aip == NULL) {
-        fprintf(stderr, "Can not connect to %s: http\n", host);
+        hc_log_error("Can not connect to %s: http", host);
         return -1;
     }
 
@@ -141,7 +141,7 @@ int http_host_connect(const char *host)
          */
         sa.sin_addr.s_addr = inet_addr("183.61.116.52");
     } else {
-        fprintf(stderr, "%s unknown host %s\n", __func__, host);
+        hc_log_error("Unknown host %s", host);
         return -1;
     }
 
@@ -364,7 +364,7 @@ int util_json_to_ascii_string(char *buf, int len)
     char temp[3];
 
     if (buf == NULL || len <= 0) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("Invalid input");
         return -1;
     }
 

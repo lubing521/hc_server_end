@@ -23,7 +23,7 @@ int sohu_build_request(char *host, char *uri, char *buf)
 
     len = strlen(host) + strlen(uri) + strlen(sohu_request_pattern) - 3;
     if (len >= BUFFER_LEN) {
-        fprintf(stderr, "%s request length (%d) exceed limit %d\n", __func__, len, BUFFER_LEN);
+        hc_log_error("request length (%d) exceed limit %d", len, BUFFER_LEN);
         return -1;
     }
 
@@ -43,13 +43,12 @@ int sohu_http_session(char *url, char *response, unsigned long resp_len)
     int nsend, nrecv, len, i;
 
     if (url == NULL || response == NULL) {
-        fprintf(stderr, "%s ERROR: input is invalid\n", __func__);
+        hc_log_error("input is invalid");
         return -1;
     }
 
     if (resp_len < BUFFER_LEN) {
-        fprintf(stderr, "%s ERROR: buffer too small(%lu), minimum should be %d\n",
-                            __func__, resp_len, BUFFER_LEN);
+        hc_log_error("buffer too small(%lu), minimum should be %d", resp_len, BUFFER_LEN);
         return -1;
     }
 
@@ -58,7 +57,7 @@ int sohu_http_session(char *url, char *response, unsigned long resp_len)
         host[i] = *(url + i);
     }
     if (*(url + i) == '\0' || i >= MAX_HOST_NAME_LEN) {
-        fprintf(stderr, "%s ERROR: URL is invalid: %s\n", __func__, url);
+        hc_log_error("URL is invalid: %s", url);
         return -1;
     }
     host[i] = '\0';
@@ -66,26 +65,26 @@ int sohu_http_session(char *url, char *response, unsigned long resp_len)
 
     sockfd = http_host_connect(host);
     if (sockfd < 0) {
-        fprintf(stderr, "%s ERROR: can not connect to %s: http\n", __func__, host);
+        hc_log_error("can not connect to %s: http", host);
         return -1;
     }
 
     memset(buffer, 0, BUFFER_LEN);
     if (sohu_build_request(host, uri_start, buffer) < 0) {
-        fprintf(stderr, "%s ERROR: sohu_build_request failed\n", __func__);
+        hc_log_error("sohu_build_request failed");
         err = -1;
         goto out;
     }
     
     len = strlen(buffer);
     if (len > BUFFER_LEN) {
-        fprintf(stderr, "%s ERROR: request too long, host %s, uri %s\n", __func__, host, uri_start);
+        hc_log_error("request too long, host %s, uri %s", host, uri_start);
         err = -1;
         goto out;
     }
     nsend = send(sockfd, buffer, len, 0);
     if (nsend != len) {
-        fprintf(stderr, "%s ERROR: send %d bytes failed: %s\n", __func__, nsend, strerror(errno));
+        hc_log_error("send %d bytes failed: %s", nsend, strerror(errno));
         err = -1;
         goto out;
     }
@@ -93,12 +92,12 @@ int sohu_http_session(char *url, char *response, unsigned long resp_len)
     memset(response, 0, resp_len);
     nrecv = recv(sockfd, response, resp_len, MSG_WAITALL);
     if (nrecv <= 0) {
-        fprintf(stderr, "%s ERROR: recv failed or meet EOF, %d: %s\n", __func__, nrecv, strerror(errno));
+        hc_log_error("recv failed or meet EOF, %d: %s", nrecv, strerror(errno));
         err = -1;
         goto out;
     }
     if (nrecv == resp_len) {
-        fprintf(stderr, "%s WARNING: receive %d bytes, response buffer is full!!!\n", __func__, nrecv);
+        hc_log_error("WARNING: receive %d bytes, response buffer is full!!!", nrecv);
     }
 
 out:
@@ -142,20 +141,20 @@ char *sohu_parse_m3u8_response(char *curr, char *file_url)
     unsigned long len;
 
     if (curr == NULL || file_url == NULL) {
-        fprintf(stderr, "%s ERROR: Invalid input, curr is NULL\n", __func__);
+        hc_log_error("Invalid input, curr is NULL");
         return ret;
     }
 
     curr = strstr(curr, HTTP_URL_PREFIX);
     if (curr == NULL) {
-        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, HTTP_URL_PREFIX);
+        hc_log_error("do not find %s", HTTP_URL_PREFIX);
         return ret;
     }
 
     curr = curr + HTTP_URL_PRE_LEN;
     p = strstr(curr, tag1);
     if (p == NULL) {
-        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, tag1);
+        hc_log_error("do not find %s", tag1);
         return ret;
     }
     for ( ; *p != '&' && *p != '\0'; p++) {
@@ -163,7 +162,7 @@ char *sohu_parse_m3u8_response(char *curr, char *file_url)
     }
     len = (unsigned long)p - (unsigned long)curr;
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: parsed url len %lu, exceed limit %u\n", __func__, len, HTTP_URL_MAX_LEN);
+        hc_log_error("parsed url len %lu, exceed limit %u", len, HTTP_URL_MAX_LEN);
     } else {
         strncpy(file_url, curr, len);
     }
@@ -196,7 +195,7 @@ int sohu_parse_file_url_response(char *response, char *real_url)
     p = p + HTTP_URL_PRE_LEN;
     len = strlen(p);
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: real url is too long:\n%s\n", __func__, p);
+        hc_log_error("real url is too long:\n%s", p);
         return -1;
     }
 

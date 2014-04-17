@@ -15,31 +15,31 @@ int main(int argc, char *argv[])
 
     if (argc == 2) {
         ip_addr = argv[1];
-        fprintf(stdout, "Using IP address %s\n", ip_addr);
+        printf("Using IP address %s", ip_addr);
     } else if (argc == 1) {
         ip_addr = default_ip;
-        fprintf(stdout, "Using default IP address %s\n", ip_addr);
+        printf("Using default IP address %s", ip_addr);
     } else {
-        fprintf(stderr, "Usage: %s [bind IP address]\n", argv[0]);
+        printf("Usage: %s [bind IP address]\n", argv[0]);
         return -1;
     }
 
     shmid = sc_res_list_alloc_and_init(&sc_res_info_list);
     if (shmid < 0) {
-        fprintf(stderr, "sc_res_list_alloc_and_init failed\n");
+        hc_log_error("sc_res_list_alloc_and_init failed");
         return -1;
     }
 
     /* zhaoyao XXX: 初始化本地已有资源 */
     ret = sc_ld_init_and_load();
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: load stored local resources failed\n", __func__);
+        hc_log_error("Load stored local resources failed");
     }
 
     /* zhaoyao XXX: 初始化优酷广告 */
     ret = sc_yk_init_vf_adv();
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: in Youku VF initial procedure\n", __func__);
+        hc_log_error("In Youku VF initial procedure");
     }
 
     sa.sin_family = AF_INET;
@@ -49,19 +49,19 @@ int main(int argc, char *argv[])
 
     sockfd = sock_init_server(SOCK_DGRAM, (struct sockaddr *)&sa, salen, 0);
     if (sockfd < 0) {
-        fprintf(stderr, "sock_init_server failed\n");
+        hc_log_error("sock_init_server failed");
         err = -1;
         goto out1;
     }
 
     if (pthread_create(&tid, NULL, sc_res_list_process_thread, NULL) != 0) {
-        fprintf(stderr, "Create sc_res_list_process_thread failed: %s\n", strerror(errno));
+        hc_log_error("Create sc_res_list_process_thread failed: %s", strerror(errno));
         err = -1;
         goto out2;
     }
 
     if (pthread_detach(tid) != 0) {
-        fprintf(stderr, "Detach sc_res_list_process_thread failed: %s\n", strerror(errno));
+        hc_log_error("Detach sc_res_list_process_thread failed: %s", strerror(errno));
         err = -1;
         goto out2;
     }

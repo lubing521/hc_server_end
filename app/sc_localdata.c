@@ -8,7 +8,7 @@ static sc_res_info_origin_t *sohu_ctl_ld_origin = NULL;
 sc_res_info_origin_t *sc_ld_obtain_ctl_ld_youku()
 {
     if (youku_ctl_ld_origin == NULL) {
-        fprintf(stderr, "%s ERROR: loaded controller of Youku is NULL\n", __func__);
+        hc_log_error("loadeds' controller of Youku is NULL");
     }
 
     return youku_ctl_ld_origin;
@@ -17,7 +17,7 @@ sc_res_info_origin_t *sc_ld_obtain_ctl_ld_youku()
 sc_res_info_origin_t *sc_ld_obtain_ctl_ld_sohu()
 {
     if (sohu_ctl_ld_origin == NULL) {
-        fprintf(stderr, "%s ERROR: loaded controller of Sohu is NULL\n", __func__);
+        hc_log_error("loaded controller of Sohu is NULL");
     }
 
     return sohu_ctl_ld_origin;
@@ -65,12 +65,12 @@ int sc_ld_file_process(char *fpath)
         bzero(yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
         ret = sc_yk_trans_vid_to_std_path(fpath, yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: get youku standard path failed\n", __func__);
+            hc_log_error("Obtain youku standard path failed");
             /* zhaoyao XXX: 继续遍历 */
             return 0;
         }
         if (os_file_rename(fpath, yk_std_fpath) != 0) {
-            fprintf(stderr, "%s ERROR: rename youku vid path to standard path failed\n", __func__);
+            hc_log_error("Rename youku vid path to standard path failed");
             /* zhaoyao XXX: 继续遍历 */
             return 0;
         }
@@ -78,7 +78,7 @@ int sc_ld_file_process(char *fpath)
     } else if (sc_sohu_is_local_path(fpath)) {
         ctl_ld = sc_ld_obtain_ctl_ld_sohu();
     } else {
-        fprintf(stderr, "%s ERROR: unknown file %s\n", __func__, fpath);
+        hc_log_error("Unknown file %s", fpath);
         /* zhaoyao XXX: 继续遍历 */
         return 0;
     }
@@ -86,9 +86,9 @@ int sc_ld_file_process(char *fpath)
     if (sc_ld_is_duplicate_file(ctl_ld, fpath)) {
         ret = os_file_remove(fpath);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: remove duplicate file failed: %s\n", __func__, fpath);
+            hc_log_error("Remove duplicate file failed: %s", fpath);
         } else {
-            fprintf(stdout, "%s: remove dup file: %s\n", __func__, fpath);
+            hc_log_error("Remove dup file: %s", fpath);
         }
         /* zhaoyao XXX: 继续遍历 */
         return 0;
@@ -96,7 +96,7 @@ int sc_ld_file_process(char *fpath)
 
     ret = sc_res_info_add_loaded(sc_res_info_list, ctl_ld, fpath, &loaded);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: add loaded failed %s\n", __func__, fpath);
+        hc_log_error("Add loaded failed");
         /* zhaoyao XXX: 继续遍历 */
         return 0;
     }
@@ -110,19 +110,19 @@ int sc_ld_init_and_load()
 
     ret = sc_res_info_add_ctl_ld(sc_res_info_list, YOUKU_WEBSITE_URL, &youku_ctl_ld_origin);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: add loaded file controller of Youku failed\n", __func__);
+        hc_log_error("Add loaded file controller of Youku failed");
         return -1;
     }
 
     ret = sc_res_info_add_ctl_ld(sc_res_info_list, SOHU_WEBSITE_URL, &sohu_ctl_ld_origin);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: add loaded file controller of Sohu failed\n", __func__);
+        hc_log_error("Add loaded file controller of Sohu failed");
         return -1;
     }
 
     ret = os_dir_walk(SC_NGX_ROOT_PATH);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: walk %s failed\n", __func__, SC_NGX_ROOT_PATH);
+        hc_log_error("Walk %s failed", SC_NGX_ROOT_PATH);
         return -1;
     }
 

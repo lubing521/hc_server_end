@@ -114,7 +114,6 @@ bool yk_get_fileurl(int num, playlistdata_t *play_list, video_seg_data_t *seg_da
 
 int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url);
 int yk_is_tradition_url(char *yk_url);
-void yk_print_usage(char *cmd);
 int yk_build_request(char *host, char *uri, char *referer, char *buf);
 int yk_parse_playlist(char *data, yk_stream_info_t *streams[]);
 int yk_parse_flvpath(char *data, char *real_url);

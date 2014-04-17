@@ -72,7 +72,7 @@ unsigned int double_to_int(unsigned char *double_data)
 #if 0
      /* 取消符号位 */
      E = (E & 0x7FFF);
-     printf("e:%u, %s - %d\n", E, __FILE__, __LINE__);
+     hc_log_info("e:%u", E);
 #endif
      /* 取11位E位 */
      E = E >> 4;
@@ -232,17 +232,17 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
     double dd;
 
 	if (fp == NULL) {
-		printf("error: the input fp is NULL\r\n");
+		hc_log_error("the input fp is NULL");
         return false;
     } 
 
     if (key_info == NULL) {
-		printf("error: the input key_info is NULL\r\n");
+		hc_log_error("the input key_info is NULL");
         return false;
     }
 
     if (key_num == NULL) {
-		printf("error: the input key_num is NULL\r\n");
+		hc_log_error("the input key_num is NULL");
         return false;
     }
 
@@ -254,7 +254,7 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
     if (read_cnt) {
         is_tag = sc_kf_flv_find_tag_pos(buf, read_cnt, &tag_size, &tag_pos);
         if (!is_tag) {
-            printf("error: find_tag_pos failure, 你应该扩大第一次查找的范围\n");
+            hc_log_error("find_tag_pos failure, 你应该扩大第一次查找的范围");
             return false;
         }
     } else {
@@ -279,8 +279,8 @@ static bool sc_kf_flv_create_info_do(FILE *fp, sc_kf_flv_info_t *key_info, u32 *
     keyframe_num = be32toh(keyframe_num);
     *key_num = keyframe_num;
     if (keyframe_num > SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM) {
-        fprintf(stderr, "%s ERROR: keyframe is too many(%u) than temp num(%u)\n",
-                            __func__, keyframe_num, SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM);
+        hc_log_error("Keyframe is too many(%u) than temp num(%u)",
+                        keyframe_num, SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM);
         return false;
     }
     nonius = nonius + 4;
@@ -331,14 +331,14 @@ static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *
     }
 
     if (limit < SC_KF_FLV_LIMITED_NUM_MIN) {
-        fprintf(stderr, "%s ERROR: limit %u is too small\n", __func__, limit);
+        hc_log_error("Limit %u is smaller than min value %d", limit, SC_KF_FLV_LIMITED_NUM_MIN);
         return -1;
     }
 
     mem_size = sizeof(sc_kf_flv_info_t) * SC_KF_FLV_CREATE_INFO_TEMP_MAX_NUM;
     p = malloc(mem_size);
     if (p == NULL) {
-        fprintf(stderr, "%s ERROR: allocate %d bytes memory failed\n", __func__, mem_size);
+        hc_log_error("Allocate %d bytes memory failed", mem_size);
         return -1;
     }
 
@@ -390,12 +390,10 @@ static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *
         }
     }
 
-    fprintf(stdout, "%s: true kf_num %u, limit to %u, compressed to %u\n",
-                        __func__, temp_ki_num, limit, *key_num);
+    hc_log_info("True kf_num %u, limit to %u, compressed to %u", temp_ki_num, limit, *key_num);
 
     if ((*key_num) > limit) {
-        fprintf(stderr, "%s FATAL ERROR: generate key_frame(%u) is more than limit(%u)\n",
-                            __func__, (*key_num), limit);
+        hc_log_error("*FATAL*: generate key_frame(%u) is more than limit(%u)", (*key_num), limit);
         return -1;
     }
 
@@ -410,41 +408,39 @@ int sc_kf_flv_create_info(sc_res_info_active_t *active)
     sc_res_info_t *ri;
 
     if (active == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("Invalid input");
         return -1;
     }
 
     ri = &active->common;
-    fprintf(stdout, "%s:  %120s\n", __func__, ri->url);
+    hc_log_info("%120s", ri->url);
 
     if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri) && !sc_res_is_loaded(ri)) {
-        fprintf(stderr, "%s ERROR: only normal or parsed (active) can create flv keyframe info\n",
-                            __func__);
+        hc_log_error("Only normal or parsed (active) can create flv keyframe info");
         return -1;
     }
 
     if (!sc_res_is_stored(ri) || sc_res_is_kf_crt(ri)) {
-        fprintf(stderr, "%s ERROR: ri URL:\n\t%s\nflag:%lu can not create flv key frame\n",
-                            __func__, ri->url, ri->flag);
+        hc_log_error("ri URL:\n\t%s\nflag:%lu can not create flv key frame", ri->url, ri->flag);
         return -1;
     }
 
     bzero(fpath, BUFFER_LEN);
     if (sc_res_map_to_file_path(active, fpath, BUFFER_LEN) != 0) {
-        fprintf(stderr, "%s ERROR: map %s to file path failed\n", __func__, active->localpath);
+        hc_log_error("Map %s to file path failed", active->localpath);
         return -1;
     }
 
     fp = fopen(fpath, "r");
     if (fp == NULL) {
-        fprintf(stderr, "%s ERROR: fopen %s failed\n", __func__, fpath);
+        hc_log_error("fopen %s failed", fpath);
         return -1;
     }
 
     memset(active->kf_info, 0, sizeof(active->kf_info));
     active->kf_num = 0;
     if (sc_kf_flv_create_info_limited(fp, SC_KF_FLV_MAX_NUM, active->kf_info, (u32 *)&active->kf_num) != 0) {
-        fprintf(stderr, "%s ERROR: create %s key frame info failed\n", __func__, fpath);
+        hc_log_error("Create %s key frame info failed", fpath);
         err = -1;
         goto out;
     }

@@ -13,7 +13,7 @@ static int sc_snooping_resp_to_sp(int sockfd,
     int nsend;
 
     if (status != HTTP_SP_STATUS_OK && status != HTTP_SP_STATUS_DEFAULT_ERROR) {
-        fprintf(stderr, "%s: unknown status code %u\n", __func__, status);
+        hc_log_error("unknown status code %u", status);
         return -1;
     }
 
@@ -28,7 +28,7 @@ static int sc_snooping_resp_to_sp(int sockfd,
     req->sp2c_action = old; /* zhaoyao XXX: keep it untouched */
 
     if (nsend < 0) {
-        fprintf(stderr, "%s: sendto failed, %s", __func__, strerror(errno));
+        hc_log_error("sendto failed, %s", strerror(errno));
         return -1;
     }
 
@@ -46,7 +46,7 @@ static void sc_snooping_do_parse(int sockfd,
     sc_res_info_origin_t *origin;
     
 #if 1
-    fprintf(stdout, "%s DEBUG: req url: %s\n", __func__, req->url_data);
+    hc_log_debug("req url: %s", req->url_data);
 #endif
 
     req_url = (char *)req->url_data;
@@ -55,7 +55,7 @@ static void sc_snooping_do_parse(int sockfd,
     bzero(origin_url, HTTP_URL_MAX_LEN);
     ret = sc_res_gen_origin_url(req_url, origin_url);
     if (ret != 0) {
-        fprintf(stderr, "%s: generate origin url failed, req_url: %s...\n", __func__, req_url);
+        hc_log_error("generate origin url failed, req_url: %s...", req_url);
         status = HTTP_SP_STATUS_OK;
         goto reply;
     }
@@ -63,10 +63,10 @@ static void sc_snooping_do_parse(int sockfd,
     origin = sc_res_info_find_origin(sc_res_info_list, origin_url);
     if (origin != NULL) {
         if (!sc_res_is_origin(&origin->common)) {
-            fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, origin->common.url);
+            hc_log_error("url\n\t%s\ntype is conflicted", origin->common.url);
         }
 #if DEBUG
-        fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, origin->common.url);
+        hc_log_debug("url\n\t%s\n is already exit", origin->common.url);
 #endif
         status = HTTP_SP_STATUS_OK;
         goto reply;
@@ -74,12 +74,12 @@ static void sc_snooping_do_parse(int sockfd,
 
     ret = sc_res_info_add_origin(sc_res_info_list, origin_url, &origin);
     if (ret != 0) {
-        fprintf(stderr, "%s: add %s in resources list failed\n", __func__, origin_url);
+        hc_log_error("add %s in resources list failed", origin_url);
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     } else {
         /* zhaoyao XXX: return OK if add origin-type ri success anyway */
-        fprintf(stdout, "%s: add origin url success: %s\n", __func__, origin->common.url);
+        hc_log_error("add origin url success: %s", origin->common.url);
         status = HTTP_SP_STATUS_OK;
     }
 
@@ -96,18 +96,18 @@ static void sc_snooping_do_parse(int sockfd,
     } else if (sc_res_is_sohu(&origin->common)) {
         ret = sc_get_sohu_video(origin);
     } else {
-        fprintf(stderr, "%s: URL not support\n", __func__);
+        hc_log_error("URL not support");
         goto reply;
     }
 
     if (ret < 0) {
-        fprintf(stderr, "%s: parse or down %s failed\n", __func__, origin->common.url);
+        hc_log_error("parse or down %s failed", origin->common.url);
     }
 
 reply:
     ret = sc_snooping_resp_to_sp(sockfd, sa, salen, req, status);
     if (ret < 0) {
-        fprintf(stderr, "%s: responsing(%u) Snooping module failed\n", __func__, status);
+        hc_log_error("responsing(%u) Snooping module failed", status);
     }
 
     return;
@@ -125,10 +125,10 @@ static void sc_snooping_do_down(int sockfd,
     normal = sc_res_info_find_active(sc_res_info_list, (const char *)req->url_data);
     if (normal != NULL) {
         if (!sc_res_is_normal(&normal->common)) {
-            fprintf(stderr, "%s ERROR: url\n\t%s\ntype is conflicted\n", __func__, req->url_data);
+            hc_log_error("url\n\t%s\ntype is conflicted", req->url_data);
         }
 #if DEBUG
-        fprintf(stderr, "%s WARNING: url\n\t%s\n is already exit\n", __func__, req->url_data);
+        hc_log_debug("url\n\t%s\n is already exit", req->url_data);
 #endif
         status = HTTP_SP_STATUS_OK;
         goto reply;
@@ -136,7 +136,7 @@ static void sc_snooping_do_down(int sockfd,
 
     ret = sc_res_info_add_normal(sc_res_info_list, (char *)req->url_data, &normal);
     if (ret != 0) {
-        fprintf(stderr, "%s: add url in resources list failed\n", __func__);
+        hc_log_error("add url in resources list failed");
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
@@ -146,7 +146,7 @@ static void sc_snooping_do_down(int sockfd,
 
     ret = sc_ngx_download(normal->common.url, normal->localpath);
     if (ret != 0) {
-        fprintf(stderr, "%s: download %s failed\n", __func__, normal->common.url);
+        hc_log_error("download %s failed", normal->common.url);
         /*
          * zhaoyao XXX: 同parsed，当ri添加成功，但download失败时，尝试重复下载。
          */
@@ -154,12 +154,12 @@ static void sc_snooping_do_down(int sockfd,
         goto reply;
     }
 
-    fprintf(stdout, "%s: inform Nginx to download %s success\n", __func__, normal->common.url);
+    hc_log_info("inform Nginx to download %s success", normal->common.url);
 
 reply:
     ret = sc_snooping_resp_to_sp(sockfd, sa, salen, req, status);
     if (ret < 0) {
-        fprintf(stderr, "%s: responsing(%u) Snooping module failed\n", __func__, status);
+        hc_log_error("responsing(%u) Snooping module failed\n", status);
     }
 
     return;
@@ -178,7 +178,7 @@ void sc_snooping_serve(int sockfd)
 #endif
 
     if (sockfd < 0) {
-        fprintf(stderr, "%s: invalid sockfd %d\n", __func__, sockfd);
+        hc_log_error("invalid sockfd %d", sockfd);
         return;
     }
 
@@ -187,24 +187,23 @@ void sc_snooping_serve(int sockfd)
         bzero(&sa, salen);
         bzero(buf, sizeof(buf));
         if ((nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, &sa, &salen)) < 0) {
-            fprintf(stderr, "%s: recvfrom error: %s", __func__, strerror(errno));
+            hc_log_error("recvfrom error: %s", strerror(errno));
             continue;
         }
 
         if (nrecv < sizeof(http_sp2c_req_pkt_t)) {
-            fprintf(stderr, "%s: recvfrom invalid %d bytes\n", __func__, nrecv);
+            hc_log_error("recvfrom invalid %d bytes", nrecv);
             continue;
         }
 #if DEBUG
         in_sa = (struct sockaddr_in *)&sa;
-        fprintf(stderr, "%s client: port %u, ip %s\n", __func__, ntohs(in_sa->sin_port),
+        hc_log_debug("client: port %u, ip %s", ntohs(in_sa->sin_port),
                                 inet_ntop(AF_INET, &in_sa->sin_addr, ip_addr, MAX_HOST_NAME_LEN));
 #endif
         sp2c_req = (http_sp2c_req_pkt_t *)buf;
         sp2c_req->url_len = ntohs(sp2c_req->url_len);
         if (sp2c_req->url_len >= HTTP_URL_MAX_LEN) {
-            fprintf(stderr, "%s WARNING: sp2c_req's url (%u) is longer than %d\n",
-                                __func__, sp2c_req->url_len, HTTP_URL_MAX_LEN);
+            hc_log_error("sp2c_req's url (%u) is longer than %d", sp2c_req->url_len, HTTP_URL_MAX_LEN);
             continue;
         }
 
@@ -216,10 +215,10 @@ void sc_snooping_serve(int sockfd)
             sc_snooping_do_down(sockfd, &sa, salen, sp2c_req);
             break;
         case HTTP_SP2C_ACTION_GETNEXT:
-            fprintf(stderr, "%s: HTTP_SP2C_ACTION_GETNEXT %u not support now\n", __func__, sp2c_req->sp2c_action);
+            hc_log_error("HTTP_SP2C_ACTION_GETNEXT %u not support now", sp2c_req->sp2c_action);
             break;
         default:
-            fprintf(stderr, "%s: unknown sp2c_action %u\n", __func__, sp2c_req->sp2c_action);
+            hc_log_error("unknown sp2c_action %u", sp2c_req->sp2c_action);
         }
     }
 }
@@ -235,12 +234,12 @@ static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
     http_c2sp_res_pkt_t *res;
 
     if (url == NULL) {
-        fprintf(stderr, "%s ERROR: invalid input\n", __func__);
+        hc_log_error("invalid input");
         return -1;
     }
 
     if (act != HTTP_C2SP_ACTION_ADD && act != HTTP_C2SP_ACTION_DELETE) {
-        fprintf(stderr, "%s ERROR: non-support action %u\n", __func__, act);
+        hc_log_error("non-support action %u", act);
         return -1;
     }
 
@@ -249,14 +248,13 @@ static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
     sa.sin_addr.s_addr = inet_addr(SC_SNOOP_MOD_DEFAULT_IP_ADDR);
     salen = sizeof(struct sockaddr_in);
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        fprintf(stderr, "%s Socket failed: %s\n", __func__, strerror(errno));
+        hc_log_error("Socket failed: %s", strerror(errno));
         return -1;
     }
 
     memset(buf, 0, sizeof(buf));
     if (SC_SNOOPING_SND_RCV_BUF_LEN < sizeof(http_c2sp_req_pkt_t)) {
-        fprintf(stderr, "%s ERROR: small buf(%d) can not hold c2sp_req(%d)\n",
-                            __func__, SC_SNOOPING_SND_RCV_BUF_LEN, sizeof(http_c2sp_req_pkt_t));
+        hc_log_error("small buf(%d) can not hold c2sp_req(%d)", SC_SNOOPING_SND_RCV_BUF_LEN, sizeof(http_c2sp_req_pkt_t));
         return -1;
     }
     req = (http_c2sp_req_pkt_t *)buf;
@@ -266,7 +264,7 @@ static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
     sc_res_copy_url((char *)req->usr_data, url, HTTP_SP_URL_LEN_MAX, 1);
 
     if ((nsend = sendto(sockfd, req, sizeof(http_c2sp_req_pkt_t), 0, (struct sockaddr *)&sa, salen)) < 0) {
-        fprintf(stderr, "%s ERROR sendto failed: %s\n", __func__, strerror(errno));
+        hc_log_error("sendto failed: %s", strerror(errno));
         err = -1;
         goto out;
     }
@@ -274,15 +272,14 @@ static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
     memset(buf, 0, sizeof(buf));
     nrecv = recvfrom(sockfd, buf, SC_SNOOPING_SND_RCV_BUF_LEN, 0, NULL, NULL);
     if (nrecv < 0) {
-        fprintf(stderr, "%s ERROR recvfrom %d, is not valid to %d: %s\n",
-                            __func__, nrecv, sizeof(http_c2sp_res_pkt_t), strerror(errno));
+        hc_log_error("recvfrom %d, is not valid to %d: %s",
+                            nrecv, sizeof(http_c2sp_res_pkt_t), strerror(errno));
         err = -1;
         goto out;
     }
     res = (http_c2sp_res_pkt_t *)buf;
     if (res->session_id != sid) {
-        fprintf(stderr, "%s ERROR: send id %u, not the same as response id %u\n",
-                            __func__, sid, res->session_id);
+        hc_log_error("send id %u, not the same as response id %u", sid, res->session_id);
         err = -1;
         goto out;
     }
@@ -290,7 +287,7 @@ static int sc_snooping_initiate_action(u8 act, u32 sid, char *url)
     if (res->status == HTTP_SP_STATUS_OK) {
         ;
     } else {
-        fprintf(stderr, "%s ERROR: response status is failed %u\n", __func__, res->status);
+        hc_log_error("response status is failed %u", res->status);
         err = -1;
         goto out;
     }
@@ -305,7 +302,7 @@ int sc_snooping_do_add(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_ADD, sid, url);
-    fprintf(stdout, "%s url: %120s\n", __func__, url);
+    hc_log_info("%120s", url);
 
     return ret;
 }
@@ -315,7 +312,7 @@ int sc_snooping_do_del(u32 sid, char *url)
     int ret;
 
     ret = sc_snooping_initiate_action(HTTP_C2SP_ACTION_DELETE, sid, url);
-    fprintf(stdout, "%s url: %120s\n", __func__, url);
+    hc_log_error("%120s", url);
 
     return ret;
 }

@@ -39,19 +39,13 @@ int yk_build_request(char *host, char *uri, char *referer, char *buf)
 
     len = strlen(host) + strlen(uri) + strlen(referer) + strlen(yk_request_pattern) - 6;
     if (len >= BUFFER_LEN) {
-        fprintf(stderr, "%s request length (%d) exceed limit %d\n", __func__, len, BUFFER_LEN);
+        hc_log_error("request length (%d) exceed limit %d", len, BUFFER_LEN);
         return -1;
     }
 
     sprintf((char *)buf, (char *)yk_request_pattern, uri, host, referer);
 
     return 0;
-}
-
-void yk_print_usage(char *cmd)
-{
-    printf("%s youku_url [dl]\n", cmd);
-    printf("\tURL's format is http://v.youku.com/v_show/id_XNjgzMjc0MjY4.html\n\n");
 }
 
 /*
@@ -96,7 +90,7 @@ int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
 
     memset(fileids, 0, sizeof(fileids));
     if (yk_get_fileid(strm->streamfileids, seg->no, strm->seed, fileids) == false) {
-        fprintf(stderr, "yk_get_fileid failed\n");
+        hc_log_error("yk_get_fileid failed");
         return -1;
     }
 
@@ -112,7 +106,7 @@ int yk_seg_to_flvpath(const yk_segment_info_t *seg, char *fp_url)
 
     memset(fp_url, 0, HTTP_URL_MAX_LEN);
     if (yk_get_fileurl(0, &play_list, &seg_data, false, 0, fp_url) != true) {
-        fprintf(stderr, "yk_get_fileurl failed\n");
+        hc_log_error("yk_get_fileurl failed");
         return -1;
     }
 
@@ -127,13 +121,12 @@ int yk_http_session(char *url, char *referer, char *response, unsigned long resp
     int nsend, nrecv, len, i, pre_len = 0;
 
     if (url == NULL || referer == NULL || response == NULL) {
-        fprintf(stderr, "Input is invalid\n");
+        hc_log_error("Input is invalid");
         return -1;
     }
 
     if (resp_len < BUFFER_LEN) {
-        fprintf(stderr, "%s ERROR: buffer too small(%lu), minimum should be %d\n",
-                            __func__, resp_len, BUFFER_LEN);
+        hc_log_error("buffer too small(%lu), minimum should be %d", resp_len, BUFFER_LEN);
         return -1;
     }
 
@@ -146,7 +139,7 @@ int yk_http_session(char *url, char *referer, char *response, unsigned long resp
         host[i] = *(url + pre_len + i);
     }
     if (*(url + pre_len + i) == '\0') {
-        fprintf(stderr, "URL is invalid: %s\n", url);
+        hc_log_error("URL is invalid: %s", url);
         return -1;
     }
     host[i] = '\0';
@@ -154,20 +147,20 @@ int yk_http_session(char *url, char *referer, char *response, unsigned long resp
 
     sockfd = http_host_connect(host);
     if (sockfd < 0) {
-        fprintf(stderr, "Can not connect to %s: http\n", host);
+        hc_log_error("Can not connect to %s: http", host);
         return -1;
     }
 
     memset(buffer, 0, BUFFER_LEN);
     if (yk_build_request(host, uri_start, referer, buffer) < 0) {
-        fprintf(stderr, "yk_build_request failed\n");
+        hc_log_error("yk_build_request failed");
         err = -1;
         goto out;
     }
     
     len = strlen(buffer);
     if (len > BUFFER_LEN) {
-        fprintf(stderr, "Request is too long, error!!!\n");
+        hc_log_error("Request is too long, error!!!");
         err = -1;
         goto out;
     }
@@ -186,7 +179,7 @@ int yk_http_session(char *url, char *referer, char *response, unsigned long resp
         goto out;
     }
     if (nrecv == resp_len) {
-        fprintf(stderr, "%s WARNING: receive %d bytes, response buffer is full!!!\n", __func__, nrecv);
+        hc_log_error("WARNING: receive %d bytes, response buffer is full!!!", nrecv);
     }
 
 out:
@@ -202,19 +195,19 @@ char *yk_parse_vf_response(char *curr, char *fp_url)
     unsigned long len;
 
     if (curr == NULL || fp_url == NULL) {
-        fprintf(stderr, "%s ERROR: Invalid input, curr is NULL\n", __func__);
+        hc_log_error("Invalid input, curr is NULL");
         return ret;
     }
 
     p = strstr(curr, tag);
     if (p == NULL) {
-        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, tag);
+        hc_log_error("do not find %s", tag);
         return ret;
     }
 
     p = strstr(p, HTTP_URL_PREFIX);
     if (p == NULL) {
-        fprintf(stderr, "%s ERROR: do not find %s\n", __func__, HTTP_URL_PREFIX);
+        hc_log_error("do not find %s", HTTP_URL_PREFIX);
         return ret;
     }
     p = p + HTTP_URL_PRE_LEN;
@@ -225,7 +218,7 @@ char *yk_parse_vf_response(char *curr, char *fp_url)
     }
     len = (unsigned long)p - (unsigned long)curr;
     if (len >= HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "%s ERROR: parsed url len %lu, exceed limit %u\n", __func__, len, HTTP_URL_MAX_LEN);
+        hc_log_error("parsed url len %lu, exceed limit %u", len, HTTP_URL_MAX_LEN);
     } else {
         strncpy(fp_url, curr, len);
     }

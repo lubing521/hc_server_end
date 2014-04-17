@@ -8,13 +8,13 @@ int main(int argc, char *argv[])
     int ret;
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: %s url\n", argv[0]);
+        printf("Usage: %s url\n", argv[0]);
         return -1;
     }
 
     ret = sc_snooping_do_add(-1, argv[1]);
     if (ret != 0) {
-        fprintf(stderr, "Add failed\n");
+        printf("Add failed\n");
         return -1;
     }
 
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
     ret = sc_yk_get_vf(vf_url, referer);
     if (ret != 0) {
-        fprintf(stderr, "Get Youku vf response failed\n");
+        hc_log_error("Get Youku vf response failed");
         return -1;
     }
 

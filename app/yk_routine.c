@@ -21,7 +21,7 @@ static yk_stream_info_t *yk_create_stream_info(const char *type)
 
     p = malloc(sizeof(yk_stream_info_t));
     if (p == NULL) {
-        fprintf(stderr, "%s memory allocate %d bytes failed\n", __func__, sizeof(yk_stream_info_t));
+        hc_log_error("memory allocate %d bytes failed", sizeof(yk_stream_info_t));
     } else {
         memset(p, 0, sizeof(yk_stream_info_t));
         memcpy(p->type, type, STREAM_TYPE_LEN - 1);
@@ -40,7 +40,7 @@ static yk_segment_info_t *yk_create_segment_info(char *info)
 
     p = malloc(sizeof(yk_segment_info_t));
     if (p == NULL) {
-        fprintf(stderr, "%s memory allocate %d bytes failed\n", __func__, sizeof(yk_segment_info_t));
+        hc_log_error("memory allocate %d bytes failed", sizeof(yk_segment_info_t));
         return NULL;
     }
     
@@ -160,6 +160,8 @@ void yk_debug_streams_all(yk_stream_info_t *streams[])
         return;
     }
 
+    hc_log_info("---------------------------------------------------------------");
+
     for (i = 0; streams[i] != NULL && i < STREAM_TYPE_TOTAL; i++) {
         p = streams[i];
         printf("Stream type: %s\n", p->type);
@@ -250,7 +252,7 @@ static char *yk_parse_pl_streamfileids(const char *cur, yk_stream_info_t *stream
     }
 
 error:
-    fprintf(stderr, "%s failed\n", __func__);
+    hc_log_error("failed");
     yk_destroy_streams_all(streams);
 
     return NULL;
@@ -277,7 +279,7 @@ static char *yk_parse_pl_segs_do(char *cur, yk_stream_info_t *stream)
         stream->segs[seg_cnt] = seg;
         seg_cnt++;
         if (seg_cnt >= STREAM_SEGS_MAX) {
-            fprintf(stderr, "%s WARNING: segment count exceed limit %d\n", __func__, STREAM_SEGS_MAX);
+            hc_log_error("WARNING: segment count exceed limit %d", STREAM_SEGS_MAX);
             return NULL;
         }
         ret = ret + 2;
@@ -343,7 +345,7 @@ static char *yk_parse_pl_segs(const char *cur, yk_stream_info_t *streams[])
     }
 
 error:
-    fprintf(stderr, "%s failed\n", __func__);
+    hc_log_error("failed");
     yk_destroy_streams_all(streams);
 
     return NULL;
@@ -418,13 +420,13 @@ int yk_parse_flvpath(char *data, char *real_url)
     }
 
     if (p == NULL) {
-        fprintf(stderr, "%s error, do not find %s or %s\n", __func__, tag1, tag2);
+        hc_log_error("error, do not find %s or %s", tag1, tag2);
         return -1;
     }
 
 end:
     if (q >= real_url + HTTP_URL_MAX_LEN) {
-        fprintf(stderr, "WARNING: real_url is exceeding buffer length %d\n", HTTP_URL_MAX_LEN);
+        hc_log_error("WARNING: real_url is exceeding buffer length %d", HTTP_URL_MAX_LEN);
         return -1;
     }
 

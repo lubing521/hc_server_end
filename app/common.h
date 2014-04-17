@@ -61,6 +61,21 @@
 #define false                   0
 typedef int bool;
 
+#define hc_log_info(fmt, arg...) \
+    do { \
+        fprintf(stdout, "*INFO* %-24s: " fmt "\n", __func__, ##arg); \
+    } while (0)
+
+#define hc_log_debug(fmt, arg...) \
+    do { \
+        fprintf(stderr, "*DEBUG* %s[%d]: " fmt "\n", __func__, __LINE__, ##arg); \
+    } while (0)
+
+#define hc_log_error(fmt, arg...) \
+    do { \
+        fprintf(stderr, "*ERROR* %s[%d]: " fmt "\n", __func__, __LINE__, ##arg); \
+    } while (0)
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

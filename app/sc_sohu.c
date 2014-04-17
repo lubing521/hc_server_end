@@ -134,38 +134,38 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
     }
 
     if (sohu_http_session(parsed->common.url, response, BUFFER_LEN) < 0) {
-        fprintf(stderr, "%s ERROR: sohu_http_session faild, URL: %s\n", __func__, parsed->common.url);
+        hc_log_error("sohu_http_session faild, URL: %s", parsed->common.url);
         return -1;
     }
 
     if (http_parse_status_line(response, strlen(response), &status) < 0) {
-        fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response);
+        hc_log_error("parse status line failed:\n%s", response);
         return -1;
     }
 
     if (status == 301) {
-//            fprintf(stdout, "%s get response success:\n%s", __func__, response);
+//            hc_log_info("get response success:\n%s", response);
     } else {
-        fprintf(stderr, "%s ERROR: file_url response status code %d:\n%s", __func__, status, response);
+        hc_log_error("file_url response status code %d:\n%s", status, response);
         return -1;
     }
 
     bzero(real_url, HTTP_URL_MAX_LEN);
     ret = sohu_parse_file_url_response(response, real_url);
     if (ret != 0) {
-        fprintf(stderr, "%s ERROR: parse real_url failed, response is\n%s", __func__, response);
+        hc_log_error("parse real_url failed, response is\n%s", response);
         return -1;
     }
 
 #if DEBUG
-    fprintf(stdout, "%s file_url: %s\n", __func__, parsed->common.url);
-    fprintf(stdout, "%s local_path: %s\n", __func__, parsed->localpath);
-    fprintf(stdout, "%s real_url: %s\n", __func__, real_url);
+    hc_log_debug("file_url: %s", parsed->common.url);
+    hc_log_debug("local_path: %s", parsed->localpath);
+    hc_log_debug("real_url: %s", real_url);
 #endif
 
     ret = sc_ngx_download(real_url, parsed->localpath);
     if (ret < 0) {
-        fprintf(stderr, "%s ERROR: url %s inform Nginx failed\n", __func__, real_url);
+        hc_log_error("url %s inform Nginx failed", real_url);
         sc_res_set_i_fail(&parsed->common);
     }
 
@@ -194,27 +194,27 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
 
     response = malloc(RESP_BUF_LEN);
     if (response == NULL) {
-        fprintf(stderr, "%s ERROR: allocate response buffer failed: %s\n", __func__, strerror(errno));
+        hc_log_error("allocate response buffer failed: %s", strerror(errno));
         err = -1;
         goto out;
     }
 
     if (sohu_http_session(m3u8_url, response, RESP_BUF_LEN) < 0) {
-        fprintf(stderr, "sohu_http_session faild, URL: %s\n", m3u8_url);
+        hc_log_error("sohu_http_session faild, URL: %s", m3u8_url);
         err = -1;
         goto out;
     }
 
     if (http_parse_status_line(response, strlen(response), &status) < 0) {
-        fprintf(stderr, "%s ERROR: parse status line failed:\n%s", __func__, response);
+        hc_log_error("parse status line failed:\n%s", response);
         err = -1;
         goto out;
     }
 
     if (status == 200) {
-//        fprintf(stdout, "%s get response success:\n***************\n%s\n***************\n", __func__, response);
+//        hc_log_info("get response success:\n***************\n%s\n***************", response);
     } else {
-        fprintf(stderr, "%s ERROR: m3u8 response status code %d:\n%s", __func__, status, response);
+        hc_log_error("m3u8 response status code %d:\n%s", status, response);
         err = -1;
         goto out;
     }
@@ -226,8 +226,8 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
         /* zhaoyao XXX: for Sohu, file_url is not the final url to download data */
         ret = sc_res_info_add_parsed(sc_res_info_list, origin, file_url, &parsed);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: add file_url\n\t%s\nto resource list failed, give up downloading...\n",
-                                __func__, file_url);
+            hc_log_error("add file_url\n\t%s\nto resource list failed, give up downloading...",
+                                file_url);
             /*
              * zhaoyao XXX: we can not using Nginx to download, without ri we can not track
              *              downloaded resources.
@@ -237,7 +237,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
 
         ret = sc_sohu_download(parsed);
         if (ret != 0) {
-            fprintf(stderr, "%s ERROR: sc_sohu_download %s failed\n", __func__, parsed->common.url);
+            hc_log_error("sc_sohu_download %s failed", parsed->common.url);
             continue;
         }
     }
@@ -253,14 +253,14 @@ int sc_get_sohu_video(sc_res_info_origin_t *origin)
     int ret = 0;
 
     if (origin == NULL) {
-        fprintf(stderr, "%s need origin URL to parse real URL\n", __func__);
+        hc_log_error("need origin URL to parse real URL");
         return -1;
     }
 
     if (sohu_is_m3u8_url(origin->common.url)) {
         ret = sc_get_sohu_video_m3u8(origin);
     } else {
-        fprintf(stderr, "%s ERROR: no support: %s\n", __func__, origin->common.url);
+        hc_log_error("no support: %s", origin->common.url);
         ret = -1;
     }
 
