@@ -2,32 +2,32 @@
 #include "sc_header.h"
 #include "os_util.h"
 
-static sc_res_info_origin_t *youku_ctl_ld_origin = NULL;
-static sc_res_info_origin_t *sohu_ctl_ld_origin = NULL;
+static sc_res_info_mgmt_t *youku_controller_of_loaded = NULL;
+static sc_res_info_mgmt_t *sohu_controller_of_loaded = NULL;
 
-sc_res_info_origin_t *sc_ld_obtain_ctl_ld_youku()
+sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_youku()
 {
-    if (youku_ctl_ld_origin == NULL) {
+    if (youku_controller_of_loaded == NULL) {
         hc_log_error("loadeds' controller of Youku is NULL");
     }
 
-    return youku_ctl_ld_origin;
+    return youku_controller_of_loaded;
 }
 
-sc_res_info_origin_t *sc_ld_obtain_ctl_ld_sohu()
+sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_sohu()
 {
-    if (sohu_ctl_ld_origin == NULL) {
+    if (sohu_controller_of_loaded == NULL) {
         hc_log_error("loaded controller of Sohu is NULL");
     }
 
-    return sohu_ctl_ld_origin;
+    return sohu_controller_of_loaded;
 }
 
-static int sc_ld_is_duplicate_file(sc_res_info_origin_t *ctl_ld, char *fpath)
+static int sc_ld_is_duplicate_file(sc_res_info_mgmt_t *ctl_ld, char *fpath)
 {
     char *vid, *p;
     int len;
-    sc_res_info_active_t *loaded;
+    sc_res_info_ctnt_t *loaded;
 
     if (ctl_ld == NULL || fpath == NULL) {
         return 0;
@@ -61,8 +61,8 @@ static int sc_ld_is_duplicate_file(sc_res_info_origin_t *ctl_ld, char *fpath)
 int sc_ld_file_process(char *fpath)
 {
     int ret;
-    sc_res_info_active_t *loaded;
-    sc_res_info_origin_t *ctl_ld;
+    sc_res_info_ctnt_t *loaded;
+    sc_res_info_mgmt_t *ctl_ld;
     char yk_std_fpath[SC_RES_LOCAL_PATH_MAX_LEN];
 
     if (sc_yk_is_local_path(fpath)) {
@@ -115,13 +115,13 @@ int sc_ld_init_and_load()
 {
     int ret;
 
-    ret = sc_res_info_add_ctl_ld(sc_res_info_list, YOUKU_WEBSITE_URL, &youku_ctl_ld_origin);
+    ret = sc_res_info_add_ctl_ld(sc_res_info_list, YOUKU_WEBSITE_URL, &youku_controller_of_loaded);
     if (ret != 0) {
         hc_log_error("Add loaded file controller of Youku failed");
         return -1;
     }
 
-    ret = sc_res_info_add_ctl_ld(sc_res_info_list, SOHU_WEBSITE_URL, &sohu_ctl_ld_origin);
+    ret = sc_res_info_add_ctl_ld(sc_res_info_list, SOHU_WEBSITE_URL, &sohu_controller_of_loaded);
     if (ret != 0) {
         hc_log_error("Add loaded file controller of Sohu failed");
         return -1;

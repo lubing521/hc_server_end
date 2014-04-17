@@ -123,7 +123,7 @@ int sc_sohu_gen_origin_url(char *req_url, char *origin_url)
     return 0;
 }
 
-int sc_sohu_download(sc_res_info_active_t *parsed)
+int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 {
     char response[BUFFER_LEN];
     char real_url[HTTP_URL_MAX_LEN];
@@ -181,12 +181,12 @@ int sc_sohu_download(sc_res_info_active_t *parsed)
  * real_url:   118.123.211.11/sohu/ts/zC1LzEwlslvesEAgoE.........
  */
 
-static int sc_get_sohu_video_m3u8(sc_res_info_origin_t *origin)
+static int sc_get_sohu_video_m3u8(sc_res_info_mgmt_t *origin)
 {
     int err = 0, status, ret;
     char m3u8_url[HTTP_URL_MAX_LEN];
     char file_url[HTTP_URL_MAX_LEN];
-    sc_res_info_active_t *parsed;
+    sc_res_info_ctnt_t *parsed;
     char *response = NULL, *curr;
 
     /* zhaoyao: do not care para in m3u8 way */
@@ -248,7 +248,7 @@ out:
     return err;
 }
 
-int sc_get_sohu_video(sc_res_info_origin_t *origin)
+int sc_get_sohu_video(sc_res_info_mgmt_t *origin)
 {
     int ret = 0;
 

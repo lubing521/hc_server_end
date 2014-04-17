@@ -400,23 +400,23 @@ static int sc_kf_flv_create_info_limited(FILE *fp, u32 limit, sc_kf_flv_info_t *
     return 0;
 }
 
-int sc_kf_flv_create_info(sc_res_info_active_t *active)
+int sc_kf_flv_create_info(sc_res_info_ctnt_t *ctnt)
 {
     FILE *fp;
     int err = 0;
     char fpath[BUFFER_LEN];
     sc_res_info_t *ri;
 
-    if (active == NULL) {
+    if (ctnt == NULL) {
         hc_log_error("Invalid input");
         return -1;
     }
 
-    ri = &active->common;
+    ri = &ctnt->common;
     hc_log_info("%120s", ri->url);
 
-    if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri) && !sc_res_is_loaded(ri)) {
-        hc_log_error("Only normal or parsed (active) can create flv keyframe info");
+    if (!sc_res_is_ctnt(ri)) {
+        hc_log_error("Only real content (normal, parsed, loaded) can create flv keyframe info");
         return -1;
     }
 
@@ -426,8 +426,8 @@ int sc_kf_flv_create_info(sc_res_info_active_t *active)
     }
 
     bzero(fpath, BUFFER_LEN);
-    if (sc_res_map_to_file_path(active, fpath, BUFFER_LEN) != 0) {
-        hc_log_error("Map %s to file path failed", active->localpath);
+    if (sc_res_map_to_file_path(ctnt, fpath, BUFFER_LEN) != 0) {
+        hc_log_error("Map %s to file path failed", ctnt->localpath);
         return -1;
     }
 
@@ -437,9 +437,9 @@ int sc_kf_flv_create_info(sc_res_info_active_t *active)
         return -1;
     }
 
-    memset(active->kf_info, 0, sizeof(active->kf_info));
-    active->kf_num = 0;
-    if (sc_kf_flv_create_info_limited(fp, SC_KF_FLV_MAX_NUM, active->kf_info, (u32 *)&active->kf_num) != 0) {
+    memset(ctnt->kf_info, 0, sizeof(ctnt->kf_info));
+    ctnt->kf_num = 0;
+    if (sc_kf_flv_create_info_limited(fp, SC_KF_FLV_MAX_NUM, ctnt->kf_info, (u32 *)&ctnt->kf_num) != 0) {
         hc_log_error("Create %s key frame info failed", fpath);
         err = -1;
         goto out;

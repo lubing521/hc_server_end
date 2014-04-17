@@ -36,7 +36,7 @@ typedef struct sc_kf_flv_info_s {
 
 #include "sc_resource.h"
 
-int sc_kf_flv_create_info(sc_res_info_active_t *active);
+int sc_kf_flv_create_info(sc_res_info_ctnt_t *ctnt);
 
 /* 在关键帧列表中，根据时间查找对应的偏移量
  *@keyframe已有序，按时间从小到大
@@ -68,26 +68,26 @@ int sc_snooping_do_del(u32 sid, char *url);
 
 int sc_ld_file_process(char *fpath);
 int sc_ld_init_and_load();
-sc_res_info_origin_t *sc_ld_obtain_ctl_ld_youku();
+sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_youku();
 
-int sc_get_yk_video(sc_res_info_origin_t *origin);
+int sc_get_yk_video(sc_res_info_mgmt_t *origin);
 int sc_url_is_yk(char *url);
 int sc_yk_url_to_local_path(char *url, char *local_path, int len);
 int sc_yk_gen_origin_url(char *req_url, char *origin_url);
-int sc_youku_download(sc_res_info_active_t *parsed);
-int sc_yk_add_active_url(sc_res_info_active_t *active);
+int sc_youku_download(sc_res_info_ctnt_t *parsed);
+int sc_yk_add_ctnt_url(sc_res_info_ctnt_t *ctnt);
 int sc_yk_get_vf(char *vf_url, char *referer);
 int sc_yk_init_vf_adv();
 int sc_yk_is_local_path(char *local_path);
 int sc_yk_is_local_path_pure_vid(char *local_path);
 int sc_yk_trans_vid_to_std_path(char *vid_path, char *std_path, unsigned int path_len);
 
-int sc_get_sohu_video(sc_res_info_origin_t *origin);
+int sc_get_sohu_video(sc_res_info_mgmt_t *origin);
 int sc_url_is_sohu(char * url);
 int sc_url_is_sohu_file_url(char *url);
 int sc_sohu_file_url_to_local_path(char *file_url, char *local_path, int len);
 int sc_sohu_gen_origin_url(char *req_url, char *origin_url);
-int sc_sohu_download(sc_res_info_active_t *parsed);
+int sc_sohu_download(sc_res_info_ctnt_t *parsed);
 int sc_sohu_is_local_path(char *local_path);
 
 #endif /* __SC_HEADER_H__ */

@@ -43,7 +43,7 @@ static void sc_snooping_do_parse(int sockfd,
     int ret;
     u8 status;
     char *req_url, origin_url[HTTP_URL_MAX_LEN];
-    sc_res_info_origin_t *origin;
+    sc_res_info_mgmt_t *origin;
     
 #if 1
     hc_log_debug("req url: %s", req->url_data);
@@ -60,7 +60,7 @@ static void sc_snooping_do_parse(int sockfd,
         goto reply;
     }
 
-    origin = sc_res_info_find_origin(sc_res_info_list, origin_url);
+    origin = sc_res_info_find_mgmt(sc_res_info_list, origin_url);
     if (origin != NULL) {
         if (!sc_res_is_origin(&origin->common)) {
             hc_log_error("url\n\t%s\ntype is conflicted", origin->common.url);
@@ -120,9 +120,9 @@ static void sc_snooping_do_down(int sockfd,
 {
     int ret;
     u8 status;
-    sc_res_info_active_t *normal;
+    sc_res_info_ctnt_t *normal;
 
-    normal = sc_res_info_find_active(sc_res_info_list, (const char *)req->url_data);
+    normal = sc_res_info_find_ctnt(sc_res_info_list, (const char *)req->url_data);
     if (normal != NULL) {
         if (!sc_res_is_normal(&normal->common)) {
             hc_log_error("url\n\t%s\ntype is conflicted", req->url_data);

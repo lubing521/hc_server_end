@@ -190,10 +190,10 @@ out:
 /*
  * zhaoyao XXX: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
  */
-static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
+static int sc_yk_handle_cached(sc_res_info_ctnt_t *parsed)
 {
-    sc_res_info_origin_t *yk_ctl_ld;
-    sc_res_info_active_t *ld, *pre_ld;
+    sc_res_info_mgmt_t *yk_ctl_ld;
+    sc_res_info_ctnt_t *ld, *pre_ld;
     char *vid, *p, *url;
     int url_len, ret;
 
@@ -248,7 +248,7 @@ static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
     return 0;
 }
 
-int sc_youku_download(sc_res_info_active_t *parsed)
+int sc_youku_download(sc_res_info_ctnt_t *parsed)
 {
     int ret;
 
@@ -273,7 +273,7 @@ int sc_youku_download(sc_res_info_active_t *parsed)
 /*
  * Full path: .html -> getPlaylist -> getFlvpath -> real_url
  */
-static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
+static int sc_get_yk_video_tradition(sc_res_info_mgmt_t *origin)
 {
     char yk_url[HTTP_URL_MAX_LEN];                /* Youku video public URL */
     char pl_url[HTTP_URL_MAX_LEN];                /* getplaylist URL */
@@ -283,7 +283,7 @@ static int sc_get_yk_video_tradition(sc_res_info_origin_t *origin)
     int i, j;
     int err = 0, status, ret;
     yk_stream_info_t *streams[STREAM_TYPE_TOTAL] = {NULL}, *strm;
-    sc_res_info_active_t *parsed;
+    sc_res_info_ctnt_t *parsed;
     int download_index;
 
     sc_res_copy_url(yk_url, origin->common.url, HTTP_URL_MAX_LEN, 0); /* zhaoyao: do not care para in traditional way */
@@ -418,7 +418,7 @@ out:
     return err;
 }
 
-int sc_get_yk_video(sc_res_info_origin_t *origin)
+int sc_get_yk_video(sc_res_info_mgmt_t *origin)
 {
     int ret;
 
@@ -474,15 +474,15 @@ static int sc_yk_add_symlink(sc_res_info_t *ri)
     return 0;
 }
 
-int sc_yk_add_active_url(sc_res_info_active_t *active)
+int sc_yk_add_ctnt_url(sc_res_info_ctnt_t *ctnt)
 {
     int ret;
     sc_res_info_t *ri;
 
-    if (active == NULL) {
+    if (ctnt == NULL) {
         return -1;
     }
-    ri = &active->common;
+    ri = &ctnt->common;
     if (!sc_res_is_youku(ri)) {
         return -1;
     }
