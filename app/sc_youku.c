@@ -188,7 +188,7 @@ out:
 }
 
 /*
- * zhaoyao XXX TODO: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
+ * zhaoyao XXX: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
  */
 static int sc_yk_handle_cached(sc_res_info_active_t *parsed)
 {

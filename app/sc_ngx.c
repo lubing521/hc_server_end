@@ -32,21 +32,24 @@ static int sc_ngx_build_get(const char *ip,
                             unsigned int len)
 {
     char lp[SC_RES_LOCAL_PATH_MAX_LEN];
+    char *para1 = "&localpath=%s";
+    char *para2 = "?localpath=%s";
+    int para_len;
 
     if (buf == NULL || uri == NULL || local_path == NULL || ip == NULL) {
         return -1;
     }
 
+    para_len = strlen(para1) - 2;
     bzero(lp, SC_RES_LOCAL_PATH_MAX_LEN);
-    if (strlen(local_path) >= SC_RES_LOCAL_PATH_MAX_LEN - 11) {
-        /* zhaoyao XXX TODO: 本地路径名长度 */
+    if (strlen(local_path) >= SC_RES_LOCAL_PATH_MAX_LEN - para_len) {
         hc_log_error("local_path too long");
         return -1;
     }
     if (strchr(uri, '?')) {
-        sprintf(lp, "&localpath=%s", local_path);
+        sprintf(lp, para1, local_path);
     } else {
-        sprintf(lp, "?localpath=%s", local_path);
+        sprintf(lp, para2, local_path);
     }
 
     if (len <= (strlen(sc_ngx_get_pattern) + strlen(ip) + strlen(uri) + strlen(lp) - 6)) {

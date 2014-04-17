@@ -82,7 +82,7 @@ static int randomFT()
 		_loc3_++;
 	}
 #endif
-    /* zhaoyao XXX TODO: 强制返回2 */
+    /* zhaoyao XXX FIXME: 强制返回2 */
     _loc2_ = 2;
 	return _loc2_;
 }

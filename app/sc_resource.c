@@ -746,9 +746,18 @@ int sc_res_dup_loaded_to_parsed(sc_res_info_active_t *loaded, sc_res_info_active
 
 #if DEBUG
     hc_log_debug("\n\tloaded: %s\n\tparsed: %s", loaded->common.url, parsed->common.url);
-#endif
+    hc_log_debug("loaded local path: %s", loaded->localpath);
 
-    /* zhaoyao XXX TODO: 再一次检查 */
+    if (sc_res_is_kf_crt(&loaded->common)) {
+        hc_log_debug("loaded flv keyframe created");
+    }
+    if (sc_res_is_stored(&loaded->common)) {
+        hc_log_debug("loaded is stored");
+    }
+    if (sc_res_is_notify(&loaded->common)) {
+        hc_log_debug("loaded is notified to Snooping Module");
+    }
+#endif
 
     memcpy(parsed->common.url, loaded->common.url, HTTP_URL_MAX_LEN);
     if (sc_res_is_kf_crt(&loaded->common)) {
@@ -761,7 +770,7 @@ int sc_res_dup_loaded_to_parsed(sc_res_info_active_t *loaded, sc_res_info_active
         sc_res_set_stored(&parsed->common);
     }
     if (sc_res_is_notify(&loaded->common)) {
-        sc_res_set_stored(&parsed->common);
+        sc_res_set_notify(&parsed->common);
     }
 
     return 0;
