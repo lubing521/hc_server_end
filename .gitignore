@@ -1,9 +1,9 @@
 *.o
 *.ini
-nginx-1.5.8/objs/
 nginx-1.5.13/objs/
 nginx-1.5.13/Makefile
-ngx_http_sr_module/
+hot_cache/objs/
+hot_cache/SnoopingClient
 app/*
 !app/*.c
 !app/*.h
