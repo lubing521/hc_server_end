@@ -690,6 +690,13 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
         return -1;
     }
 
+    /* zhaoyao XXX: 解决bug， 如果在Snooping模块上已保存一个url，需要删除它，否则会重定向错误 */
+    ret = sc_snooping_do_del(-1, old_url);
+    if (ret != 0) {
+        hc_log_error("flush url in Snooping Module failed: %s", old_url);
+        return -1;
+    }
+
     loaded = sc_res_info_get_active_loaded(rl);
     if (loaded == NULL) {
         hc_log_error("get free res_info failed");
