@@ -68,23 +68,23 @@ typedef enum sc_res_site_e {
         }                                           \
     } while (0)
 
-#define SC_RES_CTNT_T_SHIFT  0
-#define SC_RES_CTNT_T_MASK   0XFF
-typedef enum sc_res_ctnt_e {
-    SC_RES_CTNT_TEXT_HTML = 0,
-    SC_RES_CTNT_TEXT_M3U8,
-    SC_RES_CTNT_VIDEO_FLV,
-    SC_RES_CTNT_VIDEO_MP4,
+#define SC_RES_MIME_T_SHIFT  0
+#define SC_RES_MIME_T_MASK   0XFF
+typedef enum sc_res_mime_e {
+    SC_RES_MIME_TEXT_HTML = 0,
+    SC_RES_MIME_TEXT_M3U8,
+    SC_RES_MIME_VIDEO_FLV,
+    SC_RES_MIME_VIDEO_MP4,
 
-    SC_RES_CTNT_NOT_CARE,
+    SC_RES_MIME_NOT_CARE,
 
-    SC_RES_CTNT_TYPE_MAX,           /* MUST <= 255 */
-} sc_res_ctnt_t;
-#define sc_res_set_content_t(ri, type)                       \
+    SC_RES_MIME_TYPE_MAX,           /* MUST <= 255 */
+} sc_res_mime_t;
+#define sc_res_set_mime_t(ri, type)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ (SC_RES_CTNT_T_MASK << SC_RES_CTNT_T_SHIFT)); \
-            (ri)->flag |= (((type) & SC_RES_CTNT_T_MASK) << SC_RES_CTNT_T_SHIFT); \
+            (ri)->flag &= ((~0UL) ^ (SC_RES_MIME_T_MASK << SC_RES_MIME_T_SHIFT)); \
+            (ri)->flag |= (((type) & SC_RES_MIME_T_MASK) << SC_RES_MIME_T_SHIFT); \
         }                                           \
     } while (0)
 
@@ -340,8 +340,8 @@ static inline int sc_res_is_flv(sc_res_info_t *ri)
     int type;
 
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
-        return (type == SC_RES_CTNT_VIDEO_FLV);
+        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
+        return (type == SC_RES_MIME_VIDEO_FLV);
     }
 
     return 0;
@@ -351,8 +351,8 @@ static inline int sc_res_is_mp4(sc_res_info_t *ri)
     int type;
 
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
-        return (type == SC_RES_CTNT_VIDEO_MP4);
+        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
+        return (type == SC_RES_MIME_VIDEO_MP4);
     }
 
     return 0;
@@ -362,8 +362,8 @@ static inline int sc_res_is_html(sc_res_info_t *ri)
     int type;
 
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
-        return (type == SC_RES_CTNT_TEXT_HTML);
+        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
+        return (type == SC_RES_MIME_TEXT_HTML);
     }
 
     return 0;
@@ -373,8 +373,8 @@ static inline int sc_res_is_m3u8(sc_res_info_t *ri)
     int type;
 
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_CTNT_T_SHIFT) & SC_RES_CTNT_T_MASK;
-        return (type == SC_RES_CTNT_TEXT_M3U8);
+        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
+        return (type == SC_RES_MIME_TEXT_M3U8);
     }
 
     return 0;

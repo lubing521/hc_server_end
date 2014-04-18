@@ -6,50 +6,50 @@ sc_res_list_t *sc_res_info_list = NULL;
 int sc_res_share_mem_shmid = -1;
 
 /*
- * zhaoyao XXX: content type suffix MUST be at the end of str.
+ * zhaoyao XXX: mime type suffix MUST be at the end of str.
  */
-sc_res_ctnt_t sc_res_content_type_obtain(char *str, int care_type)
+sc_res_mime_t sc_res_mime_type_obtain(char *str, int care_type)
 {
     char *p;
     int len;
 
     if (!care_type) {
-        return SC_RES_CTNT_NOT_CARE;
+        return SC_RES_MIME_NOT_CARE;
     }
 
     if (str == NULL) {
         hc_log_error("Invalid input");
-        return SC_RES_CTNT_TYPE_MAX;
+        return SC_RES_MIME_TYPE_MAX;
     }
 
     len = strlen(str);
     if (len < 3) {
         hc_log_error("Invalid input: %s", str);
-        return SC_RES_CTNT_TYPE_MAX;
+        return SC_RES_MIME_TYPE_MAX;
     }
 
     len = len - 3;
     p = str + len;
     if (strncmp(p, VIDEO_FLV_SUFFIX, VIDEO_FLV_SUFFIX_LEN) == 0) {
-        return SC_RES_CTNT_VIDEO_FLV;
+        return SC_RES_MIME_VIDEO_FLV;
     }
     if (strncmp(p, VIDEO_MP4_SUFFIX, VIDEO_MP4_SUFFIX_LEN) == 0) {
-        return SC_RES_CTNT_VIDEO_MP4;
+        return SC_RES_MIME_VIDEO_MP4;
     }
 
     len = strlen(str);
     len = len - 4;
     p = str + len;
     if (strncmp(p, TEXT_HTML_SUFFIX, TEXT_HTML_SUFFIX_LEN) == 0) {
-        return SC_RES_CTNT_TEXT_HTML;
+        return SC_RES_MIME_TEXT_HTML;
     }
     if (strncmp(p, TEXT_M3U8_SUFFIX, TEXT_M3U8_SUFFIX_LEN) == 0) {
-        return SC_RES_CTNT_TEXT_M3U8;
+        return SC_RES_MIME_TEXT_M3U8;
     }
 
-    hc_log_error("Unknown content type: %s", str);
+    hc_log_error("Unknown mime type: %s", str);
 
-    return SC_RES_CTNT_TYPE_MAX;
+    return SC_RES_MIME_TYPE_MAX;
 }
 
 /*
@@ -447,7 +447,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **pt
 {
     int len, ret;
     sc_res_info_ctnt_t *normal;
-    sc_res_ctnt_t content_type;
+    sc_res_mime_t mime_type;
 
     if (rl == NULL || url == NULL) {
         hc_log_error("invalid input");
@@ -482,8 +482,8 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **pt
         goto error;
     }
 
-    content_type = sc_res_content_type_obtain(url, 1);
-    sc_res_set_content_t(&normal->common, content_type);
+    mime_type = sc_res_mime_type_obtain(url, 1);
+    sc_res_set_mime_t(&normal->common, mime_type);
 
     ret = sc_res_info_gen_ctnt_local_path(normal);
     if (ret != 0) {
@@ -506,7 +506,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
 {
     int len, ret;
     sc_res_info_mgmt_t *origin;
-    sc_res_ctnt_t content_type;
+    sc_res_mime_t mime_type;
 
     if (rl == NULL || url == NULL) {
         return -1;
@@ -540,8 +540,8 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
         goto error;
     }
 
-    content_type = sc_res_content_type_obtain(url, 1);
-    sc_res_set_content_t(&origin->common, content_type);
+    mime_type = sc_res_mime_type_obtain(url, 1);
+    sc_res_set_mime_t(&origin->common, mime_type);
 
     if (ptr_ret != NULL) {
         *ptr_ret = origin;
@@ -561,7 +561,7 @@ int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
 {
     int len, ret;
     sc_res_info_mgmt_t *ctl_ld;
-    sc_res_ctnt_t content_type;
+    sc_res_mime_t mime_type;
 
     if (rl == NULL || url == NULL) {
         return -1;
@@ -595,8 +595,8 @@ int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
         goto error;
     }
 
-    content_type = sc_res_content_type_obtain(url, 0);
-    sc_res_set_content_t(&ctl_ld->common, content_type);
+    mime_type = sc_res_mime_type_obtain(url, 0);
+    sc_res_set_mime_t(&ctl_ld->common, mime_type);
 
     if (ptr_ret != NULL) {
         *ptr_ret = ctl_ld;
@@ -616,7 +616,7 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
 {
     int len, ret;
     sc_res_info_ctnt_t *parsed;
-    sc_res_ctnt_t content_type;
+    sc_res_mime_t mime_type;
 
     if (rl == NULL || origin == NULL || url == NULL) {
         return -1;
@@ -645,8 +645,8 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
 #endif
     /* zhaoyao XXX: inherit site at very first time */
     sc_res_inherit_site(origin, parsed);
-    content_type = sc_res_content_type_obtain(url, 1);
-    sc_res_set_content_t(&parsed->common, content_type);
+    mime_type = sc_res_mime_type_obtain(url, 1);
+    sc_res_set_mime_t(&parsed->common, mime_type);
 
     ret = sc_res_info_gen_ctnt_local_path(parsed);
     if (ret != 0) {
@@ -681,7 +681,7 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
 {
     int len, ret;
     sc_res_info_ctnt_t *loaded;
-    sc_res_ctnt_t content_type;
+    sc_res_mime_t mime_type;
     char old_url[HTTP_URL_MAX_LEN], *lp;
 
     if (rl == NULL || ctl_ld == NULL || fpath == NULL) {
@@ -732,8 +732,8 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
 #endif
     /* zhaoyao XXX: inherit site at very first time */
     sc_res_inherit_site(ctl_ld, loaded);
-    content_type = sc_res_content_type_obtain(old_url, 1);
-    sc_res_set_content_t(&loaded->common, content_type);
+    mime_type = sc_res_mime_type_obtain(old_url, 1);
+    sc_res_set_mime_t(&loaded->common, mime_type);
 
     /* zhaoyao XXX: 本地文件当然是已经stored了。 */
     sc_res_set_stored(&loaded->common);
