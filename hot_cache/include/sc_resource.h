@@ -432,8 +432,7 @@ int sc_res_gen_origin_url(char *req_url, char *origin_url);
 int sc_res_url_to_local_path_default(char *url, char *local_path, int len);
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
 int sc_res_add_ri_url(sc_res_info_t *ri);
-int sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded, sc_res_info_ctnt_t *parsed);
-int sc_res_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctnt_t *ld);
+hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ctnt_t *parsed);
 
 #endif /* __SC_RESOURCE_H__ */
 

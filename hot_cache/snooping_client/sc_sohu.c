@@ -123,6 +123,30 @@ int sc_sohu_gen_origin_url(char *req_url, char *origin_url)
     return 0;
 }
 
+static hc_result_t sc_sohu_handle_cached(sc_res_info_ctnt_t *parsed)
+{
+    sc_res_info_mgmt_t *sohu_ctl_ld;
+    hc_result_t ret;
+
+    if (parsed == NULL) {
+        hc_log_error("invalid input");
+        return HC_ERR_INVALID;
+    }
+
+    sohu_ctl_ld = sc_ld_obtain_ctl_ld_sohu();
+    if (sohu_ctl_ld == NULL) {
+        hc_log_error("miss sohu ctl_ld");
+        return HC_ERR_INTERNAL;
+    }
+
+    ret = sc_res_info_handle_cached(sohu_ctl_ld, parsed);
+    if (ret != HC_SUCCESS) {
+        hc_log_error("failed");
+    }
+
+    return ret;
+}
+
 int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 {
     char response[BUFFER_LEN];
@@ -164,6 +188,11 @@ int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 #endif
 
     ret = sc_ngx_download(real_url, parsed->localpath);
+    if (ret == HC_ERR_EXISTS) {
+        /* zhaoyao XXX TODO: 错误代码需要改进 */
+        ret = sc_sohu_handle_cached(parsed);
+    }
+
     if (ret < 0) {
         hc_log_error("url %s inform Nginx failed", real_url);
         sc_res_set_i_fail(&parsed->common);

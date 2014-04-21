@@ -187,65 +187,28 @@ out:
     return ret;
 }
 
-/*
- * zhaoyao XXX: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
- */
-static int sc_yk_handle_cached(sc_res_info_ctnt_t *parsed)
+static hc_result_t sc_yk_handle_cached(sc_res_info_ctnt_t *parsed)
 {
     sc_res_info_mgmt_t *yk_ctl_ld;
-    sc_res_info_ctnt_t *ld, *pre_ld;
-    char *vid, *p, *url;
-    int url_len, ret;
+    hc_result_t ret;
 
     if (parsed == NULL) {
         hc_log_error("invalid input");
-        return -1;
+        return HC_ERR_INVALID;
     }
 
     yk_ctl_ld = sc_ld_obtain_ctl_ld_youku();
     if (yk_ctl_ld == NULL) {
         hc_log_error("miss youku ctl_ld");
-        return -1;
+        return HC_ERR_INTERNAL;
     }
 
-    url = parsed->common.url;
-    url_len = strlen(url);
-    for (p = url + url_len - 1; *p != '/' && p > url; p--) {
-        ;
-    }
-    if (*p != '/') {
-        hc_log_error("invalid url: %s", url);
-        return -1;
+    ret = sc_res_info_handle_cached(yk_ctl_ld, parsed);
+    if (ret != HC_SUCCESS) {
+        hc_log_error("failed");
     }
 
-    vid = p + 1;
-
-    for (pre_ld = NULL, ld = yk_ctl_ld->child; ld != NULL; ) {
-        if (strstr(ld->common.url, vid) != NULL) {
-            break;
-        }
-        pre_ld = ld;
-        ld = ld->siblings;
-    }
-    if (ld == NULL) {
-        /* zhaoyao XXX: 这种情况比较特殊，可能是设备运行很长时间，且服务器中途删除过资源并重启过。 */
-        hc_log_error("do not find corresponding loaded ri, url: %s", url);
-        return -1;
-    }
-
-    ret = sc_res_dup_loaded_to_parsed(ld, parsed);
-    if (ret != 0) {
-        hc_log_error("copy information from loaded to parsed failed, url: %s", url);
-        return -1;
-    }
-
-    ret = sc_res_remove_loaded(pre_ld, ld);
-    if (ret != 0) {
-        hc_log_error("remove loaded failed, url: %s", url);
-        return -1;
-    }
-
-    return 0;
+    return ret;
 }
 
 int sc_youku_download(sc_res_info_ctnt_t *parsed)

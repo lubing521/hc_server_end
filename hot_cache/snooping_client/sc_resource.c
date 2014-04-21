@@ -761,10 +761,11 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
 //    return -1;
 }
 
-int sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded, sc_res_info_ctnt_t *parsed)
+static hc_result_t sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded,
+                                               sc_res_info_ctnt_t *parsed)
 {
     if (loaded == NULL || parsed == NULL) {
-        return -1;
+        return HC_ERR_INVALID;
     }
 
 #if DEBUG
@@ -796,48 +797,102 @@ int sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded, sc_res_info_ctnt_t *
         sc_res_set_notify(&parsed->common);
     }
 
-    return 0;
+    return HC_SUCCESS;
 }
 
-int sc_res_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctnt_t *ld)
+static hc_result_t sc_res_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctnt_t *ld)
 {
     sc_res_info_mgmt_t *ctl_ld;
 
     if (ld == NULL) {
-        return -1;
+        return HC_ERR_INVALID;
     }
 
     ctl_ld = ld->parent;
     if (ctl_ld == NULL) {
         hc_log_error("loaded has no parent");
-        return -1;
+        return HC_ERR_INTERNAL;
     }
 
     if (pre == NULL) {
         if (ctl_ld->child_cnt != 1) {
             hc_log_error("invalid pre, ctl_ld has %lu child(ren)", ctl_ld->child_cnt);
-            return -1;
+            return HC_ERR_INTERNAL;
         }
 
         ctl_ld->child = NULL;
         ctl_ld->child_cnt = 0;
         sc_res_info_del(sc_res_info_list, &ld->common);
 
-        return 0;
+        return HC_SUCCESS;
     }
 
     if (ctl_ld->child_cnt < 2) {
         hc_log_error("ctl_ld has %lu child(ren), whild pre is not NULL", ctl_ld->child_cnt);
-        return -1;
+        return HC_ERR_INTERNAL;
     }
 
     pre->siblings = ld->siblings;
     ctl_ld->child_cnt--;
     sc_res_info_del(sc_res_info_list, &ld->common);
 
-    return 0;
+    return HC_SUCCESS;
 }
 
+/*
+ * zhaoyao XXX: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
+ */
+hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ctnt_t *parsed)
+{
+    sc_res_info_ctnt_t *ld, *pre_ld;
+    char *vid, *p, *url;
+    int url_len;
+    hc_result_t ret;
+
+    if (ctl_ld == NULL || parsed == NULL) {
+        hc_log_error("invalid input");
+        return HC_ERR_INVALID;
+    }
+
+    url = parsed->common.url;
+    url_len = strlen(url);
+    for (p = url + url_len - 1; *p != '/' && p > url; p--) {
+        ;
+    }
+    if (*p != '/') {
+        hc_log_error("invalid url: %s", url);
+        return HC_ERR_INTERNAL;
+    }
+
+    vid = p + 1;
+
+    for (pre_ld = NULL, ld = ctl_ld->child; ld != NULL; ) {
+        if (strstr(ld->common.url, vid) != NULL) {
+            break;
+        }
+        pre_ld = ld;
+        ld = ld->siblings;
+    }
+    if (ld == NULL) {
+        /* zhaoyao XXX: 这种情况比较特殊，可能是设备运行很长时间，且服务器中途删除过资源并重启过。 */
+        hc_log_error("do not find corresponding loaded ri, url: %s", url);
+        return HC_ERR_INTERNAL;
+    }
+
+    ret = sc_res_dup_loaded_to_parsed(ld, parsed);
+    if (ret != HC_SUCCESS) {
+        hc_log_error("copy information from loaded to parsed failed, url: %s", url);
+        return ret;
+    }
+
+    ret = sc_res_remove_loaded(pre_ld, ld);
+    if (ret != HC_SUCCESS) {
+        hc_log_error("remove loaded failed, url: %s", url);
+        return ret;
+    }
+
+    return HC_SUCCESS;
+}
 
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
 {
