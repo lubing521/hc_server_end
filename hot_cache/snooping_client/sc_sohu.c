@@ -169,6 +169,14 @@ int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 
     if (status == 301) {
 //            hc_log_info("get response success:\n%s", response);
+    } else if (status == 302 && strstr(response, "Location: http://20.0.0.99:8080")) {
+        /* zhaoyao TODO: 正确的判断是否被设备重定向 */
+        ret = sc_sohu_handle_cached(parsed);
+        if (ret == HC_SUCCESS) {
+            hc_log_info("resource is already cached, dup it to parsed, url: %s", parsed->common.url);
+            return ret;
+        }
+        hc_log_error("handle cached failed, uses nginx download anyway...");
     } else {
         hc_log_error("file_url response status code %d:\n%s", status, response);
         return -1;
@@ -188,10 +196,6 @@ int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 #endif
 
     ret = sc_ngx_download(real_url, parsed->localpath);
-    if (ret == HC_ERR_EXISTS) {
-        /* zhaoyao XXX TODO: 错误代码需要改进 */
-        ret = sc_sohu_handle_cached(parsed);
-    }
 
     if (ret < 0) {
         hc_log_error("url %s inform Nginx failed", real_url);
