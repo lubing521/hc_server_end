@@ -76,6 +76,20 @@ typedef int bool;
         fprintf(stderr, "*ERROR* %s[%d]: " fmt "\n", __func__, __LINE__, ##arg); \
     } while (0)
 
+/**
+ * Hot Cache operation results.
+ */
+typedef enum hc_result_e {
+    HC_SUCCESS          =  0,   /* Success */
+    HC_ERR_EXOTIC       = -1,   /* Failure not from hot-cache application, e.g. system call ... */
+    HC_ERR_RESOURCES    = -2,   /* Memory resource request failed */
+    HC_ERR_INVALID      = -3,   /* Invalid input arguments */
+    HC_ERR_INTERNAL     = -4,   /* Internal error of Hot Cache application */
+    HC_ERR_NOTFOUND     = -5,   /* Data not found */
+    HC_ERR_EXISTS       = -6,   /* Already exist (be the same) */
+    HC_ERR_CONFLICT     = -7,   /* Already exist (not the same) */
+} hc_result_t;
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
