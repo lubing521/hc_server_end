@@ -8,7 +8,7 @@
 #ifndef _NGX_CORE_H_INCLUDED_
 #define _NGX_CORE_H_INCLUDED_
 
-#include <app/sc_header.h>
+#include <sc_header.h>
 extern sc_res_list_t *sc_resource_info_list;
 
 

@@ -74,7 +74,7 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t  *clcf;
 
     off_t                      real_offset, pre_kf2_size = 0;
-    sc_res_info_active_t      *curr;
+    sc_res_info_ctnt_t        *curr;
     int                        j;
     char                       fpath[512];
 
@@ -193,8 +193,8 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                  * zhaoyao XXX: all we treat is YOUKU .flv video.
                  */
                 if (sc_resource_info_list != NULL) {
-                    for (j = 0; j < SC_RES_INFO_NUM_MAX_ACTIVE; j++) {
-                        curr = &sc_resource_info_list->active[j];
+                    for (j = 0; j < SC_RES_INFO_NUM_MAX_CTNT; j++) {
+                        curr = &sc_resource_info_list->ctnt[j];
                         if (!sc_res_is_kf_crt(&curr->common)) {
                             continue;
                         }

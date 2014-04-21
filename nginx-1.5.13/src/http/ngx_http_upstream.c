@@ -3092,7 +3092,7 @@ ngx_http_upstream_process_upstream(ngx_http_request_t *r,
 
 
 static ngx_int_t
-ngx_http_upstream_sc_res_match_localpath(sc_res_info_active_t *active, char *local_path, size_t len)
+ngx_http_upstream_sc_res_match_localpath(sc_res_info_ctnt_t *active, char *local_path, size_t len)
 {
     if (active != NULL && local_path != NULL) {
         if (ngx_strncmp(active->localpath, local_path, len) == 0) {
@@ -3134,12 +3134,12 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                     ngx_log_stderr(NGX_OK, "****** %s store upstream *** data *** success", __func__);
                     start = ngx_strstr(r->args.data, "localpath=");
                     if (r->getfile && sc_resource_info_list != NULL && start != NULL) {
-                        sc_res_info_active_t *curr;
+                        sc_res_info_ctnt_t *curr;
                         int i;
                         start += 10;
                         len = r->args.len + (size_t)r->args.data - (size_t)start;
-                        for (i = 0; i < SC_RES_INFO_NUM_MAX_ACTIVE; i++) {
-                            curr = &sc_resource_info_list->active[i];
+                        for (i = 0; i < SC_RES_INFO_NUM_MAX_CTNT; i++) {
+                            curr = &sc_resource_info_list->ctnt[i];
                             if (ngx_http_upstream_sc_res_match_localpath(curr, start, len)) {
                                 if (sc_res_is_stored(&curr->common)) {
                                     ngx_log_stderr(NGX_OK, "***** %s WARNING re-store URL:\n\t%V",
@@ -3150,7 +3150,7 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                                 break;
                             }
                         }
-                        if (i == SC_RES_INFO_NUM_MAX_ACTIVE) {
+                        if (i == SC_RES_INFO_NUM_MAX_CTNT) {
                             ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
                                                         __func__, &r->args);
                         }
@@ -3530,12 +3530,12 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         size_t len;
         start = ngx_strstr(r->args.data, "localpath=");
         if (r->getfile && sc_resource_info_list != NULL && start != NULL) {
-            sc_res_info_active_t *curr;
+            sc_res_info_ctnt_t *curr;
             int i;
             start += 10;
             len = r->args.len + (size_t)r->args.data - (size_t)start;
-            for (i = 0; i < SC_RES_INFO_NUM_MAX_ACTIVE; i++) {
-                curr = &sc_resource_info_list->active[i];
+            for (i = 0; i < SC_RES_INFO_NUM_MAX_CTNT; i++) {
+                curr = &sc_resource_info_list->ctnt[i];
                 if (ngx_http_upstream_sc_res_match_localpath(curr, start, len)) {
                     if (sc_res_is_stored(&curr->common)) {
                         ngx_log_stderr(NGX_OK, "***** %s WARNING re-stored URL:\n\t%V",
@@ -3546,7 +3546,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                     break;
                 }
             }
-            if (i == SC_RES_INFO_NUM_MAX_ACTIVE) {
+            if (i == SC_RES_INFO_NUM_MAX_CTNT) {
                 ngx_log_stderr(NGX_OK, "***** %s FATAL ERROR do not find URL's ri\n\t%V\n",
                                             __func__, &r->args);
             }
