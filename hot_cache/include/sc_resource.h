@@ -21,7 +21,7 @@
 #include "common.h"
 #include "sc_header.h"
 
-#define SC_RES_SHARE_MEM_ID        65513
+#define SC_RES_SHARE_MEM_ID        65511
 #define SC_RES_SHARE_MEM_SIZE      (sizeof(sc_res_list_t))
 #define SC_RES_SHARE_MEM_MODE      0666
 

@@ -13,7 +13,7 @@
 #ifndef __HTTPSNOOPING_H__
 #define __HTTPSNOOPING_H__
 
-#define HTTP_SP_URL_LEN_MAX 512
+#define HTTP_SP_URL_LEN_MAX 600
 
 #define HTTP_SP_NGX_SERVER_MAX (4)
 #define HTTP_SP2C_PORT (9999)
