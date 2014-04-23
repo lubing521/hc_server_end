@@ -3,6 +3,13 @@
 #include "http-snooping.h"
 #include "net_util.h"
 
+static void sc_init_advertisement()
+{
+    sc_snooping_do_add(-1, "ad.api.3g.youku.com/adv");
+    sc_snooping_do_add(-1, "valf.atm.youku.com/vf");
+    sc_snooping_do_add(-1, "m.aty.sohu.com/m");
+}
+
 int main(int argc, char *argv[])
 {
     int err = 0, ret;
@@ -43,6 +50,8 @@ int main(int argc, char *argv[])
         hc_log_error("In Youku VF initial procedure");
     }
 #endif
+
+    (void)sc_init_advertisement();
 
     sa.sin_family = AF_INET;
     sa.sin_port = htons((uint16_t)HTTP_SP2C_PORT);
