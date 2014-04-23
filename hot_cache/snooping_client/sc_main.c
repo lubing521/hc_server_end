@@ -36,11 +36,13 @@ int main(int argc, char *argv[])
         hc_log_error("Load stored local resources failed");
     }
 
+#if 0
     /* zhaoyao XXX: 初始化优酷广告 */
     ret = sc_yk_init_vf_adv();
     if (ret != 0) {
         hc_log_error("In Youku VF initial procedure");
     }
+#endif
 
     sa.sin_family = AF_INET;
     sa.sin_port = htons((uint16_t)HTTP_SP2C_PORT);

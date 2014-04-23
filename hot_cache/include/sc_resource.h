@@ -21,12 +21,12 @@
 #include "common.h"
 #include "sc_header.h"
 
-#define SC_RES_SHARE_MEM_ID        65511
+#define SC_RES_SHARE_MEM_ID        65510
 #define SC_RES_SHARE_MEM_SIZE      (sizeof(sc_res_list_t))
 #define SC_RES_SHARE_MEM_MODE      0666
 
-#define SC_RES_INFO_NUM_MAX_MGMT   (0x1 << 8)
-#define SC_RES_INFO_NUM_MAX_CTNT   (0x1 << 10)
+#define SC_RES_INFO_NUM_MAX_MGMT   (0x1 << 10)
+#define SC_RES_INFO_NUM_MAX_CTNT   (0x1 << 12)
 
 #define SC_RES_LOCAL_PATH_MAX_LEN  256
 

@@ -815,13 +815,17 @@ static hc_result_t sc_res_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctn
     }
 
     if (pre == NULL) {
-        if (ctl_ld->child_cnt != 1) {
+        if (ctl_ld->child != ld) {
             hc_log_error("invalid pre, ctl_ld has %lu child(ren)", ctl_ld->child_cnt);
             return HC_ERR_INTERNAL;
         }
+        if (ctl_ld->child_cnt == 0) {
+            hc_log_error("FATAL, ctl_ld child count is 0");
+            return HC_ERR_INTERNAL;
+        }
 
-        ctl_ld->child = NULL;
-        ctl_ld->child_cnt = 0;
+        ctl_ld->child = ld->siblings;
+        ctl_ld->child_cnt--;
         sc_res_info_del(sc_res_info_list, &ld->common);
 
         return HC_SUCCESS;
