@@ -58,6 +58,162 @@ ngx_module_t  ngx_http_flv_module = {
 };
 
 
+#define FLV_METADATA_READ_LEN           (1 << 14) /* 16KB*/
+#define ngx_http_flv_is_script_tag(val) ((val) == 0x12)
+#define ngx_http_flv_is_video_tag(val)  ((val) == 0x09)
+#define ngx_http_flv_is_audio_tag(val)  ((val) == 0x08)
+
+
+/* 查找flv视频中，tag的位置 
+ * tag_index, tag在buf中的位置
+ * tag_size, tag的大小, 含11字节的头部长度
+ * 返回NGX_ERROR，查找失败 */
+static ngx_int_t
+ngx_http_flv_kf_find_tag_pos(u_char *buf, ssize_t buf_size, ssize_t *tag_size, ngx_uint_t *tag_index)
+{
+	ngx_uint_t i;
+    ngx_uint_t tag_start_pos, tag_end_pos;
+    ngx_int_t ret = NGX_ERROR;
+
+    if (buf == NULL) {
+        return NGX_ERROR;
+    }
+
+	i = 0;
+	while (i < (ngx_uint_t)buf_size) {
+		if (ngx_http_flv_is_script_tag(buf[i]) ||
+            ngx_http_flv_is_audio_tag(buf[i])  ||
+            ngx_http_flv_is_video_tag(buf[i])) {
+			if (buf[i + 8] == 0 && 
+                buf[i + 9] == 0 && 
+                buf[i + 10] == 0) {//判断流ID是否为0
+                tag_start_pos = (buf[i + 1] << 16) + (buf[i + 2] << 8) + (buf[i + 3]);
+
+				if ((i + tag_start_pos) <= (ngx_uint_t)buf_size && tag_start_pos > 0 ) {
+                    tag_end_pos = ((buf[i+tag_start_pos+1+11]) << 16) +
+                                  ((buf[i+tag_start_pos+2+11]) << 8) +
+                                  ((buf[i+tag_start_pos+3+11])) - 11;
+
+                    if (tag_start_pos == tag_end_pos) {
+                        *tag_index = i; //找到了视频tag的位置
+                        *tag_size = tag_start_pos + 11; /* 该tag的大小 */
+                        ret = NGX_OK;
+                        break;
+                    }
+                }
+			}
+		}
+
+		i++;
+	}
+	
+	return ret;
+}
+
+static ngx_int_t
+ngx_http_flv_kf_compute_offset(u_char *buf, ssize_t buf_size, off_t start, off_t *offset, off_t *pre_kf2_size2)
+{
+	ngx_uint_t tag_index, keyframe_total, i, start_kf_num;
+    ssize_t tag_size;
+    u_char *kf_ptr, *p, *fpos_start;
+    //u_char *tinfo_start;
+    /* zhaoyao: 计算用的临时值 */
+    u_char switch_buf32[4], switch_buf64[8];
+    uint64_t temp64;
+    double dd;
+
+    if (ngx_http_flv_kf_find_tag_pos(buf, buf_size, &tag_size, &tag_index) != NGX_OK) {
+        ngx_log_stderr(NGX_OK, "%s: ngx_http_flv_kf_find_tag_pos failed\n", __func__);
+        return NGX_ERROR;
+    }
+
+    if (!ngx_http_flv_is_script_tag(buf[tag_index])) {
+        return NGX_ERROR;
+    }
+
+    kf_ptr = (u_char *)ngx_strstr(buf + tag_index, "keyframes");
+    if (kf_ptr == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = kf_ptr + 26;
+    /* 03 00 0D + filepositions + 0A + 4bytes的长度 */
+    ngx_memzero(switch_buf32, sizeof(switch_buf32));
+    /* 读取出来的数据是大端序 */
+    ngx_memcpy(switch_buf32, p, 4);
+    /* 读取keyframe 的个数 */
+    keyframe_total = *((ngx_uint_t *)(&switch_buf32));
+    keyframe_total = be32toh(keyframe_total);
+
+    p = p + 4;
+    fpos_start = p;
+    /* filepositions信息 */
+    p = fpos_start + (1 + 8) * keyframe_total;
+    /* times信息 */
+    p = p + 12;
+//    tinfo_start = p;
+
+    for (i = 0; i < keyframe_total; i++) {
+        p++;   /* 类型1bytes */
+        ngx_memzero(switch_buf64, sizeof(switch_buf64));
+        /* 8bytes */
+        ngx_memcpy(switch_buf64, p, 8);
+        p = p + 8;
+
+        temp64 = be64toh(*(uint64_t *)&switch_buf64);
+        dd = *(double *)&temp64;
+        if (start < (off_t)dd) {
+            break;
+        }
+    }
+    
+    if (i == 0) {
+        ngx_log_stderr(NGX_OK, "%s: start is ahead of first keyframe\n", __func__);
+        start_kf_num = 0;
+    } else {
+        start_kf_num = i - 1;
+    }
+
+    p = fpos_start + (1 + 8) * start_kf_num;
+    p++;
+    ngx_memzero(switch_buf64, sizeof(switch_buf64));
+    ngx_memcpy(switch_buf64, p, 8);
+    temp64 = be64toh(*(uint64_t *)&switch_buf64);
+    dd = *(double *)&temp64;
+    *offset = (off_t)dd;
+
+    p = fpos_start + (1 + 8) * 1;
+    p++;
+    ngx_memzero(switch_buf64, sizeof(switch_buf64));
+    ngx_memcpy(switch_buf64, p, 8);
+    temp64 = be64toh(*(uint64_t *)&switch_buf64);
+    dd = *(double *)&temp64;
+    *pre_kf2_size2 = (off_t)dd;
+
+	return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_flv_time_to_offset(ngx_file_t *file, off_t start, off_t *offset, off_t *pre_kf2_size2)
+{
+    ssize_t                    n;
+    u_char                     meta_data[FLV_METADATA_READ_LEN];
+
+    ngx_memzero(meta_data, FLV_METADATA_READ_LEN);
+    n = ngx_read_file(file, meta_data, sizeof(meta_data), 0);
+    if (n == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_http_flv_kf_compute_offset(meta_data, n, start, offset, pre_kf2_size2) != NGX_OK) {
+        ngx_log_stderr(NGX_OK, "%s ERROR: start = %O\n", __func__, start);
+        return NGX_ERROR;
+    } else {
+        return NGX_OK;
+    }
+}
+
+
 static ngx_int_t
 ngx_http_flv_handler(ngx_http_request_t *r)
 {
@@ -187,6 +343,26 @@ ngx_http_flv_handler(ngx_http_request_t *r)
             }
 
             if (start) {
+                ngx_file_t *file;
+                off_t offset, pre_kf2_size2;
+                ngx_int_t ret;
+
+                file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
+                if (file == NULL) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+                file->fd = of.fd;
+                file->name = path;
+                file->log = r->connection->log;
+                file->directio = of.is_directio;
+                ret = ngx_http_flv_time_to_offset(file, start, &offset, &pre_kf2_size2);
+                ngx_pfree(r->pool, file);
+                if (ret == NGX_ERROR) {
+                    ngx_log_stderr(NGX_OK, "*** %s ***: ngx_http_flv_time_to_offset error\n", __func__);
+                } else {
+                    ngx_log_stderr(NGX_OK, "*** %s ***: start = %O, offset = %O, pre_kf2_size2 = %O\n", __func__, start, offset, pre_kf2_size2);
+                }
+
                 len = sizeof(ngx_flv_header) - 1 + len - start;
                 i = 0;
                 /*
