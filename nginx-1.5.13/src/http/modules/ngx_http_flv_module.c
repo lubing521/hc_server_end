@@ -123,7 +123,7 @@ ngx_http_flv_kf_compute_offset(u_char *buf, ssize_t buf_size, off_t start, off_t
     double dd;
 
     if (ngx_http_flv_kf_find_tag_pos(buf, buf_size, &tag_size, &tag_index) != NGX_OK) {
-        ngx_log_stderr(NGX_OK, "%s: ngx_http_flv_kf_find_tag_pos failed\n", __func__);
+        ngx_log_stderr(NGX_OK, "%s: ngx_http_flv_kf_find_tag_pos failed, SHOULD expand read buffer size\n", __func__);
         return NGX_ERROR;
     }
 
