@@ -1,3 +1,16 @@
+/*
+ * Copyright(C) 2014 Ruijie Network. All rights reserved.
+ */
+/*
+ * os_util.c
+ * Original Author: zhaoyao@ruijie.com.cn, 2014-04-28
+ *
+ * ATTENTION:
+ *     1. xxx
+ *
+ * History
+ */
+
 #include "os_util.h"
 #include "sc_header.h"
 

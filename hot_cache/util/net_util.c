@@ -2,10 +2,10 @@
  * Copyright(C) 2014 Ruijie Network. All rights reserved.
  */
 /*
- * util.c
+ * net_util.c
  * Original Author: zhaoyao@ruijie.com.cn, 2014-03-11
  *
- * Hot cache application's common utilities codes file.
+ * Hot cache application's common network utilities codes file.
  *
  * ATTENTION:
  *     1. xxx

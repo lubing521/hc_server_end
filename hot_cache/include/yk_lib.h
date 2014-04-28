@@ -2,7 +2,7 @@
  * Copyright(C) 2014 Ruijie Network. All rights reserved.
  */
 /*
- * header.h
+ * yk_lib.h
  * Original Author: yaoshangping@ruijie.com.cn,
  *                  zhaoyao@ruijie.com.cn,      2014-03-11
  *

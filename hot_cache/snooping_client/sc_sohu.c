@@ -1,3 +1,16 @@
+/*
+ * Copyright(C) 2014 Ruijie Network. All rights reserved.
+ */
+/*
+ * sc_sohu.c
+ * Original Author: zhaoyao@ruijie.com.cn, 2014-04-28
+ *
+ * ATTENTION:
+ *     1. xxx
+ *
+ * History
+ */
+
 #include "common.h"
 #include "sc_header.h"
 #include "net_util.h"

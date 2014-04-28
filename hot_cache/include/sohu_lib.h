@@ -1,3 +1,16 @@
+/*
+ * Copyright(C) 2014 Ruijie Network. All rights reserved.
+ */
+/*
+ * sohu_lib.h
+ * Original Author: zhaoyao@ruijie.com.cn, 2014-04-28
+ *
+ * ATTENTION:
+ *     1. xxx
+ *
+ * History
+ */
+
 
 #ifndef __SOHU_LIB_H__
 #define __SOHU_LIB_H__

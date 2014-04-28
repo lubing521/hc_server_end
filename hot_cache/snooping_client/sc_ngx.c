@@ -2,7 +2,7 @@
  * Copyright(C) 2014 Ruijie Network. All rights reserved.
  */
 /*
- * getfile.c
+ * sc_ngx.c
  * Original Author: zhaoyao@ruijie.com.cn, 2014-03-11
  *
  * Send hot cache file URI to Nginx, and inform Nginx /getfile module to download corresponding

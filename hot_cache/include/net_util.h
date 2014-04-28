@@ -2,10 +2,10 @@
  * Copyright(C) 2014 Ruijie Network. All rights reserved.
  */
 /*
- * header.h
+ * net_util.h
  * Original Author: zhaoyao@ruijie.com.cn, 2014-03-11
  *
- * Hot cache application's common header file.
+ * Hot cache application's common network utilities header file.
  *
  * ATTENTION:
  *     1. xxx
