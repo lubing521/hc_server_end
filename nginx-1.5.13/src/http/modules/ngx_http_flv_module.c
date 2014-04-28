@@ -128,6 +128,19 @@ ngx_http_flv_kf_compute_offset(u_char *buf, ssize_t buf_size, off_t start, off_t
         ngx_log_stderr(NGX_OK, "%s: ngx_http_flv_kf_find_tag_pos failed\n", __func__);
         return NGX_ERROR;
     }
+    ngx_memzero(debug_print, sizeof(debug_print));
+    for (j = 0; j < 1024; j++) {
+        if ((j + 1) % 64 == 0) {
+            ngx_memzero(debug_temp, sizeof(debug_temp));
+            ngx_sprintf(debug_temp, "%x\n", *(buf + tag_index + j));
+            strcat((char *)debug_print, (char *)debug_temp);
+        } else {
+            ngx_memzero(debug_temp, sizeof(debug_temp));
+            ngx_sprintf(debug_temp, "%x ", *(buf + tag_index + j));
+            strcat((char *)debug_print, (char *)debug_temp);
+        }
+    }
+    ngx_log_stderr(NGX_OK, "%s: tag_index %u, dump buf[tag_index]:\n%s", __func__, tag_index, debug_print);
 
     if (!ngx_http_flv_is_script_tag(buf[tag_index])) {
         ngx_log_stderr(NGX_OK, "%s: %x is not script tag\n", __func__, buf[tag_index]);
