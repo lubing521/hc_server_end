@@ -115,53 +115,33 @@ ngx_http_flv_kf_compute_offset(u_char *buf, ssize_t buf_size, off_t start, off_t
 {
 	ngx_uint_t tag_index, keyframe_total, i, start_kf_num;
     ssize_t tag_size;
-    u_char *kf_ptr, *p, *fpos_start;
+    u_char *kf_ptr = NULL, *p, *fpos_start;
     //u_char *tinfo_start;
     /* zhaoyao: 计算用的临时值 */
     u_char switch_buf32[4], switch_buf64[8];
     uint64_t temp64;
     double dd;
-    ngx_uint_t j;
-    u_char debug_print[5120], debug_temp[8];
 
     if (ngx_http_flv_kf_find_tag_pos(buf, buf_size, &tag_size, &tag_index) != NGX_OK) {
         ngx_log_stderr(NGX_OK, "%s: ngx_http_flv_kf_find_tag_pos failed\n", __func__);
         return NGX_ERROR;
     }
-    ngx_memzero(debug_print, sizeof(debug_print));
-    for (j = 0; j < 1024; j++) {
-        if ((j + 1) % 64 == 0) {
-            ngx_memzero(debug_temp, sizeof(debug_temp));
-            ngx_sprintf(debug_temp, "%x\n", *(buf + tag_index + j));
-            strcat((char *)debug_print, (char *)debug_temp);
-        } else {
-            ngx_memzero(debug_temp, sizeof(debug_temp));
-            ngx_sprintf(debug_temp, "%x ", *(buf + tag_index + j));
-            strcat((char *)debug_print, (char *)debug_temp);
-        }
-    }
-    ngx_log_stderr(NGX_OK, "%s: tag_index %u, dump buf[tag_index]:\n%s", __func__, tag_index, debug_print);
 
     if (!ngx_http_flv_is_script_tag(buf[tag_index])) {
-        ngx_log_stderr(NGX_OK, "%s: %x is not script tag\n", __func__, buf[tag_index]);
+        ngx_log_stderr(NGX_OK, "%s: %xi is not script tag\n", __func__, buf[tag_index]);
         return NGX_ERROR;
     }
 
-    kf_ptr = (u_char *)ngx_strstr(buf + tag_index, "keyframes");
-    if (kf_ptr == NULL) {
-        ngx_memzero(debug_print, sizeof(debug_print));
-        for (j = 0; j < 1024; j++) {
-            if ((j + 1) % 64 == 0) {
-                ngx_memzero(debug_temp, sizeof(debug_temp));
-                ngx_sprintf(debug_temp, "%x\n", *(buf + tag_index + j));
-                strcat((char *)debug_print, (char *)debug_temp);
-            } else {
-                ngx_memzero(debug_temp, sizeof(debug_temp));
-                ngx_sprintf(debug_temp, "%x ", *(buf + tag_index + j));
-                strcat((char *)debug_print, (char *)debug_temp);
+    for (i = tag_index + 1; (ssize_t)i < buf_size; i++) {
+        if (buf[i] == 'k') {
+            kf_ptr = (u_char *)ngx_strstr(buf + i, "keyframes");
+            if (kf_ptr != NULL) {
+                break;
             }
         }
-        ngx_log_stderr(NGX_OK, "%s: not find \"keyframes\", dump info:%s\n", __func__, debug_print);
+    }
+    if (kf_ptr == NULL) {
+        ngx_log_stderr(NGX_OK, "%s: not find \"keyframes\"\n", __func__);
         return NGX_ERROR;
     }
 
