@@ -238,10 +238,9 @@ ngx_http_flv_handler(ngx_http_request_t *r)
     ngx_open_file_info_t       of;
     ngx_http_core_loc_conf_t  *clcf;
 
-    off_t                      real_offset, pre_kf2_size = 0;
-    sc_res_info_ctnt_t        *curr;
-    int                        j;
-    char                       fpath[512];
+    ngx_file_t                *file;
+    off_t                      offset, pre_kf2_size;
+    ngx_int_t                  ret;
 
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
         return NGX_HTTP_NOT_ALLOWED;
@@ -352,10 +351,6 @@ ngx_http_flv_handler(ngx_http_request_t *r)
             }
 
             if (start) {
-                ngx_file_t *file;
-                off_t offset, pre_kf2_size2;
-                ngx_int_t ret;
-
                 file = ngx_pcalloc(r->pool, sizeof(ngx_file_t));
                 if (file == NULL) {
                     return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -364,41 +359,25 @@ ngx_http_flv_handler(ngx_http_request_t *r)
                 file->name = path;
                 file->log = r->connection->log;
                 file->directio = of.is_directio;
-                ret = ngx_http_flv_time_to_offset(file, start, &offset, &pre_kf2_size2);
+                ret = ngx_http_flv_time_to_offset(file, start, &offset, &pre_kf2_size);
                 ngx_pfree(r->pool, file);
+
                 if (ret == NGX_ERROR) {
-                    ngx_log_stderr(NGX_OK, "*** %s ***: ngx_http_flv_time_to_offset error\n", __func__);
+                    ngx_log_stderr(NGX_OK, "*** %s ***: ngx_http_flv_time_to_offset error, using default operation\n", __func__);
+                    /* zhaoyao XXX: 采用默认的以字节为单位 */
+                    len = sizeof(ngx_flv_header) - 1 + len - start;
+                    pre_kf2_size = 0;
                 } else {
-                    ngx_log_stderr(NGX_OK, "*** %s ***: start = %O, offset = %O, pre_kf2_size2 = %O\n", __func__, start, offset, pre_kf2_size2);
+                    /*
+                     * zhaoyao XXX: all we treat is YOUKU .flv video, 它以时间做单位.
+                     */
+                    len = of.size - offset + pre_kf2_size;
+                    ngx_log_stderr(NGX_OK, "*** %s: start(%O), len(%O), offset(%O), file(%O), pre_kf2_size(%O)\n",
+                                                __func__, start, len, offset, of.size, pre_kf2_size);
+                    start = offset;
                 }
 
-                len = sizeof(ngx_flv_header) - 1 + len - start;
                 i = 0;
-                /*
-                 * zhaoyao XXX: all we treat is YOUKU .flv video.
-                 */
-                if (sc_resource_info_list != NULL) {
-                    for (j = 0; j < SC_RES_INFO_NUM_MAX_CTNT; j++) {
-                        curr = &sc_resource_info_list->ctnt[j];
-                        if (!sc_res_is_kf_crt(&curr->common)) {
-                            continue;
-                        }
-                        ngx_memzero(fpath, sizeof(fpath));
-                        if (sc_res_map_to_file_path(curr, fpath, sizeof(fpath)) != 0) {
-                            ngx_log_stderr(NGX_OK, "*** %s ***: sc_res_map_to_file_path error\n", __func__);
-                            break;
-                        }
-                        if (ngx_strncmp(&fpath[SC_NGX_ROOT_PATH_LEN - 1], (char *)r->uri.data, strlen(fpath) - SC_NGX_ROOT_PATH_LEN + 1) == 0) {
-                            real_offset = sc_kf_flv_seek_offset(start, curr->kf_info, curr->kf_num);
-                            pre_kf2_size = curr->kf_info[1].file_pos;
-                            len = of.size - real_offset + pre_kf2_size;
-                            ngx_log_stderr(NGX_OK, "*** %s: start(%O), len(%O), offset(%O), file(%O), pre_kf2_size(%O)\n",
-                                                    __func__, start, len, real_offset, of.size, pre_kf2_size);
-                            start = real_offset;
-                            break;
-                        }
-                    }
-                }
             }
         }
     }
