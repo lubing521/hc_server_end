@@ -772,9 +772,6 @@ static hc_result_t sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded,
     hc_log_debug("\n\tloaded: %s\n\tparsed: %s", loaded->common.url, parsed->common.url);
     hc_log_debug("loaded local path: %s", loaded->localpath);
 
-    if (sc_res_is_kf_crt(&loaded->common)) {
-        hc_log_debug("loaded flv keyframe created");
-    }
     if (sc_res_is_stored(&loaded->common)) {
         hc_log_debug("loaded is stored");
     }
@@ -784,10 +781,6 @@ static hc_result_t sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded,
 #endif
 
     memcpy(parsed->common.url, loaded->common.url, HTTP_URL_MAX_LEN);
-    if (sc_res_is_kf_crt(&loaded->common)) {
-        memcpy(parsed->kf_info, loaded->kf_info, sizeof(parsed->kf_info));
-        parsed->kf_num = loaded->kf_num;
-    }
     memcpy(parsed->localpath, loaded->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
 
     if (sc_res_is_stored(&loaded->common)) {
@@ -1174,14 +1167,6 @@ static int sc_res_list_process_ctnt(sc_res_list_t *rl)
             ret = sc_res_add_ctnt_url(curr);
             if (ret != 0) {
                 hc_log_error("inform Snooping Module add URL failed");
-                err++;
-            }
-        }
-
-        if (sc_res_is_flv(ri) && !sc_res_is_kf_crt(ri)) {
-            ret = sc_kf_flv_create_info(curr);
-            if (ret != 0) {
-                hc_log_error("create FLV key frame information failed");
                 err++;
             }
         }

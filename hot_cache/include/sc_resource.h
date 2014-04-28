@@ -93,7 +93,6 @@ typedef enum sc_res_mime_e {
 #define SC_RES_F_CTRL_D_FAIL    (0x00000200UL)   /* Resource download failed, set by Nginx, unset by SC */
 #define SC_RES_F_CTRL_I_FAIL    (0x00000400UL)   /* Inform Nginx to download failed, set and unset by SC */
 #define SC_RES_F_CTRL_NOTIFY    (0x00000800UL)   /* Stored resource URL is notified to Snooping Module */
-#define SC_RES_F_CTRL_KF_CRT    (0x00001000UL)   /* Resource's key frame information is created */
 
 typedef struct sc_res_info_s {
     unsigned long id;
@@ -135,17 +134,7 @@ typedef struct sc_res_info_ctnt_s {
 
     /* zhaoyao XXX: stored resources' stored local path, file path is from $ROOT/localpath */
     char localpath[SC_RES_LOCAL_PATH_MAX_LEN];
-
-    sc_kf_flv_info_t kf_info[SC_KF_FLV_MAX_NUM];
-    unsigned long kf_num;
 } sc_res_info_ctnt_t;
-
-#define sc_res_set_kf_crt(ri)                       \
-    do {						                    \
-        if ((ri) != NULL) {                         \
-            (ri)->flag |= SC_RES_F_CTRL_KF_CRT;  \
-        }                                           \
-    } while (0)
 
 #define sc_res_set_d_fail(ri)                       \
     do {						                    \
@@ -224,7 +213,6 @@ typedef struct sc_res_info_ctnt_s {
         sc_res_set_site((ri), SC_RES_SITE_SOHU);  \
     } while (0)
 
-#define sc_res_is_kf_crt(ri)    ((ri)->flag & SC_RES_F_CTRL_KF_CRT)
 #define sc_res_is_d_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_D_FAIL)
 #define sc_res_is_i_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_I_FAIL)
 #define sc_res_is_stored(ri)    ((ri)->flag & SC_RES_F_CTRL_STORED)

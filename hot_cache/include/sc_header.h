@@ -25,40 +25,7 @@
 #define SC_SNOOP_MOD_DEFAULT_IP_ADDR    "20.0.0.1"
 #define SC_SNOOPING_SND_RCV_BUF_LEN     1024
 
-#define SC_KF_FLV_READ_MAX              (32*1024)
-#define SC_KF_FLV_MAX_NUM               256
-#define SC_KF_FLV_LIMITED_NUM_MIN       5
-
-typedef struct sc_kf_flv_info_s {
-	unsigned int file_pos;	/* 偏移量，单位字节 */
-	unsigned int time;		/* 时间，单位秒 */
-} sc_kf_flv_info_t;
-
 #include "sc_resource.h"
-
-int sc_kf_flv_create_info(sc_res_info_ctnt_t *ctnt);
-
-/* 在关键帧列表中，根据时间查找对应的偏移量
- *@keyframe已有序，按时间从小到大
- * return对应的偏移量
- */
-static inline unsigned int sc_kf_flv_seek_offset(unsigned int targetTime,
-                                                 sc_kf_flv_info_t *keyframe,
-                                                 unsigned int key_num)
-{
-    /* 顺序查找，返回比targetTime小的最后一个值 */
-    unsigned int index;
-    unsigned int i;
-
-    for (i = 1 ; i < key_num; i++) {
-        if (keyframe[i].time > targetTime) {
-            break;
-        }
-    }
-
-    index = i - 1;
-    return keyframe[index].file_pos;
-}
 
 int sc_ngx_download(char *url, char *local_path);
 
