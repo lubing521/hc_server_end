@@ -6,6 +6,9 @@
 #define BUFLEN          64
 #define BUFLEN_L        512
 
+#define IP_ADDR_LEN_MAX     15
+#define IP_ADDR_LEN_MIN     7
+#define FILE_URL_LEN_MIN    21
 #define NGX_HTTP_GETFILE_TEMP_PATH  "getfile_temp"
 
 typedef struct {
@@ -475,7 +478,7 @@ static ngx_int_t getfile_host_is_ip_addr(const char *host)
     char asc[4] = {0};
 
     len = ngx_strlen(host);
-    if (len > 15 || len < 7) {
+    if (len > IP_ADDR_LEN_MAX || len < IP_ADDR_LEN_MIN) {
         return 0;
     }
 
@@ -543,8 +546,9 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     ngx_log_stderr(NGX_OK, "http args: \"%V\"", &r->args);
     ngx_log_stderr(NGX_OK, "http exten: \"%V\"", &r->exten);
 #endif
-    if (r->args.len <= 21) {
-        ngx_log_stderr(NGX_OK, "****** %s arguments invalid, less than 21", __func__);
+    if (r->args.len < FILE_URL_LEN_MIN) {
+        ngx_log_stderr(NGX_OK, "****** %s arguments invalid, less than %i",
+                                __func__, FILE_URL_LEN_MIN);
         return NGX_ERROR;
     }
 
@@ -565,7 +569,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
     u->store = mycf->upstream.store;
 
     r->header_only = 1; /* zhaoyao XXX: do not send response body to downstream */
-    r->getfile = 1; /* zhaoyao XXX TODO: stored file's name is from uri->args */
+    r->getfile = 1;     /* zhaoyao XXX TODO: stored file's name is from uri->args */
     
     u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
     if (u->pipe == NULL) {
@@ -580,7 +584,7 @@ static ngx_int_t ngx_http_getfile_handler(ngx_http_request_t *r)
         return NGX_ERROR;
     }
     
-    getfile_get_host_from_uri(r, host);     /* zhaoyao: host can be address or domain name */
+    getfile_get_host_from_uri(r, host);     /* zhaoyao: host can be IP address or domain name */
 
     if (getfile_host_is_ip_addr(host)) {
         /* zhaoyao: host is defined by IP address, using it directly */
