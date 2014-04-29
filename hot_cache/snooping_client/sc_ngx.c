@@ -147,10 +147,10 @@ int sc_ngx_download(char *url, char *local_path)
         ;
     } else {
         if (status == 302) {
-            if (strstr(buffer, "Location: http://20.0.0.99:8080") != NULL) {
-                /* zhaoyao XXX TODO: 这不是错误，资源已被缓存且被设备成功重定向 */
+            if (strstr(buffer, SC_REDIRECT_KEY_WORD) != NULL) {
+                /* zhaoyao XXX: 这不是错误，资源已被缓存且被设备成功重定向 */
                 hc_log_info("WARNING: resource already cached: %s", url);
-                err = HC_ERR_EXISTS;   /* zhaoyao XXX TODO: 返回HC_ERR_EXISTS不代表失败，乃告知调用者资源不需要下载了 */
+                err = HC_ERR_EXISTS;   /* zhaoyao XXX: 返回HC_ERR_EXISTS不代表失败，乃告知调用者资源不需要下载了 */
                 goto out;
             }
         }

@@ -235,7 +235,6 @@ int sc_youku_download(sc_res_info_ctnt_t *parsed)
     ret = sc_ngx_download(parsed->common.url, parsed->localpath);
 
     if (ret == HC_ERR_EXISTS) {
-        /* zhaoyao XXX TODO: 错误代码需要改进 */
         ret = sc_yk_handle_cached(parsed);
     }
     

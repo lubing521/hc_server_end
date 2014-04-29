@@ -25,6 +25,8 @@
 #define SC_SNOOP_MOD_DEFAULT_IP_ADDR    "20.0.0.1"
 #define SC_SNOOPING_SND_RCV_BUF_LEN     1024
 
+#define SC_REDIRECT_KEY_WORD            "Location: http://20.0.0.99:8080"
+
 #include "sc_resource.h"
 
 int sc_ngx_download(char *url, char *local_path);

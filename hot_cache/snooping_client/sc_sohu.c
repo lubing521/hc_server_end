@@ -182,8 +182,8 @@ int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 
     if (status == 301) {
 //            hc_log_info("get response success:\n%s", response);
-    } else if (status == 302 && strstr(response, "Location: http://20.0.0.99:8080")) {
-        /* zhaoyao TODO: 正确的判断是否被设备重定向 */
+    } else if (status == 302 && strstr(response, SC_REDIRECT_KEY_WORD)) {
+        /* zhaoyao XXX: 对搜狐视频而言，在file url阶段，就会被Snooping模块重定向，而非最终下载资源时 */
         ret = sc_sohu_handle_cached(parsed);
         if (ret == HC_SUCCESS) {
             hc_log_info("resource is already cached, dup it to parsed, url: %s", parsed->common.url);
