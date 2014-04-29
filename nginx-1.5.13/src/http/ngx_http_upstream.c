@@ -3141,11 +3141,11 @@ ngx_http_upstream_process_request(ngx_http_request_t *r)
                         for (i = 0; i < SC_RES_INFO_NUM_MAX_CTNT; i++) {
                             curr = &sc_resource_info_list->ctnt[i];
                             if (ngx_http_upstream_sc_res_match_localpath(curr, start, len)) {
-                                if (sc_res_is_stored(&curr->common)) {
+                                if (sc_res_flag_is_stored(&curr->common)) {
                                     ngx_log_stderr(NGX_OK, "***** %s WARNING re-store URL:\n\t%V",
                                                                 __func__, &r->args);
                                 } else {
-                                    sc_res_set_stored(&curr->common);
+                                    sc_res_flag_set_stored(&curr->common);
                                 }
                                 break;
                             }
@@ -3537,11 +3537,11 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
             for (i = 0; i < SC_RES_INFO_NUM_MAX_CTNT; i++) {
                 curr = &sc_resource_info_list->ctnt[i];
                 if (ngx_http_upstream_sc_res_match_localpath(curr, start, len)) {
-                    if (sc_res_is_stored(&curr->common)) {
+                    if (sc_res_flag_is_stored(&curr->common)) {
                         ngx_log_stderr(NGX_OK, "***** %s WARNING re-stored URL:\n\t%V",
                                                     __func__, &r->args);
                     } else {
-                        sc_res_set_d_fail(&curr->common);    /* zhaoyao XXX: mark download failed */
+                        sc_res_flag_set_d_fail(&curr->common);    /* zhaoyao XXX: mark download failed */
                     }
                     break;
                 }

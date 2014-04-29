@@ -239,7 +239,7 @@ int sc_youku_download(sc_res_info_ctnt_t *parsed)
     }
     
     if (ret != 0) {
-        sc_res_set_i_fail(&parsed->common);
+        sc_res_flag_set_i_fail(&parsed->common);
     }
 
     return ret;
@@ -458,7 +458,7 @@ int sc_yk_add_ctnt_url(sc_res_info_ctnt_t *ctnt)
         return -1;
     }
     ri = &ctnt->common;
-    if (!sc_res_is_youku(ri)) {
+    if (!sc_res_site_is_youku(ri)) {
         return -1;
     }
 
@@ -467,7 +467,7 @@ int sc_yk_add_ctnt_url(sc_res_info_ctnt_t *ctnt)
         hc_log_error("add symbol link of cached Youku video file failed: %s", ri->url);
     }
 
-    ret = sc_res_add_ri_url(ri);
+    ret = sc_res_notify_ri_url(ri);
 
     return ret;
 }

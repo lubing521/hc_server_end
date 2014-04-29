@@ -212,7 +212,7 @@ int sc_sohu_download(sc_res_info_ctnt_t *parsed)
 
     if (ret < 0) {
         hc_log_error("url %s inform Nginx failed", real_url);
-        sc_res_set_i_fail(&parsed->common);
+        sc_res_flag_set_i_fail(&parsed->common);
     }
 
     return ret;

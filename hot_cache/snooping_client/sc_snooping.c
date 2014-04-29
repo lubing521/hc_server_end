@@ -75,7 +75,7 @@ static void sc_snooping_do_parse(int sockfd,
 
     origin = sc_res_info_find_mgmt(sc_res_info_list, origin_url);
     if (origin != NULL) {
-        if (!sc_res_is_origin(&origin->common)) {
+        if (!sc_res_gen_is_origin(&origin->common)) {
             hc_log_error("url\n\t%s\ntype is conflicted", origin->common.url);
         }
 #if DEBUG
@@ -104,9 +104,9 @@ static void sc_snooping_do_parse(int sockfd,
      *                         错误最可能是添加parsed失败、同服务器通信失败，这都需要对origin进行容错
      *                         处理。
      */
-    if (sc_res_is_youku(&origin->common)) {
+    if (sc_res_site_is_youku(&origin->common)) {
         ret = sc_get_yk_video(origin);
-    } else if (sc_res_is_sohu(&origin->common)) {
+    } else if (sc_res_site_is_sohu(&origin->common)) {
         ret = sc_get_sohu_video(origin);
     } else {
         hc_log_error("URL not support");
@@ -137,7 +137,7 @@ static void sc_snooping_do_down(int sockfd,
 
     normal = sc_res_info_find_ctnt(sc_res_info_list, (const char *)req->url_data);
     if (normal != NULL) {
-        if (!sc_res_is_normal(&normal->common)) {
+        if (!sc_res_gen_is_normal(&normal->common)) {
             hc_log_error("url\n\t%s\ntype is conflicted", req->url_data);
         }
 #if DEBUG
@@ -163,7 +163,7 @@ static void sc_snooping_do_down(int sockfd,
         /*
          * zhaoyao XXX: 同parsed，当ri添加成功，但download失败时，尝试重复下载。
          */
-        sc_res_set_i_fail(&normal->common);
+        sc_res_flag_set_i_fail(&normal->common);
         goto reply;
     }
 

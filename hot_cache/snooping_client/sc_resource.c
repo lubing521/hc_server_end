@@ -197,7 +197,7 @@ static sc_res_info_mgmt_t *sc_res_info_get_mgmt_origin(sc_res_list_t *rl)
     origin = sc_res_info_get_mgmt(rl);
 
     if (origin != NULL) {
-        sc_res_set_origin(&origin->common);
+        sc_res_gen_set_origin(&origin->common);
     }
 
     return origin;
@@ -210,7 +210,7 @@ static sc_res_info_mgmt_t *sc_res_info_get_mgmt_ctl_ld(sc_res_list_t *rl)
     ctl_ld = sc_res_info_get_mgmt(rl);
 
     if (ctl_ld != NULL) {
-        sc_res_set_ctl_ld(&ctl_ld->common);
+        sc_res_gen_set_ctl_ld(&ctl_ld->common);
     }
 
     return ctl_ld;
@@ -245,7 +245,7 @@ static sc_res_info_ctnt_t *sc_res_info_get_ctnt_normal(sc_res_list_t *rl)
 
     normal = sc_res_info_get_ctnt(rl);
     if (normal != NULL) {
-        sc_res_set_normal(&normal->common);
+        sc_res_gen_set_normal(&normal->common);
     }
 
     return normal;
@@ -257,7 +257,7 @@ static sc_res_info_ctnt_t *sc_res_info_get_ctnt_parsed(sc_res_list_t *rl)
 
     parsed = sc_res_info_get_ctnt(rl);
     if (parsed != NULL) {
-        sc_res_set_parsed(&parsed->common);
+        sc_res_gen_set_parsed(&parsed->common);
     }
 
     return parsed;
@@ -269,7 +269,7 @@ static sc_res_info_ctnt_t *sc_res_info_get_ctnt_loaded(sc_res_list_t *rl)
 
     loaded = sc_res_info_get_ctnt(rl);
     if (loaded != NULL) {
-        sc_res_set_loaded(&loaded->common);
+        sc_res_gen_set_loaded(&loaded->common);
     }
 
     return loaded;
@@ -284,7 +284,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_mgmt(ri)) {
+    if (sc_res_info_is_mgmt(ri)) {
         if (rl->mgmt_cnt == 0) {
             hc_log_error("rl->mgmt_cnt = 0, can not put");
             return;
@@ -295,7 +295,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         rl->mgmt_free = mgmt;
         rl->mgmt_cnt--;
         return;
-    } else if (sc_res_is_ctnt(ri)) {
+    } else if (sc_res_info_is_ctnt(ri)) {
         if (rl->ctnt_cnt == 0) {
             hc_log_error("rl->ctnt_cnt = 0, can not put");
             return;
@@ -375,9 +375,9 @@ static int sc_res_info_gen_ctnt_local_path(sc_res_info_ctnt_t *ctnt)
     }
 
     bzero(ctnt->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
-    if (sc_res_is_youku(&ctnt->common)) {
+    if (sc_res_site_is_youku(&ctnt->common)) {
         ret = sc_yk_url_to_local_path(ctnt->common.url, ctnt->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
-    } else if (sc_res_is_sohu(&ctnt->common)) {
+    } else if (sc_res_site_is_sohu(&ctnt->common)) {
         ret = sc_sohu_file_url_to_local_path(ctnt->common.url, ctnt->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
     } else {
         hc_log_debug("using sc_res_url_to_local_path_default, url %s", ctnt->common.url);
@@ -438,16 +438,16 @@ static int sc_res_info_mark_site(sc_res_info_t *ri)
         return ret;
     }
 
-    if (!sc_res_is_normal(ri) && !sc_res_is_mgmt(ri)) {
+    if (!sc_res_gen_is_normal(ri) && !sc_res_info_is_mgmt(ri)) {
         hc_log_error("can not mark non-normal, non-origin nor non-ctl_ld ri's site directly");
         return ret;
     }
 
     if (sc_url_is_yk(ri->url)) {
-        sc_res_set_youku(ri);
+        sc_res_site_set_youku(ri);
         ret = 0;
     } else if (sc_url_is_sohu(ri->url)) {
-        sc_res_set_sohu(ri);
+        sc_res_site_set_sohu(ri);
         ret = 0;
     } else {
         hc_log_error("unknown site: %s", ri->url);
@@ -496,7 +496,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **pt
     }
 
     mime_type = sc_res_mime_type_obtain(url, 1);
-    sc_res_set_mime_t(&normal->common, mime_type);
+    sc_res_mime_set_t(&normal->common, mime_type);
 
     ret = sc_res_info_gen_ctnt_local_path(normal);
     if (ret != 0) {
@@ -554,7 +554,7 @@ int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
     }
 
     mime_type = sc_res_mime_type_obtain(url, 1);
-    sc_res_set_mime_t(&origin->common, mime_type);
+    sc_res_mime_set_t(&origin->common, mime_type);
 
     if (ptr_ret != NULL) {
         *ptr_ret = origin;
@@ -609,7 +609,7 @@ int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
     }
 
     mime_type = sc_res_mime_type_obtain(url, 0);
-    sc_res_set_mime_t(&ctl_ld->common, mime_type);
+    sc_res_mime_set_t(&ctl_ld->common, mime_type);
 
     if (ptr_ret != NULL) {
         *ptr_ret = ctl_ld;
@@ -657,9 +657,9 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
     hc_log_debug("copied url with parameter:%s", parsed->common.url);
 #endif
     /* zhaoyao XXX: inherit site at very first time */
-    sc_res_inherit_site(origin, parsed);
+    sc_res_site_inherit(origin, parsed);
     mime_type = sc_res_mime_type_obtain(url, 1);
-    sc_res_set_mime_t(&parsed->common, mime_type);
+    sc_res_mime_set_t(&parsed->common, mime_type);
 
     ret = sc_res_info_gen_ctnt_local_path(parsed);
     if (ret != 0) {
@@ -744,12 +744,12 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
     hc_log_debug("copied url with parameter:%s", loaded->common.url);
 #endif
     /* zhaoyao XXX: inherit site at very first time */
-    sc_res_inherit_site(ctl_ld, loaded);
+    sc_res_site_inherit(ctl_ld, loaded);
     mime_type = sc_res_mime_type_obtain(old_url, 1);
-    sc_res_set_mime_t(&loaded->common, mime_type);
+    sc_res_mime_set_t(&loaded->common, mime_type);
 
     /* zhaoyao XXX: 本地文件当然是已经stored了。 */
-    sc_res_set_stored(&loaded->common);
+    sc_res_flag_set_stored(&loaded->common);
 
     /* zhaoyao: 为loaded装填local path，当然很简单。。。 */
     strcpy(loaded->localpath, lp);
@@ -785,10 +785,10 @@ static hc_result_t sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded,
     hc_log_debug("\n\tloaded: %s\n\tparsed: %s", loaded->common.url, parsed->common.url);
     hc_log_debug("loaded local path: %s", loaded->localpath);
 
-    if (sc_res_is_stored(&loaded->common)) {
+    if (sc_res_flag_is_stored(&loaded->common)) {
         hc_log_debug("loaded is stored");
     }
-    if (sc_res_is_notify(&loaded->common)) {
+    if (sc_res_flag_is_notify(&loaded->common)) {
         hc_log_debug("loaded is notified to Snooping Module");
     }
 #endif
@@ -796,11 +796,11 @@ static hc_result_t sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded,
     memcpy(parsed->common.url, loaded->common.url, HTTP_URL_MAX_LEN);
     memcpy(parsed->localpath, loaded->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
 
-    if (sc_res_is_stored(&loaded->common)) {
-        sc_res_set_stored(&parsed->common);
+    if (sc_res_flag_is_stored(&loaded->common)) {
+        sc_res_flag_set_stored(&parsed->common);
     }
-    if (sc_res_is_notify(&loaded->common)) {
-        sc_res_set_notify(&parsed->common);
+    if (sc_res_flag_is_notify(&loaded->common)) {
+        sc_res_flag_set_notify(&parsed->common);
     }
 
     return HC_SUCCESS;
@@ -915,15 +915,15 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
     }
 
     bzero(print_buf, BUFFER_LEN);
-    if (sc_res_is_origin(ri)) {
+    if (sc_res_gen_is_origin(ri)) {
         strcat(print_buf, "origin: ");
-    } else if (sc_res_is_ctl_ld(ri)) {
+    } else if (sc_res_gen_is_ctl_ld(ri)) {
         strcat(print_buf, "ctl_ld: ");
-    } else if (sc_res_is_parsed(ri)) {
+    } else if (sc_res_gen_is_parsed(ri)) {
         strcat(print_buf, "parsed: ");
-    } else if (sc_res_is_loaded(ri)) {
+    } else if (sc_res_gen_is_loaded(ri)) {
         strcat(print_buf, "loaded: ");
-    } else if (sc_res_is_normal(ri)) {
+    } else if (sc_res_gen_is_normal(ri)) {
         strcat(print_buf, "normal: ");
     } else {
         strcat(print_buf, "unknown: ");
@@ -931,7 +931,7 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
     strcat(print_buf, ri->url);
     hc_log_info("%s", print_buf);
 
-    if (sc_res_is_mgmt(ri)) {
+    if (sc_res_info_is_mgmt(ri)) {
         mgmt = (sc_res_info_mgmt_t *)ri;
         if (mgmt->child_cnt != 0) {
             hc_log_error("delete origin or ctl_ld who has %lu children is not supported now",
@@ -941,20 +941,20 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_stored(ri) && !sc_res_is_loaded(ri)) {
+    if (sc_res_flag_is_stored(ri) && !sc_res_gen_is_loaded(ri)) {
         hc_log_error("\n%s\n\tstored local file is not deleted", ri->url);
     }
 
-    if (sc_res_is_notify(ri) && !sc_res_is_loaded(ri)) {
+    if (sc_res_flag_is_notify(ri) && !sc_res_gen_is_loaded(ri)) {
         hc_log_error("\n%s\n\thas notified snooping module", ri->url);
     }
 
-    if (sc_res_is_normal(ri)) {
+    if (sc_res_gen_is_normal(ri)) {
         sc_res_info_put(rl, ri);
         return;
     }
 
-    if (sc_res_is_parsed(ri)) {
+    if (sc_res_gen_is_parsed(ri)) {
         parsed = (sc_res_info_ctnt_t *)ri;
         if (parsed->parent != NULL) {
             hc_log_error("%s has parent\n", ri->url);
@@ -967,7 +967,7 @@ void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
         return;
     }
 
-    if (sc_res_is_loaded(ri)) {
+    if (sc_res_gen_is_loaded(ri)) {
         sc_res_info_put(rl, ri);
         return;
     }
@@ -1044,22 +1044,22 @@ static int sc_res_retry_download(sc_res_info_t *ri)
 
     hc_log_info("%120s", ri->url);
 
-    if (!sc_res_is_normal(ri) && !sc_res_is_parsed(ri)) {
+    if (!sc_res_gen_is_normal(ri) && !sc_res_gen_is_parsed(ri)) {
         hc_log_error("only for normal and parsed");
         return -1;
     }
 
     ctnt = (sc_res_info_ctnt_t *)ri;
 
-    if (sc_res_is_sohu(ri)) {
+    if (sc_res_site_is_sohu(ri)) {
         ret = sc_sohu_download(ctnt);
-    } else if (sc_res_is_youku(ri)) {
+    } else if (sc_res_site_is_youku(ri)) {
         ret = sc_youku_download(ctnt);
     } else {
         hc_log_error("unknown site file:\nreal_url: %s\nlocal_path: %s", ri->url, ctnt->localpath);
         ret = sc_ngx_download(ri->url, ctnt->localpath);
         if (ret != 0) {
-            sc_res_set_i_fail(ri);
+            sc_res_flag_set_i_fail(ri);
         }
     }
 
@@ -1070,7 +1070,7 @@ static int sc_res_retry_download(sc_res_info_t *ri)
     return ret;
 }
 
-int sc_res_add_ri_url(sc_res_info_t *ri)
+int sc_res_notify_ri_url(sc_res_info_t *ri)
 {
     int ret;
 
@@ -1079,7 +1079,7 @@ int sc_res_add_ri_url(sc_res_info_t *ri)
         return -1;
     }
 
-    if (!sc_res_is_stored(ri) || sc_res_is_notify(ri)) {
+    if (!sc_res_flag_is_stored(ri) || sc_res_flag_is_notify(ri)) {
         hc_log_error("ri URL:\n\t%s\nflag:%lu can not be added", ri->url, ri->flag);
         return -1;
     }
@@ -1090,7 +1090,7 @@ int sc_res_add_ri_url(sc_res_info_t *ri)
         return -1;
     }
 
-    sc_res_set_notify(ri);
+    sc_res_flag_set_notify(ri);
 
     return 0;
 }
@@ -1106,11 +1106,11 @@ static int sc_res_add_ctnt_url(sc_res_info_ctnt_t *ctnt)
     }
 
     ri = &ctnt->common;
-    if (sc_res_is_youku(ri)) {
+    if (sc_res_site_is_youku(ri)) {
         ret = sc_yk_add_ctnt_url(ctnt);
     } else {
         /* zhaoyao: default case */
-        ret = sc_res_add_ri_url(ri);
+        ret = sc_res_notify_ri_url(ri);
     }
 
     return ret;
@@ -1143,26 +1143,26 @@ static int sc_res_list_process_ctnt(sc_res_list_t *rl)
             continue;
         }
 
-        if (!sc_res_is_ctnt(ri)) {
+        if (!sc_res_info_is_ctnt(ri)) {
             hc_log_error("Content type check wrong, type: 0x%lx", ri->flag);
             continue;
         }
 
-        if (!sc_res_is_stored(ri)) {
+        if (!sc_res_flag_is_stored(ri)) {
             /*
              * zhaoyao XXX: add ctnt success, but inform Nginx to download failed,
              *              re-download in this situation.
              */
-            if (sc_res_is_i_fail(ri)) {
+            if (sc_res_flag_is_i_fail(ri)) {
                 ret = sc_res_retry_download(ri);
                 if (ret == 0) {
-                    sc_res_unset_i_fail(ri);
+                    sc_res_flag_unset_i_fail(ri);
                 } else {
                     hc_log_error("inform Nginx re-download %s failed", ri->url);
                     err++;
                 }
-            } else if (sc_res_is_d_fail(ri)) {
-                sc_res_unset_d_fail(ri);    /* zhaoyao: SC已经接管，可将d_fail置0 */
+            } else if (sc_res_flag_is_d_fail(ri)) {
+                sc_res_flag_unset_d_fail(ri);    /* zhaoyao: SC已经接管，可将d_fail置0 */
                 ret = sc_res_retry_download(ri);
                 if (ret == 0) {
                     ;
@@ -1176,7 +1176,7 @@ static int sc_res_list_process_ctnt(sc_res_list_t *rl)
             continue;
         }
 
-        if (!sc_res_is_notify(ri)) {
+        if (!sc_res_flag_is_notify(ri)) {
             ret = sc_res_add_ctnt_url(curr);
             if (ret != 0) {
                 hc_log_error("inform Snooping Module add URL failed");

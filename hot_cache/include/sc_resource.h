@@ -30,46 +30,38 @@
 
 #define SC_RES_LOCAL_PATH_MAX_LEN  256
 
-#define SC_RES_GEN_T_SHIFT  29
-#define SC_RES_GEN_T_MASK   0x7
 typedef enum sc_res_gen_e {
     /* using sc_res_info_mgmt_t */
-    SC_RES_GEN_T_ORIGIN,            /* Original URL needed to be parsed */
+    SC_RES_GEN_T_ORIGIN = 0,        /* Original URL needed to be parsed */
     SC_RES_GEN_T_CTL_LD,            /* Special RI to control loaded local resources who can not find Origin parent */
 
     /* using sc_res_info_ctnt_t */
-    SC_RES_GEN_T_NORMAL = 0,        /* Snooping inform Nginx to directly download */
+    SC_RES_GEN_T_NORMAL,            /* Snooping inform Nginx to directly download */
     SC_RES_GEN_T_PARSED,            /* Parsed URL from original one */
     SC_RES_GEN_T_LOADED,            /* Loaded URL from server's local resources */
 
-    SC_RES_GEN_T_MAX,               /* MUST <= 7 */
+    SC_RES_GEN_T_MAX,
 } sc_res_gen_t;
-#define sc_res_set_gen_t(ri, type)                       \
+#define sc_res_gen_set_t(ri, type)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ (SC_RES_GEN_T_MASK << SC_RES_GEN_T_SHIFT)); \
-            (ri)->flag |= (((type) & SC_RES_GEN_T_MASK) << SC_RES_GEN_T_SHIFT); \
+            (ri)->gen = type; \
         }                                           \
     } while (0)
 
-#define SC_RES_SITE_SHIFT  24
-#define SC_RES_SITE_MASK   0x1F
 typedef enum sc_res_site_e {
     SC_RES_SITE_YOUKU = 0,       /* www.youku.com */
     SC_RES_SITE_SOHU,            /* www.sohu.com */
 
-    SC_RES_SITE_MAX,             /* MUST <= 31 */
+    SC_RES_SITE_MAX,
 } sc_res_site_t;
-#define sc_res_set_site(ri, type)                       \
+#define sc_res_site_set_t(ri, type)                       \
     do {                                            \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ (SC_RES_SITE_MASK << SC_RES_SITE_SHIFT)); \
-            (ri)->flag |= (((type) & SC_RES_SITE_MASK) << SC_RES_SITE_SHIFT); \
+            (ri)->site = type; \
         }                                           \
     } while (0)
 
-#define SC_RES_MIME_T_SHIFT  0
-#define SC_RES_MIME_T_MASK   0XFF
 typedef enum sc_res_mime_e {
     SC_RES_MIME_TEXT_HTML = 0,
     SC_RES_MIME_TEXT_M3U8,
@@ -78,25 +70,29 @@ typedef enum sc_res_mime_e {
 
     SC_RES_MIME_NOT_CARE,
 
-    SC_RES_MIME_TYPE_MAX,           /* MUST <= 255 */
+    SC_RES_MIME_TYPE_MAX,
 } sc_res_mime_t;
-#define sc_res_set_mime_t(ri, type)                       \
+#define sc_res_mime_set_t(ri, type)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ (SC_RES_MIME_T_MASK << SC_RES_MIME_T_SHIFT)); \
-            (ri)->flag |= (((type) & SC_RES_MIME_T_MASK) << SC_RES_MIME_T_SHIFT); \
+            (ri)->mime = type; \
         }                                           \
     } while (0)
 
 /* ri control flag */
-#define SC_RES_F_CTRL_STORED    (0x00000100UL)   /* Resource is stored, can ONLY set by Nginx */
-#define SC_RES_F_CTRL_D_FAIL    (0x00000200UL)   /* Resource download failed, set by Nginx, unset by SC */
-#define SC_RES_F_CTRL_I_FAIL    (0x00000400UL)   /* Inform Nginx to download failed, set and unset by SC */
-#define SC_RES_F_CTRL_NOTIFY    (0x00000800UL)   /* Stored resource URL is notified to Snooping Module */
+#define SC_RES_FLAG_STORED    (0x00000100UL)   /* Resource is stored, can ONLY set by Nginx */
+#define SC_RES_FLAG_D_FAIL    (0x00000200UL)   /* Resource download failed, set by Nginx, unset by SC */
+#define SC_RES_FLAG_I_FAIL    (0x00000400UL)   /* Inform Nginx to download failed, set and unset by SC */
+#define SC_RES_FLAG_NOTIFY    (0x00000800UL)   /* Stored resource URL is notified to Snooping Module */
 
 typedef struct sc_res_info_s {
     unsigned long id;
     unsigned long flag;
+    unsigned long gen;
+
+    u16           site;
+    u16           mime;
+
     /*
      * zhaoyao XXX: 对于origin，由于来自Snooping模块的URL千差万别，需要根据不同视频网站构建统一的URL
      *              格式，origin本来对Snooping模块，且只要具备恢复视频资源信息的功能即可；
@@ -136,158 +132,134 @@ typedef struct sc_res_info_ctnt_s {
     char localpath[SC_RES_LOCAL_PATH_MAX_LEN];
 } sc_res_info_ctnt_t;
 
-#define sc_res_set_d_fail(ri)                       \
+#define sc_res_flag_set_d_fail(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag |= SC_RES_F_CTRL_D_FAIL;  \
+            (ri)->flag |= SC_RES_FLAG_D_FAIL;  \
         }                                           \
     } while (0)
 
-#define sc_res_set_i_fail(ri)                       \
+#define sc_res_flag_set_i_fail(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag |= SC_RES_F_CTRL_I_FAIL;  \
+            (ri)->flag |= SC_RES_FLAG_I_FAIL;  \
         }                                           \
     } while (0)
 
-#define sc_res_set_stored(ri)                       \
+#define sc_res_flag_set_stored(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag |= SC_RES_F_CTRL_STORED;  \
+            (ri)->flag |= SC_RES_FLAG_STORED;  \
         }                                           \
     } while (0)
 
-#define sc_res_set_notify(ri)                       \
+#define sc_res_flag_set_notify(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag |= SC_RES_F_CTRL_NOTIFY;  \
+            (ri)->flag |= SC_RES_FLAG_NOTIFY;  \
         }                                           \
     } while (0)
 
-#define sc_res_unset_d_fail(ri)                       \
+#define sc_res_flag_unset_d_fail(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ SC_RES_F_CTRL_D_FAIL);  \
+            (ri)->flag &= ((~0UL) ^ SC_RES_FLAG_D_FAIL);  \
         }                                           \
     } while (0)
 
-#define sc_res_unset_i_fail(ri)                       \
+#define sc_res_flag_unset_i_fail(ri)                       \
     do {						                    \
         if ((ri) != NULL) {                         \
-            (ri)->flag &= ((~0UL) ^ SC_RES_F_CTRL_I_FAIL);  \
+            (ri)->flag &= ((~0UL) ^ SC_RES_FLAG_I_FAIL);  \
         }                                           \
     } while (0)
 
-#define sc_res_set_normal(ri)                       \
+#define sc_res_flag_is_d_fail(ri)    ((ri)->flag & SC_RES_FLAG_D_FAIL)
+#define sc_res_flag_is_i_fail(ri)    ((ri)->flag & SC_RES_FLAG_I_FAIL)
+#define sc_res_flag_is_stored(ri)    ((ri)->flag & SC_RES_FLAG_STORED)
+#define sc_res_flag_is_notify(ri)    ((ri)->flag & SC_RES_FLAG_NOTIFY)
+
+#define sc_res_gen_set_normal(ri)                       \
     do {                                            \
-        sc_res_set_gen_t((ri), SC_RES_GEN_T_NORMAL);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_NORMAL);  \
     } while (0)
 
-#define sc_res_set_origin(ri)                       \
+#define sc_res_gen_set_origin(ri)                       \
     do {                                            \
-        sc_res_set_gen_t((ri), SC_RES_GEN_T_ORIGIN);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_ORIGIN);  \
     } while (0)
 
-#define sc_res_set_parsed(ri)                       \
+#define sc_res_gen_set_parsed(ri)                       \
     do {                                            \
-        sc_res_set_gen_t((ri), SC_RES_GEN_T_PARSED);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_PARSED);  \
     } while (0)
 
-#define sc_res_set_ctl_ld(ri)                       \
+#define sc_res_gen_set_ctl_ld(ri)                       \
     do {                                            \
-        sc_res_set_gen_t((ri), SC_RES_GEN_T_CTL_LD);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_CTL_LD);  \
     } while (0)
 
-#define sc_res_set_loaded(ri)                       \
+#define sc_res_gen_set_loaded(ri)                       \
     do {                                            \
-        sc_res_set_gen_t((ri), SC_RES_GEN_T_LOADED);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_LOADED);  \
     } while (0)
 
-#define sc_res_set_youku(ri)                       \
-    do {                                            \
-        sc_res_set_site((ri), SC_RES_SITE_YOUKU);  \
-    } while (0)
-
-#define sc_res_set_sohu(ri)                       \
-    do {                                            \
-        sc_res_set_site((ri), SC_RES_SITE_SOHU);  \
-    } while (0)
-
-#define sc_res_is_d_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_D_FAIL)
-#define sc_res_is_i_fail(ri)    ((ri)->flag & SC_RES_F_CTRL_I_FAIL)
-#define sc_res_is_stored(ri)    ((ri)->flag & SC_RES_F_CTRL_STORED)
-#define sc_res_is_notify(ri)    ((ri)->flag & SC_RES_F_CTRL_NOTIFY)
-
-static inline int sc_res_is_normal(sc_res_info_t *ri)
+static inline int sc_res_gen_is_normal(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_GEN_T_SHIFT) & SC_RES_GEN_T_MASK;
-        return (type == SC_RES_GEN_T_NORMAL);
+        return (ri->gen == SC_RES_GEN_T_NORMAL);
     }
 
     return 0;
 }
-static inline int sc_res_is_origin(sc_res_info_t *ri)
+static inline int sc_res_gen_is_origin(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_GEN_T_SHIFT) & SC_RES_GEN_T_MASK;
-        return (type == SC_RES_GEN_T_ORIGIN);
+        return (ri->gen == SC_RES_GEN_T_ORIGIN);
     }
 
     return 0;
 }
-static inline int sc_res_is_parsed(sc_res_info_t *ri)
+static inline int sc_res_gen_is_parsed(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_GEN_T_SHIFT) & SC_RES_GEN_T_MASK;
-        return (type == SC_RES_GEN_T_PARSED);
+        return (ri->gen == SC_RES_GEN_T_PARSED);
     }
 
     return 0;
 }
-static inline int sc_res_is_ctl_ld(sc_res_info_t *ri)
+static inline int sc_res_gen_is_ctl_ld(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_GEN_T_SHIFT) & SC_RES_GEN_T_MASK;
-        return (type == SC_RES_GEN_T_CTL_LD);
+        return (ri->gen == SC_RES_GEN_T_CTL_LD);
     }
 
     return 0;
 }
-static inline int sc_res_is_loaded(sc_res_info_t *ri)
+static inline int sc_res_gen_is_loaded(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_GEN_T_SHIFT) & SC_RES_GEN_T_MASK;
-        return (type == SC_RES_GEN_T_LOADED);
+        return (ri->gen == SC_RES_GEN_T_LOADED);
     }
 
     return 0;
 }
-static inline int sc_res_is_mgmt(sc_res_info_t *ri)
+
+static inline int sc_res_info_is_mgmt(sc_res_info_t *ri)
 {
-    if (sc_res_is_origin(ri) ||
-        sc_res_is_ctl_ld(ri)) {
+    if (sc_res_gen_is_origin(ri) ||
+        sc_res_gen_is_ctl_ld(ri)) {
 
         return 1;
     }
 
     return 0;
 }
-static inline int sc_res_is_ctnt(sc_res_info_t *ri)
+static inline int sc_res_info_is_ctnt(sc_res_info_t *ri)
 {
-    if (sc_res_is_normal(ri) ||
-        sc_res_is_parsed(ri) ||
-        sc_res_is_loaded(ri)) {
+    if (sc_res_gen_is_normal(ri) ||
+        sc_res_gen_is_parsed(ri) ||
+        sc_res_gen_is_loaded(ri)) {
 
         return 1;
     }
@@ -295,74 +267,69 @@ static inline int sc_res_is_ctnt(sc_res_info_t *ri)
     return 0;
 }
 
-static inline sc_res_site_t sc_res_obtain_site(sc_res_info_t *ri)
-{
-    int site;
+#define sc_res_site_set_youku(ri)                       \
+    do {                                            \
+        sc_res_site_set_t((ri), SC_RES_SITE_YOUKU);  \
+    } while (0)
 
+#define sc_res_site_set_sohu(ri)                       \
+    do {                                            \
+        sc_res_site_set_t((ri), SC_RES_SITE_SOHU);  \
+    } while (0)
+
+static inline sc_res_site_t sc_res_site_obtain(sc_res_info_t *ri)
+{
     if (ri != NULL) {
-        site = (ri->flag >> SC_RES_SITE_SHIFT) & SC_RES_SITE_MASK;
-        return site;
+        return ri->site;
     }
 
     return SC_RES_SITE_MAX;
 }
-static inline int sc_res_is_youku(sc_res_info_t *ri)
+static inline int sc_res_site_is_youku(sc_res_info_t *ri)
 {
-    return (sc_res_obtain_site(ri) == SC_RES_SITE_YOUKU);
+    return (sc_res_site_obtain(ri) == SC_RES_SITE_YOUKU);
 }
-static inline int sc_res_is_sohu(sc_res_info_t *ri)
+static inline int sc_res_site_is_sohu(sc_res_info_t *ri)
 {
-    return (sc_res_obtain_site(ri) == SC_RES_SITE_SOHU);
+    return (sc_res_site_obtain(ri) == SC_RES_SITE_SOHU);
 }
-static inline void sc_res_inherit_site(sc_res_info_mgmt_t *parent, sc_res_info_ctnt_t *child)
+static inline void sc_res_site_inherit(sc_res_info_mgmt_t *parent, sc_res_info_ctnt_t *child)
 {
     sc_res_site_t site;
 
-    site = sc_res_obtain_site((sc_res_info_t *)parent);
+    site = sc_res_site_obtain((sc_res_info_t *)parent);
 
-    sc_res_set_site((sc_res_info_t *)child, site);
+    sc_res_site_set_t((sc_res_info_t *)child, site);
 }
 
-static inline int sc_res_is_flv(sc_res_info_t *ri)
+static inline int sc_res_mime_is_flv(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
-        return (type == SC_RES_MIME_VIDEO_FLV);
+        return (ri->mime == SC_RES_MIME_VIDEO_FLV);
     }
 
     return 0;
 }
-static inline int sc_res_is_mp4(sc_res_info_t *ri)
+static inline int sc_res_mime_is_mp4(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
-        return (type == SC_RES_MIME_VIDEO_MP4);
+        return (ri->mime == SC_RES_MIME_VIDEO_MP4);
     }
 
     return 0;
 }
-static inline int sc_res_is_html(sc_res_info_t *ri)
+static inline int sc_res_mime_is_html(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
-        return (type == SC_RES_MIME_TEXT_HTML);
+        return (ri->mime == SC_RES_MIME_TEXT_HTML);
     }
 
     return 0;
 }
-static inline int sc_res_is_m3u8(sc_res_info_t *ri)
+static inline int sc_res_mime_is_m3u8(sc_res_info_t *ri)
 {
-    int type;
-
     if (ri != NULL) {
-        type = (ri->flag >> SC_RES_MIME_T_SHIFT) & SC_RES_MIME_T_MASK;
-        return (type == SC_RES_MIME_TEXT_M3U8);
+        return (ri->mime == SC_RES_MIME_TEXT_M3U8);
     }
 
     return 0;
@@ -402,6 +369,7 @@ extern sc_res_list_t *sc_res_info_list;
 int sc_res_list_alloc_and_init(sc_res_list_t **prl);
 int sc_res_list_destroy_and_uninit();
 void *sc_res_list_process_thread(void *arg);
+
 int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **ptr_ret);
 int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret);
 int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret);
@@ -413,14 +381,16 @@ int sc_res_info_add_loaded(sc_res_list_t *rl,
                            sc_res_info_mgmt_t *ctl_ld,
                            const char *fpath,
                            sc_res_info_ctnt_t **ptr_ret);
+void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
+
 sc_res_info_ctnt_t *sc_res_info_find_ctnt(sc_res_list_t *rl, const char *url);
 sc_res_info_mgmt_t *sc_res_info_find_mgmt(sc_res_list_t *rl, const char *url);
+
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 int sc_res_gen_origin_url(char *req_url, char *origin_url);
 int sc_res_url_to_local_path_default(char *url, char *local_path, int len);
-void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
-int sc_res_add_ri_url(sc_res_info_t *ri);
 hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ctnt_t *parsed);
+int sc_res_notify_ri_url(sc_res_info_t *ri);
 
 #endif /* __SC_RESOURCE_H__ */
 
