@@ -21,7 +21,7 @@ int sc_res_share_mem_shmid = -1;
 /*
  * zhaoyao XXX: mime type suffix MUST be at the end of str.
  */
-sc_res_mime_t sc_res_mime_type_obtain(char *str, int care_type)
+static sc_res_mime_t sc_res_mime_type_obtain(char *str, int care_type)
 {
     char *p;
     int len;
@@ -203,17 +203,30 @@ static sc_res_info_mgmt_t *sc_res_info_get_mgmt_origin(sc_res_list_t *rl)
     return origin;
 }
 
-static sc_res_info_mgmt_t *sc_res_info_get_mgmt_ctl_ld(sc_res_list_t *rl)
+static sc_res_info_mgmt_t *sc_res_info_get_mgmt_normal(sc_res_list_t *rl)
 {
-    sc_res_info_mgmt_t *ctl_ld;
+    sc_res_info_mgmt_t *normal;
 
-    ctl_ld = sc_res_info_get_mgmt(rl);
+    normal = sc_res_info_get_mgmt(rl);
 
-    if (ctl_ld != NULL) {
-        sc_res_gen_set_ctl_ld(&ctl_ld->common);
+    if (normal != NULL) {
+        sc_res_gen_set_normal(&normal->common);
     }
 
-    return ctl_ld;
+    return normal;
+}
+
+static sc_res_info_mgmt_t *sc_res_info_get_mgmt_ctrl_ld(sc_res_list_t *rl)
+{
+    sc_res_info_mgmt_t *ctrl_ld;
+
+    ctrl_ld = sc_res_info_get_mgmt(rl);
+
+    if (ctrl_ld != NULL) {
+        sc_res_gen_set_ctrl_ld(&ctrl_ld->common);
+    }
+
+    return ctrl_ld;
 }
 
 static sc_res_info_ctnt_t *sc_res_info_get_ctnt(sc_res_list_t *rl)
@@ -236,43 +249,9 @@ static sc_res_info_ctnt_t *sc_res_info_get_ctnt(sc_res_list_t *rl)
     memset(ctnt, 0, sizeof(sc_res_info_ctnt_t));
     ctnt->common.id = ((unsigned long)ctnt - (unsigned long)(rl->ctnt)) / sizeof(sc_res_info_ctnt_t);
 
+    sc_res_gen_set_content(&ctnt->common);
+
     return ctnt;
-}
-
-static sc_res_info_ctnt_t *sc_res_info_get_ctnt_normal(sc_res_list_t *rl)
-{
-    sc_res_info_ctnt_t *normal;
-
-    normal = sc_res_info_get_ctnt(rl);
-    if (normal != NULL) {
-        sc_res_gen_set_normal(&normal->common);
-    }
-
-    return normal;
-}
-
-static sc_res_info_ctnt_t *sc_res_info_get_ctnt_parsed(sc_res_list_t *rl)
-{
-    sc_res_info_ctnt_t *parsed;
-
-    parsed = sc_res_info_get_ctnt(rl);
-    if (parsed != NULL) {
-        sc_res_gen_set_parsed(&parsed->common);
-    }
-
-    return parsed;
-}
-
-static sc_res_info_ctnt_t *sc_res_info_get_ctnt_loaded(sc_res_list_t *rl)
-{
-    sc_res_info_ctnt_t *loaded;
-
-    loaded = sc_res_info_get_ctnt(rl);
-    if (loaded != NULL) {
-        sc_res_gen_set_loaded(&loaded->common);
-    }
-
-    return loaded;
 }
 
 static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
@@ -307,7 +286,7 @@ static void sc_res_info_put(sc_res_list_t *rl, sc_res_info_t *ri)
         rl->ctnt_cnt--;
         return;
     } else {
-        hc_log_error("unknown type 0x%lx", ri->flag);
+        hc_log_error("unknown type 0x%lx", ri->gen);
         return;
     }
 }
@@ -387,7 +366,7 @@ static int sc_res_info_gen_ctnt_local_path(sc_res_info_ctnt_t *ctnt)
     return ret;
 }
 
-static int sc_res_recover_url_from_local_path(char *local_path, char *url)
+int sc_res_recover_url_from_local_path(char *local_path, char *url)
 {
     int lp_len, meet_slash = 0;
     char *p, *q;
@@ -438,8 +417,8 @@ static int sc_res_info_mark_site(sc_res_info_t *ri)
         return ret;
     }
 
-    if (!sc_res_gen_is_normal(ri) && !sc_res_info_is_mgmt(ri)) {
-        hc_log_error("can not mark non-normal, non-origin nor non-ctl_ld ri's site directly");
+    if (!sc_res_info_is_mgmt(ri)) {
+        hc_log_error("can not mark non-mgmt ri's site directly");
         return ret;
     }
 
@@ -456,10 +435,10 @@ static int sc_res_info_mark_site(sc_res_info_t *ri)
     return ret;
 }
 
-int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **ptr_ret)
+int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret)
 {
     int len, ret;
-    sc_res_info_ctnt_t *normal;
+    sc_res_info_mgmt_t *normal;
     sc_res_mime_t mime_type;
 
     if (rl == NULL || url == NULL) {
@@ -478,7 +457,7 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **pt
         return -1;
     }
 
-    normal = sc_res_info_get_ctnt_normal(rl);
+    normal = sc_res_info_get_mgmt_normal(rl);
     if (normal == NULL) {
         hc_log_error("get free res_info failed");
         return -1;
@@ -497,12 +476,6 @@ int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **pt
 
     mime_type = sc_res_mime_type_obtain(url, 1);
     sc_res_mime_set_t(&normal->common, mime_type);
-
-    ret = sc_res_info_gen_ctnt_local_path(normal);
-    if (ret != 0) {
-        hc_log_error("generate local_path failed, url %s", normal->common.url);
-        goto error;
-    }
 
     if (ptr_ret != NULL) {
         *ptr_ret = normal;
@@ -570,10 +543,10 @@ error:
 /*
  * zhaoyao XXX: url是视频网站的主页地址
  */
-int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret)
+int sc_res_info_add_ctrl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret)
 {
     int len, ret;
-    sc_res_info_mgmt_t *ctl_ld;
+    sc_res_info_mgmt_t *ctrl_ld;
     sc_res_mime_t mime_type;
 
     if (rl == NULL || url == NULL) {
@@ -591,47 +564,47 @@ int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **pt
         return -1;
     }
 
-    ctl_ld = sc_res_info_get_mgmt_ctl_ld(rl);
-    if (ctl_ld == NULL) {
+    ctrl_ld = sc_res_info_get_mgmt_ctrl_ld(rl);
+    if (ctrl_ld == NULL) {
         hc_log_error("get free res_info failed");
         return -1;
     }
 
-    sc_res_copy_url(ctl_ld->common.url, url, HTTP_URL_MAX_LEN, 1);
+    sc_res_copy_url(ctrl_ld->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    hc_log_debug("copied url with parameter:%s", ctl_ld->common.url);
+    hc_log_debug("copied url with parameter: %s", ctrl_ld->common.url);
 #endif
     /* zhaoyao: mark site should be very early. */
-    ret = sc_res_info_mark_site(&ctl_ld->common);
+    ret = sc_res_info_mark_site(&ctrl_ld->common);
     if (ret != 0) {
-        hc_log_error("sc_res_info_mark_site failed, url %s", ctl_ld->common.url);
+        hc_log_error("sc_res_info_mark_site failed, url %s", ctrl_ld->common.url);
         goto error;
     }
 
     mime_type = sc_res_mime_type_obtain(url, 0);
-    sc_res_mime_set_t(&ctl_ld->common, mime_type);
+    sc_res_mime_set_t(&ctrl_ld->common, mime_type);
 
     if (ptr_ret != NULL) {
-        *ptr_ret = ctl_ld;
+        *ptr_ret = ctrl_ld;
     }
 
     return 0;
 
 error:
-    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)ctl_ld);
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)ctrl_ld);
     return -1;
 }
 
-int sc_res_info_add_parsed(sc_res_list_t *rl,
-                           sc_res_info_mgmt_t *origin,
-                           char *url,
-                           sc_res_info_ctnt_t **ptr_ret)
+int sc_res_info_add_ctnt(sc_res_list_t *rl,
+                         sc_res_info_mgmt_t *mgmt,
+                         char *url,
+                         sc_res_info_ctnt_t **ptr_ret)
 {
     int len, ret;
-    sc_res_info_ctnt_t *parsed;
+    sc_res_info_ctnt_t *ctnt;
     sc_res_mime_t mime_type;
 
-    if (rl == NULL || origin == NULL || url == NULL) {
+    if (rl == NULL || mgmt == NULL || url == NULL) {
         return -1;
     }
 
@@ -646,204 +619,136 @@ int sc_res_info_add_parsed(sc_res_list_t *rl,
         return -1;
     }
 
-    parsed = sc_res_info_get_ctnt_parsed(rl);
-    if (parsed == NULL) {
+    if (sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+        /*
+         * zhaoyao XXX: 解决bug，对于在Snooping模块已保存的url，需删除它，然后再添加，
+         *              否则重定向错误。
+         *              该问题只存在于服务器启动时加载的本地资源，因此依靠mgmt类型来做选择性操作。
+         */
+        ret = sc_snooping_do_del(-1, url);
+        if (ret != 0) {
+            hc_log_error("flush url in Snooping Module failed: %s", url);
+            return -1;
+        }
+    }
+
+    ctnt = sc_res_info_get_ctnt(rl);
+    if (ctnt == NULL) {
         hc_log_error("get free res_info failed");
         return -1;
     }
 
-    sc_res_copy_url(parsed->common.url, url, HTTP_URL_MAX_LEN, 1);
+    sc_res_copy_url(ctnt->common.url, url, HTTP_URL_MAX_LEN, 1);
 #if DEBUG
-    hc_log_debug("copied url with parameter:%s", parsed->common.url);
+    hc_log_debug("copied url with parameter:%s", ctnt->common.url);
 #endif
-    /* zhaoyao XXX: inherit site at very first time */
-    sc_res_site_inherit(origin, parsed);
-    mime_type = sc_res_mime_type_obtain(url, 1);
-    sc_res_mime_set_t(&parsed->common, mime_type);
 
-    ret = sc_res_info_gen_ctnt_local_path(parsed);
+    /* zhaoyao XXX: inherit site at very first time */
+    sc_res_site_inherit(mgmt, ctnt);
+    mime_type = sc_res_mime_type_obtain(url, 1);
+    sc_res_mime_set_t(&ctnt->common, mime_type);
+
+    if (sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+        /* zhaoyao XXX: 本地文件当然是已经stored了。 */
+        sc_res_flag_set_stored(&ctnt->common);
+    }
+
+    ret = sc_res_info_gen_ctnt_local_path(ctnt);
     if (ret != 0) {
-        hc_log_error("generate local_path failed, file_url:\n\t%s", parsed->common.url);
+        hc_log_error("generate local_path failed, file_url:\n\t%s", ctnt->common.url);
         goto error;
     }
 
-    if (origin->child_cnt == 0) {  /* First derivative is come */
-        origin->child = parsed;
+    if (mgmt->child_cnt == 0) {  /* First derivative is come */
+        mgmt->child = ctnt;
     } else {
-        parsed->siblings = origin->child;
-        origin->child = parsed;
+        ctnt->siblings = mgmt->child;
+        mgmt->child = ctnt;
     }
-    origin->child_cnt++;
-    parsed->parent = origin;
+    mgmt->child_cnt++;
+    ctnt->parent = mgmt;
 
     if (ptr_ret != NULL) {
-        *ptr_ret = parsed;
+        *ptr_ret = ctnt;
     }
 
     return 0;
 
 error:
-    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)parsed);
+    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)ctnt);
     return -1;
+
 }
 
-int sc_res_info_add_loaded(sc_res_list_t *rl,
-                           sc_res_info_mgmt_t *ctl_ld,
-                           const char *fpath,
-                           sc_res_info_ctnt_t **ptr_ret)
+static hc_result_t sc_res_info_dup_ctnt(sc_res_info_ctnt_t *from, sc_res_info_ctnt_t *to)
 {
-    int len, ret;
-    sc_res_info_ctnt_t *loaded;
-    sc_res_mime_t mime_type;
-    char old_url[HTTP_URL_MAX_LEN], *lp;
-
-    if (rl == NULL || ctl_ld == NULL || fpath == NULL) {
-        return -1;
-    }
-
-    lp = strstr(fpath, SC_NGX_ROOT_PATH);
-    if (lp == NULL) {
-        hc_log_error("invalid fpath %s", fpath);
-        return -1;
-    }
-    lp = lp + SC_NGX_ROOT_PATH_LEN;
-
-    bzero(old_url, HTTP_URL_MAX_LEN);
-    ret = sc_res_recover_url_from_local_path(lp, old_url);
-    if (ret != 0) {
-        hc_log_error("recover old url from local path failed, %s", lp);
-        return -1;
-    }
-
-    if (!sc_res_info_permit_adding(old_url)) {
-        hc_log_error("unknown url %s", old_url);
-        return -1;
-    }
-
-    len = strlen(old_url);
-    if (len >= HTTP_URL_MAX_LEN) {
-        hc_log_error("url is longer than MAX_LEN %d", HTTP_URL_MAX_LEN);
-        return -1;
-    }
-
-    /* zhaoyao XXX: 解决bug， 如果在Snooping模块上已保存一个url，需要删除它，否则会重定向错误 */
-    ret = sc_snooping_do_del(-1, old_url);
-    if (ret != 0) {
-        hc_log_error("flush url in Snooping Module failed: %s", old_url);
-        return -1;
-    }
-
-    loaded = sc_res_info_get_ctnt_loaded(rl);
-    if (loaded == NULL) {
-        hc_log_error("get free res_info failed");
-        return -1;
-    }
-
-    sc_res_copy_url(loaded->common.url, old_url, HTTP_URL_MAX_LEN, 1);
-#if DEBUG
-    hc_log_debug("copied url with parameter:%s", loaded->common.url);
-#endif
-    /* zhaoyao XXX: inherit site at very first time */
-    sc_res_site_inherit(ctl_ld, loaded);
-    mime_type = sc_res_mime_type_obtain(old_url, 1);
-    sc_res_mime_set_t(&loaded->common, mime_type);
-
-    /* zhaoyao XXX: 本地文件当然是已经stored了。 */
-    sc_res_flag_set_stored(&loaded->common);
-
-    /* zhaoyao: 为loaded装填local path，当然很简单。。。 */
-    strcpy(loaded->localpath, lp);
-
-    if (ctl_ld->child_cnt == 0) {  /* First derivative is come */
-        ctl_ld->child = loaded;
-    } else {
-        loaded->siblings = ctl_ld->child;
-        ctl_ld->child = loaded;
-    }
-    ctl_ld->child_cnt++;
-    loaded->parent = ctl_ld;
-
-    if (ptr_ret != NULL) {
-        *ptr_ret = loaded;
-    }
-
-    return 0;
-
-//error:
-//    sc_res_info_del(sc_res_info_list, (sc_res_info_t *)loaded);
-//    return -1;
-}
-
-static hc_result_t sc_res_dup_loaded_to_parsed(sc_res_info_ctnt_t *loaded,
-                                               sc_res_info_ctnt_t *parsed)
-{
-    if (loaded == NULL || parsed == NULL) {
+    if (from == NULL || to == NULL) {
         return HC_ERR_INVALID;
     }
 
 #if DEBUG
-    hc_log_debug("\n\tloaded: %s\n\tparsed: %s", loaded->common.url, parsed->common.url);
-    hc_log_debug("loaded local path: %s", loaded->localpath);
+    hc_log_debug("\n\tfrom: %s\n\tto: %s", from->common.url, to->common.url);
+    hc_log_debug("from's local path: %s", from->localpath);
 
-    if (sc_res_flag_is_stored(&loaded->common)) {
+    if (sc_res_flag_is_stored(&from->common)) {
         hc_log_debug("loaded is stored");
     }
-    if (sc_res_flag_is_notify(&loaded->common)) {
-        hc_log_debug("loaded is notified to Snooping Module");
+    if (sc_res_flag_is_notify(&from->common)) {
+        hc_log_debug("from is notified to Snooping Module");
     }
 #endif
 
-    memcpy(parsed->common.url, loaded->common.url, HTTP_URL_MAX_LEN);
-    memcpy(parsed->localpath, loaded->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
+    memcpy(to->common.url, from->common.url, HTTP_URL_MAX_LEN);
+    memcpy(to->localpath, from->localpath, SC_RES_LOCAL_PATH_MAX_LEN);
 
-    if (sc_res_flag_is_stored(&loaded->common)) {
-        sc_res_flag_set_stored(&parsed->common);
+    if (sc_res_flag_is_stored(&from->common)) {
+        sc_res_flag_set_stored(&to->common);
     }
-    if (sc_res_flag_is_notify(&loaded->common)) {
-        sc_res_flag_set_notify(&parsed->common);
+    if (sc_res_flag_is_notify(&from->common)) {
+        sc_res_flag_set_notify(&to->common);
     }
 
     return HC_SUCCESS;
 }
 
-static hc_result_t sc_res_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctnt_t *ld)
+static hc_result_t sc_res_info_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctnt_t *ld)
 {
-    sc_res_info_mgmt_t *ctl_ld;
+    sc_res_info_mgmt_t *ctrl_ld;
 
     if (ld == NULL) {
         return HC_ERR_INVALID;
     }
 
-    ctl_ld = ld->parent;
-    if (ctl_ld == NULL) {
+    ctrl_ld = ld->parent;
+    if (ctrl_ld == NULL) {
         hc_log_error("loaded has no parent");
         return HC_ERR_INTERNAL;
     }
 
     if (pre == NULL) {
-        if (ctl_ld->child != ld) {
-            hc_log_error("invalid pre, ctl_ld has %lu child(ren)", ctl_ld->child_cnt);
+        if (ctrl_ld->child != ld) {
+            hc_log_error("invalid pre, ctrl_ld has %lu child(ren)", ctrl_ld->child_cnt);
             return HC_ERR_INTERNAL;
         }
-        if (ctl_ld->child_cnt == 0) {
-            hc_log_error("FATAL, ctl_ld child count is 0");
+        if (ctrl_ld->child_cnt == 0) {
+            hc_log_error("FATAL, ctrl_ld child count is 0");
             return HC_ERR_INTERNAL;
         }
 
-        ctl_ld->child = ld->siblings;
-        ctl_ld->child_cnt--;
+        ctrl_ld->child = ld->siblings;
+        ctrl_ld->child_cnt--;
         sc_res_info_del(sc_res_info_list, &ld->common);
 
         return HC_SUCCESS;
     }
 
-    if (ctl_ld->child_cnt < 2) {
-        hc_log_error("ctl_ld has %lu child(ren), whild pre is not NULL", ctl_ld->child_cnt);
+    if (ctrl_ld->child_cnt < 2) {
+        hc_log_error("ctrl_ld has %lu child(ren), while pre is not NULL", ctrl_ld->child_cnt);
         return HC_ERR_INTERNAL;
     }
 
     pre->siblings = ld->siblings;
-    ctl_ld->child_cnt--;
+    ctrl_ld->child_cnt--;
     sc_res_info_del(sc_res_info_list, &ld->common);
 
     return HC_SUCCESS;
@@ -852,14 +757,14 @@ static hc_result_t sc_res_remove_loaded(sc_res_info_ctnt_t *pre, sc_res_info_ctn
 /*
  * zhaoyao XXX: 对于已经存在的资源，根据loaded更新parsed，并删除掉loaded
  */
-hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ctnt_t *parsed)
+hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctrl_ld, sc_res_info_ctnt_t *parsed)
 {
     sc_res_info_ctnt_t *ld, *pre_ld;
     char *vid, *p, *url;
     int url_len;
     hc_result_t ret;
 
-    if (ctl_ld == NULL || parsed == NULL) {
+    if (ctrl_ld == NULL || parsed == NULL) {
         hc_log_error("invalid input");
         return HC_ERR_INVALID;
     }
@@ -876,7 +781,7 @@ hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ct
 
     vid = p + 1;
 
-    for (pre_ld = NULL, ld = ctl_ld->child; ld != NULL; ) {
+    for (pre_ld = NULL, ld = ctrl_ld->child; ld != NULL; ) {
         if (strstr(ld->common.url, vid) != NULL) {
             break;
         }
@@ -889,13 +794,13 @@ hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ct
         return HC_ERR_INTERNAL;
     }
 
-    ret = sc_res_dup_loaded_to_parsed(ld, parsed);
+    ret = sc_res_info_dup_ctnt(ld, parsed);
     if (ret != HC_SUCCESS) {
         hc_log_error("copy information from loaded to parsed failed, url: %s", url);
         return ret;
     }
 
-    ret = sc_res_remove_loaded(pre_ld, ld);
+    ret = sc_res_info_remove_loaded(pre_ld, ld);
     if (ret != HC_SUCCESS) {
         hc_log_error("remove loaded failed, url: %s", url);
         return ret;
@@ -904,75 +809,87 @@ hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ct
     return HC_SUCCESS;
 }
 
-void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
+static void sc_res_info_del_mgmt(sc_res_list_t *rl, sc_res_info_mgmt_t *mgmt)
 {
-    sc_res_info_mgmt_t *mgmt;
-    sc_res_info_ctnt_t *parsed;
     char print_buf[BUFFER_LEN];
 
-    if (rl == NULL || ri == NULL) {
+    if (rl == NULL || mgmt == NULL) {
         return;
     }
 
     bzero(print_buf, BUFFER_LEN);
-    if (sc_res_gen_is_origin(ri)) {
+    if (sc_res_gen_is_origin(&mgmt->common)) {
         strcat(print_buf, "origin: ");
-    } else if (sc_res_gen_is_ctl_ld(ri)) {
-        strcat(print_buf, "ctl_ld: ");
-    } else if (sc_res_gen_is_parsed(ri)) {
-        strcat(print_buf, "parsed: ");
-    } else if (sc_res_gen_is_loaded(ri)) {
-        strcat(print_buf, "loaded: ");
-    } else if (sc_res_gen_is_normal(ri)) {
+    } else if (sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+        strcat(print_buf, "ctrl_ld: ");
+    } else if (sc_res_gen_is_normal(&mgmt->common)) {
         strcat(print_buf, "normal: ");
     } else {
         strcat(print_buf, "unknown: ");
     }
-    strcat(print_buf, ri->url);
+    strcat(print_buf, mgmt->common.url);
     hc_log_info("%s", print_buf);
 
+    if (mgmt->child_cnt != 0) {
+        /* zhaoyao XXX TODO: 支持 */
+        hc_log_error("delete origin or ctrl_ld who has %lu children is not supported now",
+                            mgmt->child_cnt);
+    }
+
+    sc_res_info_put(rl, &mgmt->common);
+}
+
+static void sc_res_info_del_ctnt(sc_res_list_t *rl, sc_res_info_ctnt_t *ctnt)
+{
+    /* zhaoyao TODO XXX: 支持 */
+    sc_res_info_mgmt_t *mgmt;
+
+    if (rl == NULL || ctnt == NULL) {
+        return;
+    }
+
+    hc_log_info(": %s", ctnt->common.url);
+
+    mgmt = ctnt->parent;
+    if (mgmt == NULL) {
+        hc_log_error("has no parent!!!");
+    }
+
+    if (sc_res_flag_is_stored(&ctnt->common) && !sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+        hc_log_error("\n%s\n\tstored local file is not deleted", ctnt->common.url);
+    }
+
+    if (sc_res_flag_is_notify(&ctnt->common) && !sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+        hc_log_error("\n%s\n\thas notified snooping module", ctnt->common.url);
+    }
+
+    if (mgmt != NULL) {
+        hc_log_error("%s has parent\n", ctnt->common.url);
+        if (mgmt->child_cnt > 1) {
+            hc_log_error("%s's parent %s has more than one child", ctnt->common.url, mgmt->common.url);
+        }
+    }
+
+    sc_res_info_put(rl, &ctnt->common);
+}
+
+void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri)
+{
+    if (rl == NULL || ri == NULL) {
+        return;
+    }
+
     if (sc_res_info_is_mgmt(ri)) {
-        mgmt = (sc_res_info_mgmt_t *)ri;
-        if (mgmt->child_cnt != 0) {
-            hc_log_error("delete origin or ctl_ld who has %lu children is not supported now",
-                                mgmt->child_cnt);
-        }
-        sc_res_info_put(rl, ri);
+        sc_res_info_del_mgmt(rl, (sc_res_info_mgmt_t *)ri);
         return;
     }
 
-    if (sc_res_flag_is_stored(ri) && !sc_res_gen_is_loaded(ri)) {
-        hc_log_error("\n%s\n\tstored local file is not deleted", ri->url);
-    }
-
-    if (sc_res_flag_is_notify(ri) && !sc_res_gen_is_loaded(ri)) {
-        hc_log_error("\n%s\n\thas notified snooping module", ri->url);
-    }
-
-    if (sc_res_gen_is_normal(ri)) {
-        sc_res_info_put(rl, ri);
+    if (sc_res_info_is_ctnt(ri)) {
+        sc_res_info_del_ctnt(rl, (sc_res_info_ctnt_t *)ri);
         return;
     }
 
-    if (sc_res_gen_is_parsed(ri)) {
-        parsed = (sc_res_info_ctnt_t *)ri;
-        if (parsed->parent != NULL) {
-            hc_log_error("%s has parent\n", ri->url);
-            mgmt = parsed->parent;
-            if (mgmt->child_cnt > 1) {
-                hc_log_error("%s's parent %s has more than one child", ri->url, mgmt->common.url);
-            }
-        }
-        sc_res_info_put(rl, ri);
-        return;
-    }
-
-    if (sc_res_gen_is_loaded(ri)) {
-        sc_res_info_put(rl, ri);
-        return;
-    }
-
-    hc_log_error("unknown type 0x%lx", ri->flag);
+    hc_log_error("unknown type 0x%lx", ri->gen);
 }
 
 sc_res_info_ctnt_t *sc_res_info_find_ctnt(sc_res_list_t *rl, const char *url)
@@ -1044,8 +961,8 @@ static int sc_res_retry_download(sc_res_info_t *ri)
 
     hc_log_info("%120s", ri->url);
 
-    if (!sc_res_gen_is_normal(ri) && !sc_res_gen_is_parsed(ri)) {
-        hc_log_error("only for normal and parsed");
+    if (!sc_res_info_is_ctnt(ri)) {
+        hc_log_error("only for content");
         return -1;
     }
 
@@ -1076,6 +993,11 @@ int sc_res_notify_ri_url(sc_res_info_t *ri)
 
     if (ri == NULL) {
         hc_log_error("invalid input");
+        return -1;
+    }
+
+    if (!sc_res_info_is_ctnt(ri)) {
+        hc_log_error("only for content");
         return -1;
     }
 
@@ -1116,44 +1038,31 @@ static int sc_res_add_ctnt_url(sc_res_info_ctnt_t *ctnt)
     return ret;
 }
 
-static int sc_res_list_process_mgmt(sc_res_list_t *rl)
-{
-    if (rl == NULL) {
-        return -1;
-    }
-
-    return 0;
-}
-
-static int sc_res_list_process_ctnt(sc_res_list_t *rl)
+static int sc_res_list_process_ctnt(sc_res_info_mgmt_t *mgmt)
 {
     sc_res_info_ctnt_t *curr;
     sc_res_info_t *ri;
-    int i, err = 0, ret;
+    int err = 0, ret;
 
-    if (rl == NULL) {
+    if (mgmt == NULL) {
         return -1;
     }
 
-    for (i = 0; i < SC_RES_INFO_NUM_MAX_CTNT; i++) {
-        curr = &rl->ctnt[i];
+    for (curr = mgmt->child; curr != NULL; curr = curr->siblings) {
         ri = &curr->common;
 
         if (ri->url[0] == '\0') {
-            continue;
-        }
-
-        if (!sc_res_info_is_ctnt(ri)) {
-            hc_log_error("Content type check wrong, type: 0x%lx", ri->flag);
+            hc_log_error("invalid url");
+            err++;
             continue;
         }
 
         if (!sc_res_flag_is_stored(ri)) {
-            /*
-             * zhaoyao XXX: add ctnt success, but inform Nginx to download failed,
-             *              re-download in this situation.
-             */
             if (sc_res_flag_is_i_fail(ri)) {
+                /*
+                 * zhaoyao XXX: add ctnt success, but inform Nginx to download failed,
+                 *              re-download in this situation.
+                 */
                 ret = sc_res_retry_download(ri);
                 if (ret == 0) {
                     sc_res_flag_unset_i_fail(ri);
@@ -1188,28 +1097,47 @@ static int sc_res_list_process_ctnt(sc_res_list_t *rl)
     return err;
 }
 
-int sc_res_list_process_func(sc_res_list_t *rl)
+static int sc_res_list_process_mgmt(sc_res_list_t *rl)
 {
-    int err = 0, ret;
+    sc_res_info_mgmt_t *curr;
+    int i, err = 0, ret;
 
     if (rl == NULL) {
         return -1;
     }
 
-    ret = sc_res_list_process_mgmt(rl);
-    if (ret < 0) {
-        hc_log_error("sc_res_list_process_mgmt, return %d", ret);
-        return ret;
+    for (i = 0; i < SC_RES_INFO_NUM_MAX_MGMT; i++) {
+        curr = &(rl->mgmt[i]);
+        if (curr->common.id >= SC_RES_INFO_NUM_MAX_MGMT) {
+            /* zhaoyao XXX: 跳过空闲的mgmt */
+            continue;
+        }
+
+        ret = sc_res_list_process_ctnt(curr);
+        if (ret < 0) {
+            hc_log_error("%s", curr->common.url);
+            return ret;
+        }
+
+        err = err + ret;
     }
 
-    err = err + ret;
-    ret = sc_res_list_process_ctnt(rl);
-    if (ret < 0) {
-        hc_log_error("sc_res_list_process_ctnt, return %d", ret);
-        return ret;
+    return err;
+}
+
+int sc_res_list_process_func(sc_res_list_t *rl)
+{
+    int err;
+
+    if (rl == NULL) {
+        return -1;
     }
 
-    err = err + ret;
+    err = sc_res_list_process_mgmt(rl);
+    if (err < 0) {
+        hc_log_error("sc_res_list_process_mgmt, return %d", err);
+        return err;
+    }
 
     return err;
 }

@@ -202,7 +202,7 @@ out:
 
 static hc_result_t sc_yk_handle_cached(sc_res_info_ctnt_t *parsed)
 {
-    sc_res_info_mgmt_t *yk_ctl_ld;
+    sc_res_info_mgmt_t *yk_ctrl_ld;
     hc_result_t ret;
 
     if (parsed == NULL) {
@@ -210,13 +210,13 @@ static hc_result_t sc_yk_handle_cached(sc_res_info_ctnt_t *parsed)
         return HC_ERR_INVALID;
     }
 
-    yk_ctl_ld = sc_ld_obtain_ctl_ld_youku();
-    if (yk_ctl_ld == NULL) {
-        hc_log_error("miss youku ctl_ld");
+    yk_ctrl_ld = sc_ld_obtain_ctrl_ld_youku();
+    if (yk_ctrl_ld == NULL) {
+        hc_log_error("miss youku ctrl_ld");
         return HC_ERR_INTERNAL;
     }
 
-    ret = sc_res_info_handle_cached(yk_ctl_ld, parsed);
+    ret = sc_res_info_handle_cached(yk_ctrl_ld, parsed);
     if (ret != HC_SUCCESS) {
         hc_log_error("failed");
     }
@@ -364,7 +364,7 @@ static int sc_get_yk_video_tradition(sc_res_info_mgmt_t *origin)
                 /*
                  * Step 3 - using real URL to download.
                  */
-                ret = sc_res_info_add_parsed(sc_res_info_list, origin, real_url, &parsed);
+                ret = sc_res_info_add_ctnt(sc_res_info_list, origin, real_url, &parsed);
                 if (ret != 0) {
                     hc_log_error("add real_url\n\t%s\nto resource list failed, give up downloading...",
                                         real_url);

@@ -18,7 +18,7 @@
 static sc_res_info_mgmt_t *youku_controller_of_loaded = NULL;
 static sc_res_info_mgmt_t *sohu_controller_of_loaded = NULL;
 
-sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_youku()
+sc_res_info_mgmt_t *sc_ld_obtain_ctrl_ld_youku()
 {
     if (youku_controller_of_loaded == NULL) {
         hc_log_error("loadeds' controller of Youku is NULL");
@@ -27,7 +27,7 @@ sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_youku()
     return youku_controller_of_loaded;
 }
 
-sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_sohu()
+sc_res_info_mgmt_t *sc_ld_obtain_ctrl_ld_sohu()
 {
     if (sohu_controller_of_loaded == NULL) {
         hc_log_error("loaded controller of Sohu is NULL");
@@ -36,13 +36,13 @@ sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_sohu()
     return sohu_controller_of_loaded;
 }
 
-static int sc_ld_is_duplicate_file(sc_res_info_mgmt_t *ctl_ld, char *fpath)
+static int sc_ld_is_duplicate_file(sc_res_info_mgmt_t *ctrl_ld, char *fpath)
 {
     char *vid, *p;
     int len;
     sc_res_info_ctnt_t *loaded;
 
-    if (ctl_ld == NULL || fpath == NULL) {
+    if (ctrl_ld == NULL || fpath == NULL) {
         return 0;
     }
 
@@ -62,7 +62,7 @@ static int sc_ld_is_duplicate_file(sc_res_info_mgmt_t *ctl_ld, char *fpath)
     }
     vid = p + 1;
 
-    for (loaded = ctl_ld->child; loaded != NULL; loaded = loaded->siblings) {
+    for (loaded = ctrl_ld->child; loaded != NULL; loaded = loaded->siblings) {
         if (strstr(loaded->common.url, vid) != NULL) {
             return 1;
         }
@@ -75,13 +75,14 @@ int sc_ld_file_process(char *fpath)
 {
     int ret;
     sc_res_info_ctnt_t *loaded;
-    sc_res_info_mgmt_t *ctl_ld;
+    sc_res_info_mgmt_t *ctrl_ld;
     char yk_std_fpath[SC_RES_LOCAL_PATH_MAX_LEN];
+    char url[HTTP_URL_MAX_LEN], *local_path;
 
     if (sc_yk_is_local_path(fpath)) {
-        ctl_ld = sc_ld_obtain_ctl_ld_youku();
+        ctrl_ld = sc_ld_obtain_ctrl_ld_youku();
     } else if (sc_yk_is_local_path_pure_vid(fpath)) {
-        ctl_ld = sc_ld_obtain_ctl_ld_youku();
+        ctrl_ld = sc_ld_obtain_ctrl_ld_youku();
         bzero(yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
         ret = sc_yk_trans_vid_to_std_path(fpath, yk_std_fpath, SC_RES_LOCAL_PATH_MAX_LEN);
         if (ret != 0) {
@@ -96,14 +97,14 @@ int sc_ld_file_process(char *fpath)
         }
         fpath = yk_std_fpath;
     } else if (sc_sohu_is_local_path(fpath)) {
-        ctl_ld = sc_ld_obtain_ctl_ld_sohu();
+        ctrl_ld = sc_ld_obtain_ctrl_ld_sohu();
     } else {
         hc_log_error("Unknown file %s", fpath);
         /* zhaoyao XXX: 继续遍历 */
         return 0;
     }
 
-    if (sc_ld_is_duplicate_file(ctl_ld, fpath)) {
+    if (sc_ld_is_duplicate_file(ctrl_ld, fpath)) {
         ret = os_file_remove(fpath);
         if (ret != 0) {
             hc_log_error("Remove duplicate file failed: %s", fpath);
@@ -114,7 +115,18 @@ int sc_ld_file_process(char *fpath)
         return 0;
     }
 
-    ret = sc_res_info_add_loaded(sc_res_info_list, ctl_ld, fpath, &loaded);
+    bzero(url, HTTP_URL_MAX_LEN);
+    local_path = fpath;
+    if (memcmp(local_path, SC_NGX_ROOT_PATH, SC_NGX_ROOT_PATH_LEN) == 0) {
+        local_path = local_path + SC_NGX_ROOT_PATH_LEN;
+    }
+    ret = sc_res_recover_url_from_local_path(local_path, url);
+    if (ret != 0) {
+        hc_log_error("recover url from local path failed: %s", local_path);
+        return 0;
+    }
+
+    ret = sc_res_info_add_ctnt(sc_res_info_list, ctrl_ld, url, &loaded);
     if (ret != 0) {
         hc_log_error("Add loaded failed");
         /* zhaoyao XXX: 继续遍历 */
@@ -128,13 +140,13 @@ int sc_ld_init_and_load()
 {
     int ret;
 
-    ret = sc_res_info_add_ctl_ld(sc_res_info_list, YOUKU_WEBSITE_URL, &youku_controller_of_loaded);
+    ret = sc_res_info_add_ctrl_ld(sc_res_info_list, YOUKU_WEBSITE_URL, &youku_controller_of_loaded);
     if (ret != 0) {
         hc_log_error("Add loaded file controller of Youku failed");
         return -1;
     }
 
-    ret = sc_res_info_add_ctl_ld(sc_res_info_list, SOHU_WEBSITE_URL, &sohu_controller_of_loaded);
+    ret = sc_res_info_add_ctrl_ld(sc_res_info_list, SOHU_WEBSITE_URL, &sohu_controller_of_loaded);
     if (ret != 0) {
         hc_log_error("Add loaded file controller of Sohu failed");
         return -1;

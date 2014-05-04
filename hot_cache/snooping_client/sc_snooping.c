@@ -133,9 +133,10 @@ static void sc_snooping_do_down(int sockfd,
 {
     int ret;
     u8 status;
-    sc_res_info_ctnt_t *normal;
+    sc_res_info_mgmt_t *normal;
+    sc_res_info_ctnt_t *ctnt;
 
-    normal = sc_res_info_find_ctnt(sc_res_info_list, (const char *)req->url_data);
+    normal = sc_res_info_find_mgmt(sc_res_info_list, (const char *)req->url_data);
     if (normal != NULL) {
         if (!sc_res_gen_is_normal(&normal->common)) {
             hc_log_error("url\n\t%s\ntype is conflicted", req->url_data);
@@ -149,25 +150,33 @@ static void sc_snooping_do_down(int sockfd,
 
     ret = sc_res_info_add_normal(sc_res_info_list, (char *)req->url_data, &normal);
     if (ret != 0) {
-        hc_log_error("add url in resources list failed");
+        hc_log_error("add normal ri in resources list failed");
         status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
 
-    /* zhaoyao XXX: when add normal ri success, status set to OK, and calm down Snooping module */
-    status = HTTP_SP_STATUS_OK;
-
-    ret = sc_ngx_download(normal->common.url, normal->localpath);
+    /* zhaoyao XXX: 对normal而言，其content的url与它的url相同。 */
+    ret = sc_res_info_add_ctnt(sc_res_info_list, normal, normal->common.url, &ctnt);
     if (ret != 0) {
-        hc_log_error("download %s failed", normal->common.url);
-        /*
-         * zhaoyao XXX: 同parsed，当ri添加成功，但download失败时，尝试重复下载。
-         */
-        sc_res_flag_set_i_fail(&normal->common);
+        hc_log_error("add content ri in resources list failed");
+        status = HTTP_SP_STATUS_DEFAULT_ERROR;
         goto reply;
     }
 
-    hc_log_info("inform Nginx to download %s success", normal->common.url);
+    /* zhaoyao XXX: when add content ri success, status set to OK, and calm down Snooping module */
+    status = HTTP_SP_STATUS_OK;
+
+    ret = sc_ngx_download(ctnt->common.url, ctnt->localpath);
+    if (ret != 0) {
+        hc_log_error("download %s failed", ctnt->common.url);
+        /*
+         * zhaoyao XXX: 同parsed，当ri添加成功，但download失败时，尝试重复下载。
+         */
+        sc_res_flag_set_i_fail(&ctnt->common);
+        goto reply;
+    }
+
+    hc_log_info("inform Nginx to download %s success", ctnt->common.url);
 
 reply:
     ret = sc_snooping_resp_to_sp(sockfd, sa, salen, req, status);

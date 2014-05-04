@@ -138,7 +138,7 @@ int sc_sohu_gen_origin_url(char *req_url, char *origin_url)
 
 static hc_result_t sc_sohu_handle_cached(sc_res_info_ctnt_t *parsed)
 {
-    sc_res_info_mgmt_t *sohu_ctl_ld;
+    sc_res_info_mgmt_t *sohu_ctrl_ld;
     hc_result_t ret;
 
     if (parsed == NULL) {
@@ -146,13 +146,13 @@ static hc_result_t sc_sohu_handle_cached(sc_res_info_ctnt_t *parsed)
         return HC_ERR_INVALID;
     }
 
-    sohu_ctl_ld = sc_ld_obtain_ctl_ld_sohu();
-    if (sohu_ctl_ld == NULL) {
-        hc_log_error("miss sohu ctl_ld");
+    sohu_ctrl_ld = sc_ld_obtain_ctrl_ld_sohu();
+    if (sohu_ctrl_ld == NULL) {
+        hc_log_error("miss sohu ctrl_ld");
         return HC_ERR_INTERNAL;
     }
 
-    ret = sc_res_info_handle_cached(sohu_ctl_ld, parsed);
+    ret = sc_res_info_handle_cached(sohu_ctrl_ld, parsed);
     if (ret != HC_SUCCESS) {
         hc_log_error("failed");
     }
@@ -270,7 +270,7 @@ static int sc_get_sohu_video_m3u8(sc_res_info_mgmt_t *origin)
         curr = sohu_parse_m3u8_response(curr, file_url);
 
         /* zhaoyao XXX: for Sohu, file_url is not the final url to download data */
-        ret = sc_res_info_add_parsed(sc_res_info_list, origin, file_url, &parsed);
+        ret = sc_res_info_add_ctnt(sc_res_info_list, origin, file_url, &parsed);
         if (ret != 0) {
             hc_log_error("add file_url\n\t%s\nto resource list failed, give up downloading...",
                                 file_url);

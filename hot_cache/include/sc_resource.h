@@ -2,10 +2,10 @@
  * Copyright(C) 2014 Ruijie Network. All rights reserved.
  */
 /*
- * header.h
+ * sc_resource.h
  * Original Author: zhaoyao@ruijie.com.cn, 2014-03-11
  *
- * Hot cache application's common header file.
+ * Hot cache application's resource header file.
  *
  * ATTENTION:
  *     1. xxx
@@ -31,14 +31,13 @@
 #define SC_RES_LOCAL_PATH_MAX_LEN  256
 
 typedef enum sc_res_gen_e {
-    /* using sc_res_info_mgmt_t */
-    SC_RES_GEN_T_ORIGIN = 0,        /* Original URL needed to be parsed */
-    SC_RES_GEN_T_CTL_LD,            /* Special RI to control loaded local resources who can not find Origin parent */
-
     /* using sc_res_info_ctnt_t */
+    SC_RES_GEN_T_CONTENT = 0,       /* Content of all resources */
+
+    /* using sc_res_info_mgmt_t */
+    SC_RES_GEN_T_ORIGIN,            /* Original URL needed to be parsed */
     SC_RES_GEN_T_NORMAL,            /* Snooping inform Nginx to directly download */
-    SC_RES_GEN_T_PARSED,            /* Parsed URL from original one */
-    SC_RES_GEN_T_LOADED,            /* Loaded URL from server's local resources */
+    SC_RES_GEN_T_CTRL_LD,           /* Special RI to control loaded local resources who can not find Origin parent */
 
     SC_RES_GEN_T_MAX,
 } sc_res_gen_t;
@@ -97,7 +96,7 @@ typedef struct sc_res_info_s {
      * zhaoyao XXX: 对于origin，由于来自Snooping模块的URL千差万别，需要根据不同视频网站构建统一的URL
      *              格式，origin本来对Snooping模块，且只要具备恢复视频资源信息的功能即可；
      *
-     *              对于ctl_ld，由于是我们自己创建的管理节点，其url可由主页地址表示；
+     *              对于ctrl_ld，由于是我们自己创建的管理节点，其url可由主页地址表示；
      *
      *              对于parsed和normal，该URL必须与资源在本地存储的路径(local_path)对应起来，而且该
      *              url还会通知Snooping模块做重定向；
@@ -113,6 +112,9 @@ typedef struct sc_res_info_s {
 typedef struct sc_res_info_mgmt_s {
     /* zhaoyao XXX: common must be the very first member */
     struct sc_res_info_s common;
+
+    /* Multi-thread coherence guarantee */
+    pthread_rwlock_t rwlock;
 
     unsigned long child_cnt;
     struct sc_res_info_ctnt_s *child;
@@ -189,19 +191,14 @@ typedef struct sc_res_info_ctnt_s {
         sc_res_gen_set_t((ri), SC_RES_GEN_T_ORIGIN);  \
     } while (0)
 
-#define sc_res_gen_set_parsed(ri)                       \
+#define sc_res_gen_set_ctrl_ld(ri)                       \
     do {                                            \
-        sc_res_gen_set_t((ri), SC_RES_GEN_T_PARSED);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_CTRL_LD);  \
     } while (0)
 
-#define sc_res_gen_set_ctl_ld(ri)                       \
+#define sc_res_gen_set_content(ri)                       \
     do {                                            \
-        sc_res_gen_set_t((ri), SC_RES_GEN_T_CTL_LD);  \
-    } while (0)
-
-#define sc_res_gen_set_loaded(ri)                       \
-    do {                                            \
-        sc_res_gen_set_t((ri), SC_RES_GEN_T_LOADED);  \
+        sc_res_gen_set_t((ri), SC_RES_GEN_T_CONTENT);  \
     } while (0)
 
 static inline int sc_res_gen_is_normal(sc_res_info_t *ri)
@@ -220,26 +217,18 @@ static inline int sc_res_gen_is_origin(sc_res_info_t *ri)
 
     return 0;
 }
-static inline int sc_res_gen_is_parsed(sc_res_info_t *ri)
+static inline int sc_res_gen_is_ctrl_ld(sc_res_info_t *ri)
 {
     if (ri != NULL) {
-        return (ri->gen == SC_RES_GEN_T_PARSED);
+        return (ri->gen == SC_RES_GEN_T_CTRL_LD);
     }
 
     return 0;
 }
-static inline int sc_res_gen_is_ctl_ld(sc_res_info_t *ri)
+static inline int sc_res_gen_is_content(sc_res_info_t *ri)
 {
     if (ri != NULL) {
-        return (ri->gen == SC_RES_GEN_T_CTL_LD);
-    }
-
-    return 0;
-}
-static inline int sc_res_gen_is_loaded(sc_res_info_t *ri)
-{
-    if (ri != NULL) {
-        return (ri->gen == SC_RES_GEN_T_LOADED);
+        return (ri->gen == SC_RES_GEN_T_CONTENT);
     }
 
     return 0;
@@ -247,8 +236,9 @@ static inline int sc_res_gen_is_loaded(sc_res_info_t *ri)
 
 static inline int sc_res_info_is_mgmt(sc_res_info_t *ri)
 {
-    if (sc_res_gen_is_origin(ri) ||
-        sc_res_gen_is_ctl_ld(ri)) {
+    if (sc_res_gen_is_origin(ri)  ||
+        sc_res_gen_is_ctrl_ld(ri) ||
+        sc_res_gen_is_normal(ri)) {
 
         return 1;
     }
@@ -257,14 +247,7 @@ static inline int sc_res_info_is_mgmt(sc_res_info_t *ri)
 }
 static inline int sc_res_info_is_ctnt(sc_res_info_t *ri)
 {
-    if (sc_res_gen_is_normal(ri) ||
-        sc_res_gen_is_parsed(ri) ||
-        sc_res_gen_is_loaded(ri)) {
-
-        return 1;
-    }
-
-    return 0;
+    return sc_res_gen_is_content(ri);
 }
 
 #define sc_res_site_set_youku(ri)                       \
@@ -370,18 +353,15 @@ int sc_res_list_alloc_and_init(sc_res_list_t **prl);
 int sc_res_list_destroy_and_uninit();
 void *sc_res_list_process_thread(void *arg);
 
-int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_ctnt_t **ptr_ret);
+int sc_res_info_add_normal(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret);
 int sc_res_info_add_origin(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret);
-int sc_res_info_add_ctl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret);
-int sc_res_info_add_parsed(sc_res_list_t *rl,
-                           sc_res_info_mgmt_t *origin,
-                           char *url,
-                           sc_res_info_ctnt_t **ptr_ret);
-int sc_res_info_add_loaded(sc_res_list_t *rl,
-                           sc_res_info_mgmt_t *ctl_ld,
-                           const char *fpath,
-                           sc_res_info_ctnt_t **ptr_ret);
+int sc_res_info_add_ctrl_ld(sc_res_list_t *rl, char *url, sc_res_info_mgmt_t **ptr_ret);
+int sc_res_info_add_ctnt(sc_res_list_t *rl,
+                         sc_res_info_mgmt_t *mgmt,
+                         char *url,
+                         sc_res_info_ctnt_t **ptr_ret);
 void sc_res_info_del(sc_res_list_t *rl, sc_res_info_t *ri);
+
 
 sc_res_info_ctnt_t *sc_res_info_find_ctnt(sc_res_list_t *rl, const char *url);
 sc_res_info_mgmt_t *sc_res_info_find_mgmt(sc_res_list_t *rl, const char *url);
@@ -389,8 +369,9 @@ sc_res_info_mgmt_t *sc_res_info_find_mgmt(sc_res_list_t *rl, const char *url);
 void sc_res_copy_url(char *url, char *o_url, unsigned int len, char with_para);
 int sc_res_gen_origin_url(char *req_url, char *origin_url);
 int sc_res_url_to_local_path_default(char *url, char *local_path, int len);
-hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctl_ld, sc_res_info_ctnt_t *parsed);
+hc_result_t sc_res_info_handle_cached(sc_res_info_mgmt_t *ctrl_ld, sc_res_info_ctnt_t *parsed);
 int sc_res_notify_ri_url(sc_res_info_t *ri);
+int sc_res_recover_url_from_local_path(char *local_path, char *url);
 
 #endif /* __SC_RESOURCE_H__ */
 

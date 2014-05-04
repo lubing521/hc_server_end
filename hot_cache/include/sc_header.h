@@ -37,8 +37,8 @@ int sc_snooping_do_del(u32 sid, char *url);
 
 int sc_ld_file_process(char *fpath);
 int sc_ld_init_and_load();
-sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_youku();
-sc_res_info_mgmt_t *sc_ld_obtain_ctl_ld_sohu();
+sc_res_info_mgmt_t *sc_ld_obtain_ctrl_ld_youku();
+sc_res_info_mgmt_t *sc_ld_obtain_ctrl_ld_sohu();
 
 int sc_get_yk_video(sc_res_info_mgmt_t *origin);
 int sc_url_is_yk(char *url);
