@@ -843,27 +843,47 @@ static void sc_res_info_del_ctnt(sc_res_list_t *rl, sc_res_info_ctnt_t *ctnt)
 {
     /* zhaoyao TODO XXX: Ö§³Ö */
     sc_res_info_mgmt_t *mgmt;
+    char print_buf[BUFFER_LEN];
 
     if (rl == NULL || ctnt == NULL) {
         return;
     }
 
-    hc_log_info(": %s", ctnt->common.url);
-
     mgmt = ctnt->parent;
-    if (mgmt == NULL) {
-        hc_log_error("has no parent!!!");
+
+    bzero(print_buf, BUFFER_LEN);
+    if (mgmt != NULL) {
+        if (sc_res_gen_is_origin(&mgmt->common)) {
+            strcat(print_buf, "origin , ");
+        } else if (sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+            strcat(print_buf, "ctrl_ld, ");
+        } else if (sc_res_gen_is_normal(&mgmt->common)) {
+            strcat(print_buf, "normal , ");
+        } else {
+            strcat(print_buf, "unknown, ");
+        }
+    } else {
+        strcat(print_buf, "no parent, ");
     }
 
-    if (sc_res_flag_is_stored(&ctnt->common) && !sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+    strcat(print_buf, ctnt->common.url);
+
+    hc_log_info("%s", print_buf);
+
+    if ((sc_res_flag_is_stored(&ctnt->common)) &&
+        (mgmt != NULL) &&
+        (!sc_res_gen_is_ctrl_ld(&mgmt->common))) {
         hc_log_error("\n%s\n\tstored local file is not deleted", ctnt->common.url);
     }
 
-    if (sc_res_flag_is_notify(&ctnt->common) && !sc_res_gen_is_ctrl_ld(&mgmt->common)) {
+    if ((sc_res_flag_is_notify(&ctnt->common)) &&
+        (mgmt != NULL) &&
+        (!sc_res_gen_is_ctrl_ld(&mgmt->common))) {
         hc_log_error("\n%s\n\thas notified snooping module", ctnt->common.url);
     }
 
-    if (mgmt != NULL) {
+    if ((mgmt != NULL) &&
+        (!sc_res_gen_is_ctrl_ld(&mgmt->common))) {
         hc_log_error("%s has parent\n", ctnt->common.url);
         if (mgmt->child_cnt > 1) {
             hc_log_error("%s's parent %s has more than one child", ctnt->common.url, mgmt->common.url);
