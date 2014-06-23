@@ -341,7 +341,7 @@ static int sc_get_yk_video_tradition(sc_res_info_mgmt_t *origin)
             }
 
             if (yk_http_session(fp_url, yk_url, response, RESP_BUF_LEN) < 0) {
-                hc_log_error("yk_http_session faild, URL: %s\n", pl_url);
+                hc_log_error("yk_http_session faild, URL: %s\n", fp_url);
                 err = -1;
                 goto out;
             }
